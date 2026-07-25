@@ -1,0 +1,5 @@
+node_modules/
+webapp/node_modules/
+webapp/dist/
+.playwright-mcp/
+*.log

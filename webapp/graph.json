@@ -1,0 +1,2802 @@
+{
+  "nodes": [
+    {
+      "id": "edge",
+      "type": "group",
+      "position": {
+        "x": -523.0019698413824,
+        "y": -138.76100536530868
+      },
+      "data": {
+        "label": "Infra / Auth",
+        "color": "#e05252"
+      },
+      "style": {
+        "width": 462,
+        "height": 222
+      },
+      "measured": {
+        "width": 462,
+        "height": 222
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "npm",
+      "type": "service",
+      "parentId": "edge",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Nginx Proxy Manager",
+        "sub": ":80 / :443 / :81",
+        "icon": "nginx-proxy-manager",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 58
+      }
+    },
+    {
+      "id": "authelia",
+      "type": "service",
+      "parentId": "edge",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Authelia (SSO)",
+        "sub": ":9091",
+        "icon": "authelia",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "postgres",
+      "type": "service",
+      "parentId": "edge",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "PostgreSQL 15",
+        "sub": ":5432",
+        "icon": "postgresql",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "mcp",
+      "type": "group",
+      "position": {
+        "x": 867.6574743612503,
+        "y": -325.83836411262337
+      },
+      "data": {
+        "label": "MCP bridges",
+        "color": "#0ca5b0"
+      },
+      "style": {
+        "width": 462,
+        "height": 306
+      },
+      "measured": {
+        "width": 806,
+        "height": 397
+      },
+      "selected": false,
+      "dragging": false,
+      "width": 806,
+      "height": 397,
+      "resizing": false
+    },
+    {
+      "id": "mcparr",
+      "type": "service",
+      "parentId": "mcp",
+      "extent": "parent",
+      "position": {
+        "x": 56.66666666666667,
+        "y": 101.75
+      },
+      "data": {
+        "label": "mcp-arr",
+        "sub": ":8089",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "mcpplex",
+      "type": "service",
+      "parentId": "mcp",
+      "extent": "parent",
+      "position": {
+        "x": 308.00000000000006,
+        "y": 101.75
+      },
+      "data": {
+        "label": "mcp-plex",
+        "sub": ":8087",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "mcpunraid",
+      "type": "service",
+      "parentId": "mcp",
+      "extent": "parent",
+      "position": {
+        "x": 559.3333333333334,
+        "y": 101.75
+      },
+      "data": {
+        "label": "mcp-unraid",
+        "sub": ":8088",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "npmmcp",
+      "type": "service",
+      "parentId": "mcp",
+      "extent": "parent",
+      "position": {
+        "x": 56.66666666666667,
+        "y": 261.25
+      },
+      "data": {
+        "label": "npm-mcp",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      },
+      "selected": false
+    },
+    {
+      "id": "camproxy",
+      "type": "service",
+      "parentId": "mcp",
+      "extent": "parent",
+      "position": {
+        "x": 308.00000000000006,
+        "y": 261.25
+      },
+      "data": {
+        "label": "cam-proxy",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      }
+    },
+    {
+      "id": "media",
+      "type": "group",
+      "position": {
+        "x": -444.35862016134377,
+        "y": 533.5881186601878
+      },
+      "data": {
+        "label": "Media",
+        "color": "#2f6fed"
+      },
+      "style": {
+        "width": 462,
+        "height": 390
+      },
+      "measured": {
+        "width": 462,
+        "height": 390
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "plex",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Plex",
+        "sub": ":32400",
+        "icon": "plex",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "sonarr",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Sonarr",
+        "sub": ":8085",
+        "icon": "sonarr",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "radarr",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "Radarr",
+        "sub": ":7878",
+        "icon": "radarr",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "hydra",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 136
+      },
+      "data": {
+        "label": "NZBHydra2",
+        "sub": ":5076",
+        "icon": "nzbhydra2",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "sab",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 220
+      },
+      "data": {
+        "label": "SABnzbd",
+        "sub": ":8081",
+        "icon": "sabnzbd",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "recyclarr",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 220
+      },
+      "data": {
+        "label": "Recyclarr",
+        "sub": "on-demand",
+        "icon": "recyclarr",
+        "status": "idle"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "library",
+      "type": "service",
+      "parentId": "media",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 304
+      },
+      "data": {
+        "label": "Media library",
+        "sub": "array shares",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "home",
+      "type": "group",
+      "position": {
+        "x": 516.1659563974013,
+        "y": 552.3163699621423
+      },
+      "data": {
+        "label": "Home Automation",
+        "color": "#2f9e44"
+      },
+      "style": {
+        "width": 462,
+        "height": 306
+      },
+      "measured": {
+        "width": 462,
+        "height": 306
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "hass",
+      "type": "service",
+      "parentId": "home",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Home Assistant",
+        "sub": ":8123",
+        "icon": "home-assistant",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "zwave",
+      "type": "service",
+      "parentId": "home",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Z-Wave JS UI",
+        "sub": ":3000",
+        "icon": "z-wave-js-ui",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "mqtt",
+      "type": "service",
+      "parentId": "home",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "Mosquitto",
+        "sub": ":1883",
+        "icon": "mosquitto",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "ma",
+      "type": "service",
+      "parentId": "home",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 136
+      },
+      "data": {
+        "label": "Music Assistant",
+        "sub": ":8095",
+        "icon": "music-assistant",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "frigate",
+      "type": "service",
+      "parentId": "home",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 220
+      },
+      "data": {
+        "label": "Frigate (NVR)",
+        "sub": "panopticon:5000",
+        "icon": "frigate",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "ai",
+      "type": "group",
+      "position": {
+        "x": -460.49045125631005,
+        "y": 1019.1885283615607
+      },
+      "data": {
+        "label": "AI / Voice",
+        "color": "#9b51e0"
+      },
+      "style": {
+        "width": 462,
+        "height": 474
+      },
+      "measured": {
+        "width": 462,
+        "height": 474
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "ollama",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Ollama",
+        "sub": ":11434",
+        "icon": "ollama",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "openwebui",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Open-WebUI",
+        "sub": ":8020",
+        "icon": "open-webui",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "whisper",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "Faster-Whisper",
+        "sub": "STT · GPU",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "piper",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 136
+      },
+      "data": {
+        "label": "Piper",
+        "sub": "TTS · GPU",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "kokoro",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 220
+      },
+      "data": {
+        "label": "Kokoro",
+        "sub": "TTS · GPU",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "comfy",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 220
+      },
+      "data": {
+        "label": "ComfyUI",
+        "sub": "on-demand",
+        "icon": "comfyui",
+        "status": "idle"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "ttsproxy",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 304
+      },
+      "data": {
+        "label": "tts-pronunciation-proxy",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 46
+      }
+    },
+    {
+      "id": "pipermgr",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 304
+      },
+      "data": {
+        "label": "piper-voice-manager",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 46
+      }
+    },
+    {
+      "id": "wakeword",
+      "type": "service",
+      "parentId": "ai",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 388
+      },
+      "data": {
+        "label": "wakeword-training",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      }
+    },
+    {
+      "id": "apps",
+      "type": "group",
+      "position": {
+        "x": 550.2677592036608,
+        "y": 1113.0464547322736
+      },
+      "data": {
+        "label": "Apps",
+        "color": "#d9a406"
+      },
+      "style": {
+        "width": 462,
+        "height": 474
+      },
+      "measured": {
+        "width": 462,
+        "height": 474
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "dashboard",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Family Dashboard",
+        "sub": ":3042",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "health",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Homelab Health",
+        "sub": ":7077",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "linkding",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "Linkding",
+        "sub": ":9099",
+        "icon": "linkding",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "mealie",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 136
+      },
+      "data": {
+        "label": "Mealie",
+        "sub": "on-demand",
+        "icon": "mealie",
+        "status": "idle"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "crafty",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 220
+      },
+      "data": {
+        "label": "Crafty",
+        "sub": "Minecraft",
+        "icon": "crafty-controller",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "trek",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 220
+      },
+      "data": {
+        "label": "TREK",
+        "sub": ":3039",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "caas",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 304
+      },
+      "data": {
+        "label": "caas",
+        "sub": "box .21:8080",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "tars",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 304
+      },
+      "data": {
+        "label": "tars",
+        "sub": "box .21:8787",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "workout",
+      "type": "service",
+      "parentId": "apps",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 388
+      },
+      "data": {
+        "label": "workout",
+        "sub": "box .21:5273",
+        "status": "up"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "devices",
+      "type": "group",
+      "position": {
+        "x": 1413.95068916865,
+        "y": 681.5290025338956
+      },
+      "data": {
+        "label": "Smart-home devices",
+        "color": "#6b7280"
+      },
+      "style": {
+        "width": 462,
+        "height": 222
+      },
+      "measured": {
+        "width": 462,
+        "height": 222
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "cameras",
+      "type": "service",
+      "parentId": "devices",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 52
+      },
+      "data": {
+        "label": "Cameras",
+        "sub": "doorbell / yard / gate"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "zwave_dev",
+      "type": "service",
+      "parentId": "devices",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 52
+      },
+      "data": {
+        "label": "Z-Wave devices",
+        "sub": "locks / sensors"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      },
+      "selected": false
+    },
+    {
+      "id": "mqtt_dev",
+      "type": "service",
+      "parentId": "devices",
+      "extent": "parent",
+      "position": {
+        "x": 26,
+        "y": 136
+      },
+      "data": {
+        "label": "MQTT sensors"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      }
+    },
+    {
+      "id": "integrations",
+      "type": "service",
+      "parentId": "devices",
+      "extent": "parent",
+      "position": {
+        "x": 246,
+        "y": 136
+      },
+      "data": {
+        "label": "Cloud integrations",
+        "sub": "Rachio / UniFi / …"
+      },
+      "measured": {
+        "width": 180,
+        "height": 44
+      }
+    },
+    {
+      "id": "users",
+      "type": "service",
+      "position": {
+        "x": -845.0177756361751,
+        "y": 296.40778432608386
+      },
+      "data": {
+        "label": "Internet users",
+        "kind": "actor"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      },
+      "selected": false,
+      "dragging": false
+    },
+    {
+      "id": "claude",
+      "type": "service",
+      "position": {
+        "x": -875.8149077265654,
+        "y": 481.33879601830444
+      },
+      "data": {
+        "label": "You / Claude",
+        "kind": "actor"
+      },
+      "measured": {
+        "width": 180,
+        "height": 40
+      },
+      "selected": false,
+      "dragging": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0-users-npm",
+      "source": "users",
+      "target": "npm",
+      "label": "HTTPS",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6366f1",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#6366f1",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#6366f1",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "via",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e1-npm-authelia",
+      "source": "npm",
+      "target": "authelia",
+      "label": "forward-auth",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#6366f1",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#6366f1",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#6366f1",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "via",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e2-npm-media",
+      "source": "npm",
+      "target": "media",
+      "label": "reverse proxy",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep",
+        "points": [
+          {
+            "x": -314.0021776991075,
+            "y": 145.31433321438686
+          },
+          {
+            "x": -446.3587297279701,
+            "y": 145.31433321438686
+          }
+        ]
+      },
+      "type": "waypoint",
+      "selected": false
+    },
+    {
+      "id": "e3-npm-hass",
+      "source": "npm",
+      "target": "hass",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "selected": false,
+      "type": "waypoint"
+    },
+    {
+      "id": "e4-npm-ollama",
+      "source": "npm",
+      "target": "ollama",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e5-npm-openwebui",
+      "source": "npm",
+      "target": "openwebui",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e6-npm-apps",
+      "source": "npm",
+      "target": "apps",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e7-npm-frigate",
+      "source": "npm",
+      "target": "frigate",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#ea580c",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#ea580c",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#ea580c",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "proxies",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e8-sonarr-hydra",
+      "source": "sonarr",
+      "target": "hydra",
+      "label": "search indexers",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e9-radarr-hydra",
+      "source": "radarr",
+      "target": "hydra",
+      "label": "search indexers",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e10-sonarr-sab",
+      "source": "sonarr",
+      "target": "sab",
+      "label": "send download",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e11-radarr-sab",
+      "source": "radarr",
+      "target": "sab",
+      "label": "send download",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e12-sab-library",
+      "source": "sab",
+      "target": "library",
+      "label": "downloads",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e13-sonarr-library",
+      "source": "sonarr",
+      "target": "library",
+      "label": "import",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e14-radarr-library",
+      "source": "radarr",
+      "target": "library",
+      "label": "import",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e15-plex-library",
+      "source": "plex",
+      "target": "library",
+      "label": "streams",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e16-recyclarr-sonarr",
+      "source": "recyclarr",
+      "target": "sonarr",
+      "label": "sync config",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e17-recyclarr-radarr",
+      "source": "recyclarr",
+      "target": "radarr",
+      "label": "sync config",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e19-hass-whisper",
+      "source": "hass",
+      "target": "whisper",
+      "label": "STT",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e20-hass-piper",
+      "source": "hass",
+      "target": "piper",
+      "label": "TTS",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e21-hass-kokoro",
+      "source": "hass",
+      "target": "kokoro",
+      "label": "TTS",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e22-hass-ollama",
+      "source": "hass",
+      "target": "ollama",
+      "label": "conversation",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e23-ttsproxy-piper",
+      "source": "ttsproxy",
+      "target": "piper",
+      "label": "pronunciation",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e24-pipermgr-piper",
+      "source": "pipermgr",
+      "target": "piper",
+      "label": "manages voices",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e25-openwebui-ollama",
+      "source": "openwebui",
+      "target": "ollama",
+      "label": "chat UI",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e26-zwave-hass",
+      "source": "zwave",
+      "target": "hass",
+      "label": "Z-Wave JS",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e27-mqtt-hass",
+      "source": "mqtt",
+      "target": "hass",
+      "label": "MQTT",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "selected": false,
+      "type": "waypoint"
+    },
+    {
+      "id": "e28-ma-hass",
+      "source": "ma",
+      "target": "hass",
+      "label": "media control",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e29-frigate-hass",
+      "source": "frigate",
+      "target": "hass",
+      "label": "camera events",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e30-frigate-mqtt",
+      "source": "frigate",
+      "target": "mqtt",
+      "label": "detections",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#16a34a",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#16a34a",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#16a34a",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "writes-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e31-zwave_dev-zwave",
+      "source": "zwave_dev",
+      "target": "zwave",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e32-cameras-frigate",
+      "source": "cameras",
+      "target": "frigate",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e33-mqtt_dev-mqtt",
+      "source": "mqtt_dev",
+      "target": "mqtt",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e34-integrations-hass",
+      "source": "integrations",
+      "target": "hass",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e35-mealie-postgres",
+      "source": "mealie",
+      "target": "postgres",
+      "label": "database",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e36-dashboard-hass",
+      "source": "dashboard",
+      "target": "hass",
+      "label": "entities",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e37-dashboard-postgres",
+      "source": "dashboard",
+      "target": "postgres",
+      "label": "database",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint",
+      "selected": false
+    },
+    {
+      "id": "e38-authelia-postgres",
+      "source": "authelia",
+      "target": "postgres",
+      "label": "session store",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e39-health-mcpunraid",
+      "source": "health",
+      "target": "mcpunraid",
+      "label": "host status",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#9333ea",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#9333ea",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#9333ea",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "monitors",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "selected": false,
+      "type": "waypoint"
+    },
+    {
+      "id": "e40-claude-mcparr",
+      "source": "claude",
+      "target": "mcparr",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e41-claude-mcpplex",
+      "source": "claude",
+      "target": "mcpplex",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "selected": false,
+      "type": "waypoint"
+    },
+    {
+      "id": "e42-claude-mcpunraid",
+      "source": "claude",
+      "target": "mcpunraid",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e43-claude-npmmcp",
+      "source": "claude",
+      "target": "npmmcp",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#64748b",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#64748b",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#64748b",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "talks-to",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e44-mcparr-sonarr",
+      "source": "mcparr",
+      "target": "sonarr",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e45-mcparr-radarr",
+      "source": "mcparr",
+      "target": "radarr",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    },
+    {
+      "id": "e46-mcpplex-plex",
+      "source": "mcpplex",
+      "target": "plex",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": false,
+        "shape": "smoothstep",
+        "points": []
+      },
+      "selected": false,
+      "type": "waypoint"
+    },
+    {
+      "id": "e47-npmmcp-npm",
+      "source": "npmmcp",
+      "target": "npm",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "opacity": 1
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": false,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint",
+      "selected": false
+    },
+    {
+      "id": "e48-camproxy-cameras",
+      "source": "camproxy",
+      "target": "cameras",
+      "label": "streams",
+      "markerEnd": {
+        "type": "arrowclosed",
+        "color": "#2563eb",
+        "width": 15,
+        "height": 15
+      },
+      "style": {
+        "stroke": "#2563eb",
+        "strokeWidth": 2,
+        "strokeDasharray": "5 4",
+        "opacity": 0.8
+      },
+      "labelStyle": {
+        "fontSize": 10,
+        "fill": "#2563eb",
+        "fontWeight": 600
+      },
+      "labelBgStyle": {
+        "fill": "#ffffff",
+        "fillOpacity": 0.9
+      },
+      "labelBgPadding": [
+        3,
+        2
+      ],
+      "labelBgBorderRadius": 3,
+      "data": {
+        "rel": "reads-from",
+        "inferred": true,
+        "shape": "smoothstep"
+      },
+      "type": "waypoint"
+    }
+  ]
+}

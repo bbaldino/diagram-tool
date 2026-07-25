@@ -1,0 +1,244 @@
+# Homelab — logical diagram
+# Organized by service function; edges show how things interact.
+# Solid = confident interaction, dashed = inferred (confirm/correct).
+# Icons: dashboard-icons (homarr-labs). Generated 2026-07-23 from
+# Unraid / Home Assistant / Plex / NPM MCPs.
+# Render with ./render.sh  (d2 --layout elk --theme 1 --pad 40)
+
+direction: right
+
+# --- global polish ---
+**: {
+  style.border-radius: 10
+}
+
+title: |md
+  # 🏠 Homelab — logical view
+| {
+  near: top-center
+  style.font-size: 32
+}
+
+classes: {
+  inferred: {
+    style.stroke-dash: 4
+    style.stroke: "#9aa0a6"
+    style.font-color: "#9aa0a6"
+  }
+  proxy: {
+    style.stroke: "#2f6fed"
+    style.stroke-width: 2
+    style.font-color: "#2f6fed"
+  }
+  actor: {
+    shape: person
+    style.fill: "#4f46e5"
+    style.font-color: "#ffffff"
+    style.stroke: "#3730a3"
+  }
+  grp: {
+    style.font-size: 22
+    style.bold: true
+    style.stroke-width: 2
+  }
+}
+
+# ---------------- Actors ----------------
+users: Internet users { class: actor }
+claude: You / Claude\n(MCP client) { class: actor }
+
+devices: Smart-home devices {
+  class: grp
+  style.fill: "#f4f7f4"
+  style.stroke: "#6b7280"
+  cameras: Cameras\n(doorbell, yard, gate)
+  zwave_dev: Z-Wave devices\n(locks, sensors)
+  mqtt_dev: MQTT sensors\n& misc
+  integrations: Cloud integrations\n(Rachio, SleepNumber,\nUniFi, vacuum)
+}
+
+# ---------------- Edge / Auth ----------------
+edge: "Infra / Auth" {
+  class: grp
+  style.fill: "#fff5f5"
+  style.stroke: "#e05252"
+  npm: Nginx Proxy Manager\n:80 / :443 / :81 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nginx-proxy-manager.svg
+  }
+  authelia: Authelia (SSO)\n:9091 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/authelia.svg
+  }
+  postgres: PostgreSQL 15\n:5432 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/postgresql.svg
+  }
+}
+
+# ---------------- Media ----------------
+media: Media {
+  class: grp
+  style.fill: "#f5f8ff"
+  style.stroke: "#2f6fed"
+  plex: Plex\n:32400 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/plex.svg
+  }
+  sonarr: Sonarr\n:8085 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sonarr.svg
+  }
+  radarr: Radarr\n:7878 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/radarr.svg
+  }
+  hydra: NZBHydra2\n:5076 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/nzbhydra2.svg
+  }
+  sab: SABnzbd\n:8081 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/sabnzbd.svg
+  }
+  recyclarr: Recyclarr\n(on-demand) {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/recyclarr.svg
+  }
+  handbrake: HandBrake\n(on-demand) {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/handbrake.svg
+  }
+  library: Media library\n(array shares) { shape: cylinder }
+}
+
+# ---------------- AI / Voice ----------------
+ai: "AI / Voice" {
+  class: grp
+  style.fill: "#fbf5ff"
+  style.stroke: "#9b51e0"
+  ollama: Ollama\n:11434 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/ollama.svg
+  }
+  openwebui: Open-WebUI\n:8020 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/open-webui.svg
+  }
+  whisper: Faster-Whisper\n(STT, GPU)
+  piper: Piper\n(TTS, GPU)
+  kokoro: Kokoro\n(TTS, GPU)
+  comfy: ComfyUI\n(on-demand) {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/comfyui.svg
+  }
+  ttsproxy: tts-pronunciation-proxy
+  pipermgr: piper-voice-manager
+  wakeword: wakeword-training
+}
+
+# ---------------- Home Automation ----------------
+home: Home Automation {
+  class: grp
+  style.fill: "#f4fbf6"
+  style.stroke: "#2f9e44"
+  hass: Home Assistant\n:8123 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/home-assistant.svg
+  }
+  zwave: Z-Wave JS UI\n:3000 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/z-wave-js-ui.svg
+  }
+  mqtt: Mosquitto (MQTT)\n:1883 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mosquitto.svg
+  }
+  ma: Music Assistant\n:8095 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/music-assistant.svg
+  }
+  frigate: Frigate (NVR)\npanopticon.home:5000 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/frigate.svg
+  }
+}
+
+# ---------------- Apps ----------------
+apps: Apps {
+  class: grp
+  style.fill: "#fffdf3"
+  style.stroke: "#d9a406"
+  dashboard: Family Dashboard\n:3042
+  health: Homelab Health\n:7077
+  linkding: Linkding\n:9099 {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/linkding.svg
+  }
+  mealie: Mealie\n(on-demand) {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/mealie.svg
+  }
+  crafty: Crafty\n(Minecraft) {
+    icon: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/crafty-controller.svg
+  }
+  trek: TREK\n:3039
+  caas: caas\nbox .21:8080
+  tars: tars\nbox .21:8787
+  workout: workout\nbox .21:5273
+}
+
+# ---------------- MCP bridges ----------------
+mcp: MCP bridges {
+  class: grp
+  style.fill: "#f3fbfb"
+  style.stroke: "#0ca5b0"
+  mcparr: mcp-arr\n:8089
+  mcpplex: mcp-plex\n:8087
+  mcpunraid: mcp-unraid\n:8088
+  npmmcp: nginx-proxy-manager-mcp
+  camproxy: cam-proxy
+}
+
+# ================= Interactions =================
+
+# --- External entry / auth ---
+users -> edge.npm: HTTPS
+edge.npm -> edge.authelia: forward-auth\n(*.baldino.me) { class: proxy }
+edge.npm -> media: reverse proxy { class: proxy }
+edge.npm -> home.hass: reverse proxy { class: proxy }
+edge.npm -> ai.ollama: reverse proxy { class: proxy }
+edge.npm -> ai.openwebui: reverse proxy { class: proxy }
+edge.npm -> apps: reverse proxy { class: proxy }
+edge.npm -> home.frigate: reverse proxy { class: proxy }
+
+# --- Media pipeline ---
+media.sonarr -> media.hydra: search indexers
+media.radarr -> media.hydra: search indexers
+media.sonarr -> media.sab: send download
+media.radarr -> media.sab: send download
+media.sab -> media.library: writes
+media.sonarr -> media.library: import/organize
+media.radarr -> media.library: import/organize
+media.plex -> media.library: reads/streams
+media.recyclarr -> media.sonarr: sync config
+media.recyclarr -> media.radarr: sync config
+media.handbrake -> media.library: transcode { class: inferred }
+
+# --- Voice pipeline (HA Assist) ---
+home.hass -> ai.whisper: speech-to-text
+home.hass -> ai.piper: text-to-speech
+home.hass -> ai.kokoro: text-to-speech { class: inferred }
+home.hass -> ai.ollama: conversation
+ai.ttsproxy -> ai.piper: pronunciation fixes { class: inferred }
+ai.pipermgr -> ai.piper: manages voices { class: inferred }
+ai.openwebui -> ai.ollama: chat UI
+
+# --- Home automation hub ---
+home.zwave -> home.hass: Z-Wave JS integration
+home.mqtt -> home.hass: MQTT
+home.ma -> home.hass: media control
+home.frigate -> home.hass: camera events
+home.frigate -> home.mqtt: detections
+devices.zwave_dev -> home.zwave
+devices.cameras -> home.frigate
+devices.mqtt_dev -> home.mqtt
+devices.integrations -> home.hass
+
+# --- Apps wiring (mostly inferred) ---
+apps.mealie -> edge.postgres: database { class: inferred }
+apps.dashboard -> home.hass: reads entities { class: inferred }
+apps.dashboard -> edge.postgres: database { class: inferred }
+apps.health -> mcp.mcpunraid: monitors host { class: inferred }
+edge.authelia -> edge.postgres: session store { class: inferred }
+
+# --- MCP bridges (what Claude talks to) ---
+claude -> mcp.mcparr
+claude -> mcp.mcpplex
+claude -> mcp.mcpunraid
+claude -> mcp.npmmcp
+mcp.mcparr -> media.sonarr
+mcp.mcparr -> media.radarr
+mcp.mcpplex -> media.plex
+mcp.npmmcp -> edge.npm
+mcp.camproxy -> devices.cameras: proxies streams { class: inferred }

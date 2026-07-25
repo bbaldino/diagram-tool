@@ -1,0 +1,154 @@
+* { box-sizing: border-box; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1f2937;
+}
+
+/* Layer order: edges < edge labels < nodes (so labels sit above lines but under nodes). */
+.react-flow__edgelabel-renderer { z-index: 4; }
+.react-flow__nodes { z-index: 5; }
+
+/* ---------- Service node ---------- */
+.node {
+  width: 180px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+  font-size: 12px;
+}
+.node.selected { box-shadow: 0 0 0 2px #6366f1; }
+.node__row { display: flex; align-items: center; gap: 8px; padding: 8px 10px; }
+.node__icon { width: 22px; height: 22px; flex: 0 0 22px; object-fit: contain; }
+.node__icon--placeholder {
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; background: #eef2f7; color: #64748b; font-weight: 700; font-size: 11px;
+}
+.node__text { min-width: 0; }
+.node__label { font-weight: 600; line-height: 1.15; }
+.node__sub { color: #64748b; font-size: 10.5px; line-height: 1.15; }
+.node__status {
+  width: 9px; height: 9px; border-radius: 50%; margin-left: auto; flex: 0 0 9px;
+}
+.status-up   { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,0.18); }
+.status-down { background: #ef4444; box-shadow: 0 0 0 3px rgba(239,68,68,0.18); }
+.status-idle { background: #cbd5e1; box-shadow: 0 0 0 3px rgba(148,163,184,0.18); }
+
+/* ---------- Note node ---------- */
+.note {
+  min-width: 160px; min-height: 90px; width: 100%; height: 100%;
+  background: #fef9c3;
+  border: 1px solid #fde047;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.note textarea {
+  width: 100%; height: 100%; resize: none; border: none; outline: none;
+  background: transparent; font: inherit; font-size: 12px; color: #713f12;
+}
+
+/* ---------- Group node ---------- */
+/* Remove React Flow's default group-node box; we draw our own border in .group. */
+.react-flow__node-group { background: transparent; border: none; }
+.group {
+  width: 100%; height: 100%;
+  border: 2px solid var(--group-color, #94a3b8);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--group-color, #94a3b8) 7%, white);
+}
+.group__label {
+  position: absolute;
+  bottom: 100%; /* sit just above the box */
+  left: 50%;
+  transform: translateX(-50%);
+  margin-bottom: 5px;
+  font-weight: 700; font-size: 16px; color: var(--group-color, #475569);
+  letter-spacing: 0.02em; white-space: nowrap;
+  pointer-events: none; /* don't block the top resize handles */
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: rgba(255,255,255,0.95);
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  font-size: 12px;
+}
+.panel h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+.toolbar button {
+  font: inherit; font-size: 12px; cursor: pointer;
+  border: 1px solid #cbd5e1; background: #fff; color: #1f2937;
+  border-radius: 8px; padding: 6px 10px; margin: 0 4px 0 0;
+}
+.toolbar button:hover { background: #f1f5f9; }
+.toolbar .edgestyle { font-size: 12px; color: #334155; display: inline-flex; align-items: center; gap: 4px; margin: 0 4px; }
+.toolbar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937; }
+.legend__row { display: flex; align-items: center; gap: 8px; margin: 3px 0; }
+.legend__line { width: 26px; height: 0; border-top-width: 2.5px; border-top-style: solid; }
+.legend__dot { width: 10px; height: 10px; border-radius: 50%; }
+
+/* stack the toolbar + inspector in one top-right column so they never overlap */
+.stack-tr { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+
+/* Group resize handles: push them OUTSIDE the group edge so child nodes (which
+   stack above the parent) can't cover them, and give a fat side grab-strip. */
+.react-flow__resize-control.handle { z-index: 12; }
+.react-flow__resize-control.handle.top.left { margin: -7px 0 0 -7px; }
+.react-flow__resize-control.handle.top.right { margin: -7px -7px 0 0; }
+.react-flow__resize-control.handle.bottom.left { margin: 0 0 -7px -7px; }
+.react-flow__resize-control.handle.bottom.right { margin: 0 -7px -7px 0; }
+.react-flow__resize-control.line { z-index: 11; }
+.react-flow__resize-control.line.top { margin-top: -6px; }
+.react-flow__resize-control.line.bottom { margin-bottom: -6px; }
+.react-flow__resize-control.line.left { margin-left: -6px; }
+.react-flow__resize-control.line.right { margin-right: -6px; }
+
+/* While a group is selected, edges stop competing with its resize handles for clicks. */
+.group-editing .react-flow__edge path { pointer-events: none !important; }
+
+/* make a selected edge obvious */
+.react-flow__edge.selected .react-flow__edge-path { stroke-width: 4 !important; }
+.react-flow__edge:hover .react-flow__edge-path { stroke-width: 3; }
+
+/* ---------- Inspector ---------- */
+.insp { width: 240px; }
+.insp h4 { margin: 0 0 8px; }
+.insp__sub { font-size: 10.5px; color: #64748b; margin-bottom: 8px; word-break: break-all; }
+.insp__field { display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; font-size: 11px; color: #475569; }
+.insp__field input, .insp__field select {
+  font: inherit; font-size: 12px; padding: 5px 7px;
+  border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937;
+}
+.insp__field input[type='color'] { padding: 2px; height: 30px; }
+.insp__check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #475569; margin-bottom: 10px; }
+.insp__delete {
+  font: inherit; font-size: 12px; cursor: pointer; width: 100%;
+  border: 1px solid #fecaca; background: #fef2f2; color: #dc2626; border-radius: 8px; padding: 6px 10px;
+}
+.insp__delete:hover { background: #fee2e2; }
+.insp__action {
+  font: inherit; font-size: 12px; cursor: pointer; width: 100%;
+  border: 1px solid #cbd5e1; background: #f8fafc; color: #1f2937; border-radius: 8px; padding: 6px 10px; margin-bottom: 8px;
+}
+.insp__action:hover { background: #f1f5f9; }
+.insp__row2 { display: flex; gap: 8px; }
+.insp__row2 .insp__field { flex: 1; }
+.insp--empty .insp__hint { font-size: 11.5px; color: #64748b; line-height: 1.45; }
+
+/* ---------- Waypoint edges ---------- */
+.wp-label {
+  position: absolute; font-size: 10px; font-weight: 600;
+  background: #ffffff; padding: 1px 5px; border-radius: 4px;
+  pointer-events: none; white-space: nowrap;
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+.wp-dot {
+  position: absolute; width: 11px; height: 11px; border-radius: 50%;
+  background: #fff; border: 2px solid #2563eb; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  cursor: grab; pointer-events: all;
+}
+.wp-dot:active { cursor: grabbing; }
