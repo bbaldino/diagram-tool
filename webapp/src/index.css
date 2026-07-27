@@ -142,6 +142,15 @@ input, textarea, [contenteditable="true"] {
 /* stack the diagram bar + legend in one top-left column so they never overlap */
 .stack-tl { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 
+/* The stack panels are as WIDE as their widest child (e.g. the toolbar row),
+   but their shorter children (the Inspector, legend) only fill part of that
+   width. With the default pointer-events, the panel's empty flex space — a
+   wide band left of the right-aligned Inspector, and the gaps between rows —
+   would sit over the canvas and swallow pan/zoom. Make the containers
+   transparent to the pointer and re-enable it on the real panels only. */
+.stack-tr, .stack-tl { pointer-events: none; }
+.stack-tr > *, .stack-tl > * { pointer-events: auto; }
+
 .diagrambar { display: flex; align-items: center; gap: 6px; }
 .diagrambar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937; }
 .diagrambar button {
