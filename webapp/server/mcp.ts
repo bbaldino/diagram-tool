@@ -243,6 +243,84 @@ export const handlers = {
     store.apply([{ t: 'flow.add', diagramId: a.diagramId, flow: { id: flowId, name: a.name, steps } }], 'mcp')
     return { flowId }
   },
+
+  addFlowStep(
+    store: Store,
+    a: { diagramId: string; flowId: string; elements: ElementRef[]; caption?: string; index?: number },
+  ): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    const flow = diagram.flows?.find((f) => f.id === a.flowId)
+    if (!flow) return err(`unknown flow "${a.flowId}"`)
+    let elementIds
+    try {
+      elementIds = a.elements.map((r) => resolveElementRef(diagram, r))
+    } catch (e) {
+      return err(String(e instanceof Error ? e.message : e))
+    }
+    const step = { id: `step-${Date.now().toString(36)}`, elementIds, caption: a.caption }
+    const steps = flow.steps.slice()
+    steps.splice(a.index ?? steps.length, 0, step)
+    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }], 'mcp')
+    return { ok: true }
+  },
+
+  setFlowStep(
+    store: Store,
+    a: { diagramId: string; flowId: string; stepId: string; patch: { elements?: ElementRef[]; caption?: string } },
+  ): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    const flow = diagram.flows?.find((f) => f.id === a.flowId)
+    if (!flow) return err(`unknown flow "${a.flowId}"`)
+    if (!flow.steps.some((s) => s.id === a.stepId)) return err(`unknown step "${a.stepId}"`)
+    let resolved: string[] | undefined
+    try {
+      resolved = a.patch.elements?.map((r) => resolveElementRef(diagram, r))
+    } catch (e) {
+      return err(String(e instanceof Error ? e.message : e))
+    }
+    const steps = flow.steps.map((s) =>
+      s.id !== a.stepId
+        ? s
+        : {
+            ...s,
+            ...(resolved ? { elementIds: resolved } : {}),
+            ...(a.patch.caption !== undefined ? { caption: a.patch.caption } : {}),
+          },
+    )
+    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }], 'mcp')
+    return { ok: true }
+  },
+
+  removeFlowStep(store: Store, a: { diagramId: string; flowId: string; stepId: string }): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    const flow = diagram.flows?.find((f) => f.id === a.flowId)
+    if (!flow) return err(`unknown flow "${a.flowId}"`)
+    if (!flow.steps.some((s) => s.id === a.stepId)) return err(`unknown step "${a.stepId}"`)
+    store.apply(
+      [{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps: flow.steps.filter((s) => s.id !== a.stepId) } }],
+      'mcp',
+    )
+    return { ok: true }
+  },
+
+  renameFlow(store: Store, a: { diagramId: string; flowId: string; name: string }): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    if (!diagram.flows?.some((f) => f.id === a.flowId)) return err(`unknown flow "${a.flowId}"`)
+    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { name: a.name } }], 'mcp')
+    return { ok: true }
+  },
+
+  deleteFlow(store: Store, a: { diagramId: string; flowId: string }): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    if (!diagram.flows?.some((f) => f.id === a.flowId)) return err(`unknown flow "${a.flowId}"`)
+    store.apply([{ t: 'flow.remove', diagramId: a.diagramId, id: a.flowId }], 'mcp')
+    return { ok: true }
+  },
 }
 
 // ---------------------------------------------------------------------------
@@ -409,6 +487,64 @@ export function createMcpServer(store: Store): McpServer {
       },
     },
     (args) => wrap(handlers.authorFlow(store, args as any)),
+  )
+
+  const elementRefShape = z.union([z.string(), z.object({ from: z.string(), to: z.string() })])
+
+  server.registerTool(
+    'add_flow_step',
+    {
+      description: 'Insert a new step into an existing flow, lighting up the given elements (by id, or an edge as {from,to}).',
+      inputSchema: {
+        diagramId: z.string(),
+        flowId: z.string(),
+        elements: z.array(elementRefShape),
+        caption: z.string().optional(),
+        index: z.number().optional(),
+      },
+    },
+    (args) => wrap(handlers.addFlowStep(store, args as any)),
+  )
+
+  server.registerTool(
+    'set_flow_step',
+    {
+      description: "Update an existing flow step's elements and/or caption.",
+      inputSchema: {
+        diagramId: z.string(),
+        flowId: z.string(),
+        stepId: z.string(),
+        patch: z.object({ elements: z.array(elementRefShape).optional(), caption: z.string().optional() }),
+      },
+    },
+    (args) => wrap(handlers.setFlowStep(store, args as any)),
+  )
+
+  server.registerTool(
+    'remove_flow_step',
+    {
+      description: 'Remove a step from a flow.',
+      inputSchema: { diagramId: z.string(), flowId: z.string(), stepId: z.string() },
+    },
+    (args) => wrap(handlers.removeFlowStep(store, args as any)),
+  )
+
+  server.registerTool(
+    'rename_flow',
+    {
+      description: 'Rename an existing flow.',
+      inputSchema: { diagramId: z.string(), flowId: z.string(), name: z.string() },
+    },
+    (args) => wrap(handlers.renameFlow(store, args as any)),
+  )
+
+  server.registerTool(
+    'delete_flow',
+    {
+      description: 'Delete a flow from a diagram.',
+      inputSchema: { diagramId: z.string(), flowId: z.string() },
+    },
+    (args) => wrap(handlers.deleteFlow(store, args as any)),
   )
 
   return server

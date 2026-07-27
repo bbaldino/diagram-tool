@@ -358,6 +358,60 @@ describe('author_flow', () => {
   })
 })
 
+describe('flow granular tools', () => {
+  const mkFlowStore = (): Promise<Store> =>
+    createStore({
+      file: 'x',
+      load: async () => ({
+        version: 1,
+        entities: [
+          { id: 'a', label: 'A', fields: [] },
+          { id: 'b', label: 'B', fields: [] },
+        ],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            placements: [
+              { entityId: 'a', position: { x: 0, y: 0 } },
+              { entityId: 'b', position: { x: 100, y: 0 } },
+            ],
+            groups: [],
+            edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }],
+            notes: [],
+          },
+        ],
+        templates: [],
+      }),
+      save: async () => {},
+    })
+
+  it('add/set/remove step, rename, delete a flow', async () => {
+    const store = await mkFlowStore()
+    const { flowId } = handlers.authorFlow(store, { diagramId: 'd', name: 'F', steps: [{ elements: ['a'] }] }) as { flowId: string }
+    handlers.addFlowStep(store, { diagramId: 'd', flowId, elements: ['b'], caption: 'two' })
+    let f = getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)!
+    expect(f.steps).toHaveLength(2)
+    const stepId = f.steps[1].id
+    handlers.setFlowStep(store, { diagramId: 'd', flowId, stepId, patch: { caption: 'edited' } })
+    handlers.removeFlowStep(store, { diagramId: 'd', flowId, stepId })
+    handlers.renameFlow(store, { diagramId: 'd', flowId, name: 'F2' })
+    f = getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)!
+    expect(f.name).toBe('F2'); expect(f.steps).toHaveLength(1)
+    handlers.deleteFlow(store, { diagramId: 'd', flowId })
+    expect(getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)).toBeUndefined()
+  })
+  it('get_diagram surfaces flows and edge ids', async () => {
+    const store = await mkFlowStore()
+    const { flowId } = handlers.authorFlow(store, { diagramId: 'd', name: 'G', steps: [{ elements: [{ from: 'a', to: 'b' }] }] }) as { flowId: string }
+    const d = handlers.getDiagram(store, 'd') as any
+    expect(d.flows.find((f: any) => f.id === flowId)).toBeTruthy()
+    expect(d.edges[0].id).toBeTruthy()
+  })
+})
+
 describe('wrap', () => {
   it('marks a handler error result with isError: true', () => {
     const res = wrap({ error: 'unknown diagram "nope"' })
