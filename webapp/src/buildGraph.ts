@@ -42,7 +42,7 @@ export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>
       color: de.color,
     })
     edge.id = de.id
-    edge.data = { ...edge.data, shape: de.shape ?? 'default', points: de.points }
+    edge.data = { ...edge.data, shape: de.shape ?? 'default', points: de.points, labelPos: de.labelPos }
     edge = restyleEdge(edge, de.type, !!de.inferred) // keeps id/source/target/data via spread
     return edge
   })

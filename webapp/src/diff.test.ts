@@ -137,6 +137,29 @@ describe('diffToOps', () => {
   })
 })
 
+describe('edge labelPos round-trip', () => {
+  const base = {
+    version: 1, templates: [], entities: [],
+    diagrams: [{
+      id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
+      placements: [], groups: [],
+      edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }],
+      notes: [],
+    }],
+  }
+  it('a labelPos change emits an edge.update patch and applyOps sets it', () => {
+    const next = structuredClone(base) as any
+    next.diagrams[0].edges[0].labelPos = 0.8
+    const ops = diffToOps(base, next)
+    expect(ops).toContainEqual(
+      expect.objectContaining({ t: 'edge.update', diagramId: 'd', id: 'e1',
+        patch: expect.objectContaining({ labelPos: 0.8 }) }),
+    )
+    const applied = applyOps(base, ops)
+    expect(applied.diagrams[0].edges[0].labelPos).toBe(0.8)
+  })
+})
+
 describe('diffDiagramContents (exported)', () => {
   it('emits a single placement.set for a moved node', () => {
     const prev = {

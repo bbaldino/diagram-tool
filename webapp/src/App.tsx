@@ -118,6 +118,7 @@ function edgesToDEdges(edges: Edge[]): DEdge[] {
     targetHandle: e.targetHandle ?? undefined,
     dir: (e.data as any)?.dir ?? 'forward',
     color: (e.data as any)?.color ?? undefined,
+    labelPos: (e.data as any)?.labelPos,
   }))
 }
 

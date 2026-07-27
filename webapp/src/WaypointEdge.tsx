@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import {
   BaseEdge,
   EdgeLabelRenderer,
@@ -96,6 +96,22 @@ export function WaypointEdge(props: EdgeProps) {
   const [d, labelX, labelY] = edgePath(shape, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, points)
   const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
 
+  const labelPos = Math.max(0, Math.min(1, (data?.labelPos as number) ?? 0.5))
+  const measureRef = useRef<SVGPathElement>(null)
+  const [labelPt, setLabelPt] = useState<Pt | null>(null)
+  // Place the label at a fraction of the path length (shape-agnostic). Measured
+  // from the actual rendered path so it works for straight/bezier/catmull/waypoint.
+  useLayoutEffect(() => {
+    const path = measureRef.current
+    if (!path) return
+    const total = path.getTotalLength()
+    if (!total) { setLabelPt(null); return }
+    const p = path.getPointAtLength(labelPos * total)
+    setLabelPt({ x: p.x, y: p.y })
+  }, [d, labelPos])
+  const lx = labelPt?.x ?? labelX
+  const ly = labelPt?.y ?? labelY
+
   const setPoints = (updater: (pts: Pt[]) => Pt[]) =>
     setEdges((es) =>
       es.map((e) => (e.id === id ? { ...e, data: { ...e.data, points: updater((e.data?.points as Pt[]) || []) } } : e)),
@@ -148,18 +164,67 @@ export function WaypointEdge(props: EdgeProps) {
     setPoints((pts) => pts.filter((_, idx) => idx !== i))
   }
 
+  const setLabelPos = (t: number) =>
+    setEdges((es) => es.map((e) => (e.id === id ? { ...e, data: { ...e.data, labelPos: t } } : e)))
+
+  const startLabelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    dragging.current = true
+    const el = e.currentTarget
+    try { el.setPointerCapture(e.pointerId) } catch { /* synthetic event */ }
+    const move = (ev: PointerEvent) => {
+      const path = measureRef.current
+      if (!path) return
+      const total = path.getTotalLength()
+      if (!total) return
+      const p = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      // nearest point on the path by sampling — keeps the label anchored to the line
+      const N = 100
+      let best = 0
+      let bestDist = Infinity
+      for (let i = 0; i <= N; i++) {
+        const q = path.getPointAtLength((i / N) * total)
+        const dx = q.x - p.x
+        const dy = q.y - p.y
+        const dd = dx * dx + dy * dy
+        if (dd < bestDist) { bestDist = dd; best = i }
+      }
+      setLabelPos(best / N)
+    }
+    const up = () => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', up)
+      setTimeout(() => { dragging.current = false }, 60)
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', up)
+  }
+
   return (
     <>
       <BaseEdge id={id} path={d} markerStart={markerStart} markerEnd={markerEnd} style={style} interactionWidth={26} />
       {label ? (
-        <EdgeLabelRenderer>
-          <div
-            className="wp-label"
-            style={{ transform: `translate(-50%,-50%) translate(${labelX}px,${labelY}px)`, color: relColor }}
-          >
-            {label}
-          </div>
-        </EdgeLabelRenderer>
+        <>
+          {/* hidden measurement path (same geometry as the visible edge) for
+              label placement — only present when there IS a label, so labelless
+              edges skip the getTotalLength/getPointAtLength work entirely. */}
+          <path ref={measureRef} d={d} fill="none" stroke="none" style={{ pointerEvents: 'none' }} />
+          <EdgeLabelRenderer>
+            <div
+              className={selected ? 'wp-label nopan nodrag' : 'wp-label'}
+              style={{
+                transform: `translate(-50%,-50%) translate(${lx}px,${ly}px)`,
+                color: relColor,
+                pointerEvents: selected ? 'all' : 'none',
+                cursor: selected ? 'grab' : 'default',
+              }}
+              onPointerDown={selected ? startLabelDrag : undefined}
+              title={selected ? 'drag to move the label along the line' : undefined}
+            >
+              {label}
+            </div>
+          </EdgeLabelRenderer>
+        </>
       ) : null}
       {selected ? (
         <>

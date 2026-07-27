@@ -60,6 +60,7 @@ export interface DEdge {
   targetHandle?: string // which side of the target node
   dir?: EdgeDir // arrowhead direction — forward (default) | backward | both
   color?: string // per-edge color override; falls back to the relationship type color
+  labelPos?: number // fraction along the path in [0,1] where the label sits; absent = 0.5 (midpoint)
   orientation?: EdgeOrientation // routing axis hint; absent = 'auto' (geometry decides)
 }
 export interface Note {
