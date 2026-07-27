@@ -788,6 +788,34 @@ function Flow({
     return () => window.removeEventListener('keydown', onKey)
   }, [doUndo, doRedo])
 
+  // Keyboard: arrow-key stepping through the active flow in Play mode.
+  // Right/Down advance, Left/Up go back; both preventDefault so React Flow
+  // doesn't nudge a selected node and the page doesn't scroll. Inert while a
+  // text input/textarea/contentEditable is focused (same guard as undo above).
+  useEffect(() => {
+    if (flowMode !== 'play') return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setCurrentStep((s) => Math.min(s + 1, (currentFlow?.steps.length ?? 1) - 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCurrentStep((s) => Math.max(0, s - 1))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [flowMode, currentFlow])
+
+  // Clamp currentStep into range whenever the active flow (or mode) changes,
+  // e.g. switching to a flow with fewer steps than the previous currentStep.
+  useEffect(() => {
+    const len = currentFlow?.steps.length ?? 0
+    setCurrentStep((s) => Math.min(Math.max(0, s), Math.max(0, len - 1)))
+  }, [currentFlow, flowMode])
+
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selNode) ?? null,
     [nodes, selNode],

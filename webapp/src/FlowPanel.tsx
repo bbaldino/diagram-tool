@@ -24,6 +24,13 @@ export function FlowPanel({
   return (
     <div className="panel insp flowpanel">
       <h4>Flow: {flow.name}</h4>
+      {mode === 'play' && (
+        <div className="flowplay">
+          <button className="pbtn" disabled={selStep <= 0} onClick={() => onSelStep(selStep - 1)}>‹ Prev</button>
+          <button className="pbtn" disabled={selStep >= steps.length - 1} onClick={() => onSelStep(selStep + 1)}>Next ›</button>
+          <span className="flowplay__count">{steps.length ? selStep + 1 : 0} / {steps.length}</span>
+        </div>
+      )}
       {mode === 'edit' && <div className="insp__hint">Click a canvas element to light it up in the selected step.</div>}
       {steps.map((s, i) => (
         <div key={s.id} className={`flowstep ${i === selStep ? 'sel' : ''}`} onClick={() => onSelStep(i)}>

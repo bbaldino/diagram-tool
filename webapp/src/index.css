@@ -245,6 +245,14 @@ input, textarea, [contenteditable="true"] {
 /* ---------- FlowPanel ---------- */
 .flowpanel { width: 240px; }
 .flowpanel .insp__hint { font-size: 11.5px; color: #64748b; line-height: 1.45; margin-bottom: 10px; }
+.flowplay { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.pbtn {
+  font: inherit; font-size: 11.5px; cursor: pointer; flex: 1;
+  border: 1px solid #cbd5e1; background: #f8fafc; color: #1f2937; border-radius: 6px; padding: 5px 8px;
+}
+.pbtn:hover:not(:disabled) { background: #f1f5f9; }
+.pbtn:disabled { opacity: 0.45; cursor: default; }
+.flowplay__count { font-size: 11px; font-weight: 700; color: #4f46e5; white-space: nowrap; }
 .flowstep {
   position: relative; cursor: pointer; margin-bottom: 8px; padding: 7px 8px 7px 10px;
   border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
