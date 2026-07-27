@@ -30,16 +30,16 @@ import {
   type RelType,
   type EdgeDir,
 } from './graph'
+import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
 import { DiagramBar } from './DiagramBar'
 import { Palette } from './Palette'
 import { EntitiesPage } from './EntitiesPage'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { useDialogs } from './Dialog'
+import { fetchState, subscribe, sendOps, clientId } from './modelClient'
+import { diffToOps } from './diff'
 import {
-  loadModel,
-  saveModel,
-  buildDiagramGraph,
   entitiesById,
   getDiagram,
   patchDiagram,
@@ -88,7 +88,7 @@ function nodesToDiagramParts(nodes: Node[]) {
     .map((n) => ({
       entityId: n.id,
       position: n.position,
-      parentId: n.parentId ?? null,
+      parentId: n.parentId ?? undefined,
       note: ((n.data as any).note as string) || undefined,
     }))
   const notes = nodes
@@ -828,17 +828,33 @@ export default function App() {
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
   const loaded = useRef(false)
+  // Reconciliation refs shared with the write path (Task 10):
+  // - lastServerModel/lastServerRev: the latest snapshot the server has pushed
+  //   to us (seed + SSE), used as the base for diffing local edits into ops.
+  // - ownRev: the highest rev we're responsible for; SSE frames at or below it
+  //   are echoes of our own writes and are ignored so we don't clobber
+  //   in-flight local edits.
+  const lastServerRev = useRef(0)
+  const lastServerModel = useRef<Model | null>(null)
+  const ownRev = useRef(0)
 
-  // Load the shared model once on mount; pick the active diagram from
-  // localStorage (validated against the model) or fall back to the first.
+  // Seed the shared model once on mount from the server; pick the active
+  // diagram from localStorage (validated against the model) or fall back to
+  // the first.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      const m = await loadModel()
+      const snap = await fetchState()
       if (cancelled) return
       const stored = localStorage.getItem(ACTIVE_KEY)
-      const id = m.diagrams.find((d) => d.id === stored)?.id ?? m.diagrams[0]?.id ?? null
-      setModel(m)
+      const id =
+        snap.model.diagrams.find((d) => d.id === stored)?.id ??
+        snap.model.diagrams[0]?.id ??
+        null
+      lastServerModel.current = snap.model
+      lastServerRev.current = snap.rev
+      ownRev.current = snap.rev
+      setModel(snap.model)
       setActiveId(id)
       loaded.current = true
     })()
@@ -847,12 +863,48 @@ export default function App() {
     }
   }, [])
 
-  // Autosave the whole model (debounced) once the initial load is done.
+  // Live-reconcile with the server: track the latest pushed snapshot, and apply
+  // genuinely-newer external state while ignoring the echo of our own writes.
+  useEffect(
+    () =>
+      subscribe((s) => {
+        lastServerRev.current = s.rev
+        lastServerModel.current = s.model
+        if (s.writerId === clientId) {
+          // Our own echo — refs already rebased; never clobber local edits.
+          ownRev.current = s.rev
+          return
+        }
+        if (s.rev > ownRev.current) setModel(s.model)
+      }),
+    [],
+  )
+
+  // Sync edits to the server as ops (debounced) once the initial load is done.
+  // Diff the current optimistic model against the last server snapshot; canvas
+  // write-back has already flushed geometry into `model`, so it's complete.
   useEffect(() => {
     if (!loaded.current || !model) return
-    setSaveState('saving')
+    if (!lastServerModel.current) return
     const t = setTimeout(() => {
-      saveModel(model).then((ok) => setSaveState(ok ? 'saved' : 'error'))
+      const next = model
+      const base = lastServerModel.current
+      if (!base) return
+      const ops = diffToOps(base, next)
+      if (!ops.length) return
+      setSaveState('saving')
+      sendOps(ops)
+        .then((res) => {
+          const rev = 'rev' in res ? res.rev : undefined
+          if (typeof rev === 'number' && rev > 0) {
+            ownRev.current = rev
+            lastServerModel.current = next
+            setSaveState('saved')
+          } else {
+            setSaveState('error')
+          }
+        })
+        .catch(() => setSaveState('error'))
     }, 500)
     return () => clearTimeout(t)
   }, [model])

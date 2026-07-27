@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { buildDiagramGraph, entitiesById, migrateFromGraph, updateEntity, deleteEntity, removePlacement, addDiagram, deleteDiagram, normalizeModel, fieldVisible, addTemplate, deleteTemplate, applyTemplate, setEntityFields, setFieldShow, type Model, type Entity, type Template, type Placement } from './model'
+import { entitiesById, migrateFromGraph, updateEntity, addEntity, deleteEntity, addPlacement, removePlacement, addDiagram, deleteDiagram, getDiagram, normalizeModel, fieldVisible, addTemplate, deleteTemplate, applyTemplate, setEntityFields, setFieldShow, setPlacement, addGroup, updateGroup, removeGroup, addNote, updateNote, removeNote, addEdge, updateEdge, removeEdge, type Model, type Entity, type Template, type Placement } from './model'
+import { buildDiagramGraph } from './buildGraph'
 
 const model: Model = {
   version: 1,
@@ -108,6 +109,14 @@ describe('model mutations', () => {
     expect(m.entities.find((e) => e.id === 'plex')!.label).toBe('Plex Media Server')
     expect(base.entities.find((e) => e.id === 'plex')!.label).toBe('Plex') // original untouched
   })
+  it('addEntity dedupes by id: adding the same id twice yields one entity', () => {
+    const e: Entity = { id: 'grafana', label: 'Grafana', fields: [] }
+    const once = addEntity(base, e)
+    expect(once.entities.map((x) => x.id)).toEqual(['plex', 'users', 'grafana'])
+    const twice = addEntity(once, { id: 'grafana', label: 'Different', fields: [] })
+    expect(twice.entities.filter((x) => x.id === 'grafana')).toHaveLength(1)
+    expect(twice).toBe(once) // unchanged model returned as-is
+  })
   it('deleteEntity removes it + its placements + its edges everywhere', () => {
     const m = deleteEntity(base, 'plex')
     expect(m.entities.map((e) => e.id)).toEqual(['users'])
@@ -197,6 +206,47 @@ describe('template + field helpers', () => {
     const out = setEntityFields(base, 'e', [{ key: 'a', value: 'b', showOnNode: true }])
     expect(out.entities[0].fields).toEqual([{ key: 'a', value: 'b', showOnNode: true }])
     expect(base.entities[0].fields).toEqual([])
+  })
+})
+
+describe('granular diagram mutators', () => {
+  const base = addDiagram(normalizeModel({ version: 1, entities: [], diagrams: [], templates: [] }), 'D', 'canvas')
+  const id = base.id
+  it('setPlacement upserts position/parent/note on an existing placement', () => {
+    let m = addPlacement(base.model, id, { entityId: 'e1', position: { x: 0, y: 0 } })
+    m = setPlacement(m, id, 'e1', { position: { x: 10, y: 20 }, note: 'hi' })
+    const p = getDiagram(m, id)!.placements[0]
+    expect(p.position).toEqual({ x: 10, y: 20 })
+    expect(p.note).toBe('hi')
+  })
+  it('addEdge/updateEdge/removeEdge round-trip', () => {
+    let m = addEdge(base.model, id, { id: 'x1', from: 'a', to: 'b', type: 'talks-to' })
+    expect(getDiagram(m, id)!.edges).toHaveLength(1)
+    m = updateEdge(m, id, 'x1', { label: 'L', color: '#ff0000' })
+    expect(getDiagram(m, id)!.edges[0].label).toBe('L')
+    m = removeEdge(m, id, 'x1')
+    expect(getDiagram(m, id)!.edges).toHaveLength(0)
+  })
+  it('removeGroup clears parentId on its children', () => {
+    let m = addGroup(base.model, id, { id: 'g1', label: 'G', color: '#000', position: { x: 0, y: 0 }, size: { width: 200, height: 120 } })
+    m = addPlacement(m, id, { entityId: 'e1', position: { x: 0, y: 0 }, parentId: 'g1' })
+    m = removeGroup(m, id, 'g1')
+    expect(getDiagram(m, id)!.groups).toHaveLength(0)
+    expect(getDiagram(m, id)!.placements[0].parentId).toBeUndefined()
+  })
+  it('addGroup/updateGroup round-trip', () => {
+    let m = addGroup(base.model, id, { id: 'g2', label: 'G2', color: '#111', position: { x: 1, y: 2 }, size: { width: 100, height: 50 } })
+    expect(getDiagram(m, id)!.groups).toHaveLength(1)
+    m = updateGroup(m, id, 'g2', { label: 'G2 renamed' })
+    expect(getDiagram(m, id)!.groups[0].label).toBe('G2 renamed')
+  })
+  it('addNote/updateNote/removeNote round-trip', () => {
+    let m = addNote(base.model, id, { id: 'n1', position: { x: 0, y: 0 }, size: { width: 190, height: 110 }, text: 'hello' })
+    expect(getDiagram(m, id)!.notes).toHaveLength(1)
+    m = updateNote(m, id, 'n1', { text: 'updated' })
+    expect(getDiagram(m, id)!.notes[0].text).toBe('updated')
+    m = removeNote(m, id, 'n1')
+    expect(getDiagram(m, id)!.notes).toHaveLength(0)
   })
 })
 

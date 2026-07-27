@@ -1,6 +1,4 @@
-import type { RelType } from './graph'
-import { makeEdge, restyleEdge, type EdgeDir } from './graph'
-import { type Node, type Edge } from '@xyflow/react'
+import type { RelType, EdgeDir } from './graph'
 export type { RelType }
 
 export type Status = 'up' | 'down' | 'idle'
@@ -160,79 +158,6 @@ export function migrateFromGraph(graph: any): Model {
   }
 }
 
-export async function loadModel(): Promise<Model> {
-  try {
-    const res = await fetch('/api/model')
-    if (res.status === 200) {
-      const m = await res.json()
-      if (m?.entities && m?.diagrams) return normalizeModel(m)
-    }
-    // migrate from the old graph.json on first run
-    const g = await fetch('/api/graph')
-    if (g.status === 200) {
-      const model = migrateFromGraph(await g.json())
-      await saveModel(model)
-      return model
-    }
-  } catch {
-    // network error — fall through to the seed fallback below
-  }
-  return { version: 1, templates: [], entities: [], diagrams: [{ id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas', placements: [], groups: [], edges: [], notes: [] }] }
-}
-export async function saveModel(model: Model): Promise<boolean> {
-  try {
-    const res = await fetch('/api/model', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(model, null, 2) })
-    return res.ok
-  } catch {
-    return false
-  }
-}
-
-export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>, templates: Template[] = []): { nodes: Node[]; edges: Edge[] } {
-  const nodes: Node[] = []
-  // groups first (parents before children)
-  for (const g of diagram.groups) {
-    nodes.push({
-      id: g.id,
-      type: 'group',
-      position: g.position,
-      data: { label: g.label, color: g.color },
-      style: { width: g.size.width, height: g.size.height },
-    })
-  }
-  for (const p of diagram.placements) {
-    const e = byId[p.entityId]
-    if (!e) continue // entity deleted from catalog; skip stale placement
-    const tmpl = e.template ? templates.find((t) => t.id === e.template) : undefined
-    const shownFields = (e.fields ?? []).filter((f) => fieldVisible(p, e, tmpl, f.key)).map((f) => ({ key: f.key, value: f.value }))
-    nodes.push({
-      id: e.id,
-      type: 'service',
-      position: p.position,
-      parentId: p.parentId ?? undefined,
-      extent: p.parentId ? 'parent' : undefined,
-      data: { label: e.label, sub: e.sub, icon: e.icon, status: e.status, kind: e.kind, shownFields, note: p.note },
-    })
-  }
-  for (const n of diagram.notes) {
-    nodes.push({ id: n.id, type: 'note', position: n.position, data: { text: n.text }, style: { width: n.size.width, height: n.size.height }, zIndex: 5 })
-  }
-  const edges: Edge[] = diagram.edges.map((de, i) => {
-    // Existing edges predate multi-side handles → default to right→left forward.
-    let edge = makeEdge(de.from, de.to, de.type, de.label, de.inferred, i, {
-      sourceHandle: de.sourceHandle ?? 'right',
-      targetHandle: de.targetHandle ?? 'left',
-      dir: de.dir ?? 'forward',
-      color: de.color,
-    })
-    edge.id = de.id
-    edge.data = { ...edge.data, shape: de.shape ?? 'default', points: de.points }
-    edge = restyleEdge(edge, de.type, !!de.inferred) // keeps id/source/target/data via spread
-    return edge
-  })
-  return { nodes, edges }
-}
-
 export function getDiagram(model: Model, id: string): Diagram | undefined {
   return model.diagrams.find((d) => d.id === id)
 }
@@ -246,7 +171,9 @@ export function updateEntity(model: Model, id: string, patch: Partial<Entity>): 
 }
 
 export function addEntity(model: Model, entity: Entity): Model {
-  return { ...model, entities: [...model.entities, entity] }
+  return model.entities.some((e) => e.id === entity.id)
+    ? model
+    : { ...model, entities: [...model.entities, entity] }
 }
 
 export function deleteEntity(model: Model, id: string): Model {
@@ -273,6 +200,73 @@ export function removePlacement(model: Model, diagramId: string, entityId: strin
     placements: d.placements.filter((p) => p.entityId !== entityId),
     edges: d.edges.filter((e) => e.from !== entityId && e.to !== entityId),
   }))
+}
+
+export function setPlacement(
+  model: Model,
+  diagramId: string,
+  entityId: string,
+  patch: Partial<Pick<Placement, 'position' | 'parentId' | 'note'>>,
+): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    placements: d.placements.map((p) => (p.entityId === entityId ? { ...p, ...patch } : p)),
+  }))
+}
+
+export function addGroup(model: Model, diagramId: string, group: Group): Model {
+  return mapDiagram(model, diagramId, (d) =>
+    d.groups.some((g) => g.id === group.id) ? d : { ...d, groups: [...d.groups, group] },
+  )
+}
+
+export function updateGroup(model: Model, diagramId: string, id: string, patch: Partial<Omit<Group, 'id'>>): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    groups: d.groups.map((g) => (g.id === id ? { ...g, ...patch, id: g.id } : g)),
+  }))
+}
+
+export function removeGroup(model: Model, diagramId: string, id: string): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    groups: d.groups.filter((g) => g.id !== id),
+    placements: d.placements.map((p) => (p.parentId === id ? { ...p, parentId: undefined } : p)),
+  }))
+}
+
+export function addNote(model: Model, diagramId: string, note: Note): Model {
+  return mapDiagram(model, diagramId, (d) =>
+    d.notes.some((n) => n.id === note.id) ? d : { ...d, notes: [...d.notes, note] },
+  )
+}
+
+export function updateNote(model: Model, diagramId: string, id: string, patch: Partial<Omit<Note, 'id'>>): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    notes: d.notes.map((n) => (n.id === id ? { ...n, ...patch, id: n.id } : n)),
+  }))
+}
+
+export function removeNote(model: Model, diagramId: string, id: string): Model {
+  return mapDiagram(model, diagramId, (d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }))
+}
+
+export function addEdge(model: Model, diagramId: string, edge: DEdge): Model {
+  return mapDiagram(model, diagramId, (d) =>
+    d.edges.some((e) => e.id === edge.id) ? d : { ...d, edges: [...d.edges, edge] },
+  )
+}
+
+export function updateEdge(model: Model, diagramId: string, id: string, patch: Partial<Omit<DEdge, 'id'>>): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
+  }))
+}
+
+export function removeEdge(model: Model, diagramId: string, id: string): Model {
+  return mapDiagram(model, diagramId, (d) => ({ ...d, edges: d.edges.filter((e) => e.id !== id) }))
 }
 
 export function patchDiagram(
