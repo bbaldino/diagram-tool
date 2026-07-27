@@ -52,6 +52,9 @@ import {
   deleteDiagram,
   fieldVisible,
   setFieldShow,
+  addFlow,
+  updateFlow,
+  removeFlow,
   type Model,
   type DEdge,
   type Entity,
@@ -174,7 +177,7 @@ function Flow({
   setActiveId: (id: string) => void
   undoFlags: { canUndo: boolean; canRedo: boolean }
 }) {
-  const { showConfirm } = useDialogs()
+  const { showConfirm, showPrompt } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -187,6 +190,11 @@ function Flow({
     setLayoutEngine(e)
     localStorage.setItem('homelab-layout-engine', e)
   }, [])
+  // Flow (walkthrough) UI state — client-only, never persisted in the model.
+  const [flowMode, setFlowMode] = useState<'none' | 'edit' | 'play'>('none')
+  const [currentFlowId, setCurrentFlowId] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [selStep, setSelStep] = useState(0)
   // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
   // for popup placement, flow = flow coords for the new node.
   const [addMenu, setAddMenu] = useState<{
@@ -220,6 +228,10 @@ function Flow({
     () => new Set(active?.placements.map((p) => p.entityId) ?? []),
     [active],
   )
+  const currentFlow = useMemo(
+    () => active?.flows?.find((f) => f.id === currentFlowId) ?? null,
+    [active, currentFlowId],
+  )
 
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came
@@ -252,7 +264,12 @@ function Flow({
     setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
     loaded.current = true
     lastSeededId.current = activeId
-    if (changed) setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+    if (changed) {
+      setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+      setFlowMode('none')
+      setCurrentFlowId(null)
+      setCurrentStep(0)
+    }
     // Newly placed/created entity: select it + center so it's obvious it landed.
     if (sel) {
       setSelNode(sel)
@@ -347,6 +364,47 @@ function Flow({
       }
     },
     [model, activeId, nodes, edges],
+  )
+
+  // ---- flow handlers ----
+  const selectFlow = useCallback((id: string | null) => {
+    setCurrentFlowId(id)
+    setCurrentStep(0)
+    setSelStep(0)
+  }, [])
+
+  const createFlow = useCallback(async () => {
+    if (!model || !activeId) return
+    const name = await showPrompt({ title: 'New flow', label: 'Name', defaultValue: 'Flow' })
+    if (!name) return
+    const id = `flow-${Date.now().toString(36)}`
+    setModel((m) => addFlow(m, activeId, { id, name, steps: [] }))
+    setCurrentFlowId(id)
+    setFlowMode('edit')
+    setSelStep(0)
+    setCurrentStep(0)
+  }, [model, activeId, setModel, showPrompt])
+
+  const renameFlowById = useCallback(
+    async (id: string) => {
+      const f = active?.flows?.find((x) => x.id === id)
+      if (!f || !activeId) return
+      const name = await showPrompt({ title: 'Rename flow', label: 'Name', defaultValue: f.name })
+      if (name) setModel((m) => updateFlow(m, activeId, id, { name }))
+    },
+    [active, activeId, setModel, showPrompt],
+  )
+
+  const deleteFlowById = useCallback(
+    (id: string) => {
+      if (!activeId) return
+      setModel((m) => removeFlow(m, activeId, id))
+      if (currentFlowId === id) {
+        setCurrentFlowId(null)
+        setFlowMode('none')
+      }
+    },
+    [activeId, currentFlowId, setModel],
   )
 
   // ---- palette handlers ----
@@ -784,6 +842,41 @@ function Flow({
                 <option value="graphviz">Graphviz</option>
               </select>
             </label>
+            <label className="edgestyle">
+              Flow:
+              <select
+                value={currentFlowId ?? ''}
+                onChange={(e) => selectFlow(e.target.value || null)}
+              >
+                <option value="">(none)</option>
+                {(active?.flows ?? []).map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={createFlow}>+ Flow</button>
+            <button
+              onClick={() => setFlowMode(flowMode === 'edit' ? 'none' : 'edit')}
+              disabled={!currentFlow}
+              className={flowMode === 'edit' ? 'active' : ''}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setFlowMode(flowMode === 'play' ? 'none' : 'play')}
+              disabled={!currentFlow}
+              className={flowMode === 'play' ? 'active' : ''}
+            >
+              Play
+            </button>
+            <button onClick={() => currentFlowId && renameFlowById(currentFlowId)} disabled={!currentFlow}>
+              Rename
+            </button>
+            <button onClick={() => currentFlowId && deleteFlowById(currentFlowId)} disabled={!currentFlow}>
+              Delete
+            </button>
             <label className="edgestyle">
               Edges:
               <select value={edgeStyle} onChange={(e) => applyEdgeStyle(e.target.value as any)}>
