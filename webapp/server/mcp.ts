@@ -55,6 +55,28 @@ type OkResult = { ok: true }
 
 const err = (message: string): ErrorResult => ({ error: message })
 
+// A flow step's element reference: either an existing element id (entity
+// placement / edge / group / note) or an edge specified by its endpoints.
+export type ElementRef = string | { from: string; to: string }
+
+// Resolve an ElementRef to a concrete element id within `diagram`. Throws if
+// the ref does not match any element (used by handlers.authorFlow, which
+// turns the throw into an ErrorResult).
+export function resolveElementRef(diagram: Diagram, ref: ElementRef): string {
+  if (typeof ref !== 'string') {
+    const edge = diagram.edges.find((e) => e.from === ref.from && e.to === ref.to)
+    if (!edge) throw new Error(`no edge from "${ref.from}" to "${ref.to}"`)
+    return edge.id
+  }
+  const exists =
+    diagram.placements.some((p) => p.entityId === ref) ||
+    diagram.edges.some((e) => e.id === ref) ||
+    diagram.groups.some((g) => g.id === ref) ||
+    diagram.notes.some((n) => n.id === ref)
+  if (!exists) throw new Error(`unknown element "${ref}" in diagram "${diagram.id}"`)
+  return ref
+}
+
 // ---------------------------------------------------------------------------
 // Plain, unit-testable handler logic. NO MCP/transport dependency: each is a
 // pure-ish function over the store — validate against getState().model, build
@@ -199,6 +221,27 @@ export const handlers = {
     }
     store.apply(diffToOps(model, nextModel), 'mcp')
     return { ok: true }
+  },
+
+  authorFlow(
+    store: Store,
+    a: { diagramId: string; name: string; steps: { elements: ElementRef[]; caption?: string }[] },
+  ): { flowId: string } | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    let steps
+    try {
+      steps = a.steps.map((s, i) => ({
+        id: `step-${i}-${Date.now().toString(36)}`,
+        elementIds: s.elements.map((r) => resolveElementRef(diagram, r)),
+        caption: s.caption,
+      }))
+    } catch (e) {
+      return err(e instanceof Error ? e.message : String(e))
+    }
+    const flowId = `flow-${Date.now().toString(36)}`
+    store.apply([{ t: 'flow.add', diagramId: a.diagramId, flow: { id: flowId, name: a.name, steps } }], 'mcp')
+    return { flowId }
   },
 }
 
@@ -347,6 +390,25 @@ export function createMcpServer(store: Store): McpServer {
     'layout',
     { description: 'Re-run automatic layout on a diagram.', inputSchema: { diagramId: z.string() } },
     async (args) => wrap(await handlers.layout(store, args.diagramId)),
+  )
+
+  server.registerTool(
+    'author_flow',
+    {
+      description:
+        'Create a named walkthrough (flow) over a diagram: an ordered list of steps that light up elements cumulatively with a moving highlight. Each step lists the elements to light up (by id, or an edge as {from,to}) plus an optional caption.',
+      inputSchema: {
+        diagramId: z.string(),
+        name: z.string(),
+        steps: z.array(
+          z.object({
+            elements: z.array(z.union([z.string(), z.object({ from: z.string(), to: z.string() })])),
+            caption: z.string().optional(),
+          }),
+        ),
+      },
+    },
+    (args) => wrap(handlers.authorFlow(store, args as any)),
   )
 
   return server

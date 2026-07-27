@@ -297,6 +297,67 @@ describe('createMcpServer', () => {
   })
 })
 
+describe('author_flow', () => {
+  const mkFlowStore = (): Promise<Store> =>
+    createStore({
+      file: 'x',
+      load: async () => ({
+        version: 1,
+        entities: [
+          { id: 'a', label: 'A', fields: [] },
+          { id: 'b', label: 'B', fields: [] },
+        ],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            placements: [
+              { entityId: 'a', position: { x: 0, y: 0 } },
+              { entityId: 'b', position: { x: 100, y: 0 } },
+            ],
+            groups: [],
+            edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }],
+            notes: [],
+          },
+        ],
+        templates: [],
+      }),
+      save: async () => {},
+    })
+
+  it('creates a flow, resolving ids and {from,to} edge refs', async () => {
+    const store = await mkFlowStore()
+    handlers.authorFlow(store, {
+      diagramId: 'd',
+      name: 'F',
+      steps: [
+        { elements: ['a'], caption: 'press' },
+        { elements: [{ from: 'a', to: 'b' }, 'b'], caption: 'to b' },
+      ],
+    })
+    const d = getDiagram(store.getState().model, 'd')!
+    const flows = d.flows!
+    const f = flows[flows.length - 1]
+    expect(f.name).toBe('F')
+    expect(f.steps[0].elementIds).toEqual(['a'])
+    expect(f.steps[1].elementIds).toEqual(['e1', 'b']) // {from:a,to:b} resolved to e1
+  })
+
+  it('rejects an unknown element ref', async () => {
+    const store = await mkFlowStore()
+    const res = handlers.authorFlow(store, { diagramId: 'd', name: 'X', steps: [{ elements: ['nope'] }] })
+    expect('error' in res).toBe(true)
+  })
+
+  it('rejects an unresolvable edge ref', async () => {
+    const store = await mkFlowStore()
+    const res = handlers.authorFlow(store, { diagramId: 'd', name: 'X', steps: [{ elements: [{ from: 'a', to: 'zzz' }] }] })
+    expect('error' in res).toBe(true)
+  })
+})
+
 describe('wrap', () => {
   it('marks a handler error result with isError: true', () => {
     const res = wrap({ error: 'unknown diagram "nope"' })
