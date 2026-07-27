@@ -1,5 +1,7 @@
 import dagre from '@dagrejs/dagre'
-import type { Diagram, Placement, Group } from '../src/model'
+import type { Diagram, Placement, Group, DEdge, EdgeOrientation } from '../src/model'
+
+type HandleId = 'top' | 'right' | 'bottom' | 'left'
 
 const W = 180
 // Base node height (icon row + label/sub) — the box before any inline note.
@@ -47,11 +49,58 @@ function labelSize(label: string | undefined): { width: number; height: number }
   return { width, height: LABEL_H }
 }
 
+// Absolute center of a placement's node: child coords are parent-relative, so
+// add the parent group's absolute position back before adding half the node
+// size. Pure function of its inputs — no closure over layout state — so it
+// can be exercised directly with exact numeric assertions.
+export function absoluteCenter(
+  p: Placement,
+  groupById: Record<string, Group>,
+  height: number,
+): { x: number; y: number } {
+  let x = p.position.x
+  let y = p.position.y
+  if (p.parentId && groupById[p.parentId]) {
+    x += groupById[p.parentId].position.x
+    y += groupById[p.parentId].position.y
+  }
+  return { x: x + W / 2, y: y + height / 2 }
+}
+
+// Choose which side of each node an edge attaches to. `orientation` fixes the
+// axis (horizontal → left/right, vertical → top/bottom); `auto` picks the
+// dominant axis from the centers (tie → horizontal). The specific side is
+// always derived from geometry, so it tracks the nodes on every layout.
+export function handlesFor(
+  orientation: EdgeOrientation | undefined,
+  s: { x: number; y: number },
+  t: { x: number; y: number },
+): { sourceHandle: HandleId; targetHandle: HandleId } {
+  const dx = t.x - s.x
+  const dy = t.y - s.y
+  const axis =
+    orientation === 'horizontal'
+      ? 'h'
+      : orientation === 'vertical'
+        ? 'v'
+        : Math.abs(dx) >= Math.abs(dy)
+          ? 'h'
+          : 'v'
+  if (axis === 'h') {
+    return dx >= 0
+      ? { sourceHandle: 'right', targetHandle: 'left' }
+      : { sourceHandle: 'left', targetHandle: 'right' }
+  }
+  return dy >= 0
+    ? { sourceHandle: 'bottom', targetHandle: 'top' }
+    : { sourceHandle: 'top', targetHandle: 'bottom' }
+}
+
 // Flow-directed layout: builds a dagre compound graph (rankdir LR), lets
 // dagre place nodes/clusters, then converts center coords to top-left and
 // makes grouped-member positions parent-relative (React Flow child coords
 // are relative to their parent group). Pure — does not mutate `diagram`.
-export function layoutDiagram(diagram: Diagram): { placements: Placement[]; groups: Group[] } {
+export function layoutDiagram(diagram: Diagram): { placements: Placement[]; groups: Group[]; edges: DEdge[] } {
   const g = new dagre.graphlib.Graph({ compound: true })
   g.setGraph({ rankdir: 'LR', nodesep: 55, ranksep: 110, marginx: 20, marginy: 20 })
   g.setDefaultEdgeLabel(() => ({}))
@@ -112,7 +161,7 @@ export function layoutDiagram(diagram: Diagram): { placements: Placement[]; grou
     }
   })
 
-  const groupById: Record<string, Group> = Object.fromEntries(groups.map((x) => [x.id, x]))
+  const groupById: Record<string, Group> = Object.fromEntries(groups.map((grp) => [grp.id, grp]))
 
   const placements: Placement[] = diagram.placements.map((p) => {
     const n = g.node(p.entityId) as { x: number; y: number } | undefined
@@ -160,5 +209,23 @@ export function layoutDiagram(diagram: Diagram): { placements: Placement[]; grou
     return { ...p, position: { x, y } }
   })
 
-  return { placements, groups }
+  // Absolute center of an entity's node: child coords are parent-relative, so
+  // add the parent group's absolute position. Height matches nodeHeight above.
+  const placementByEntity: Record<string, Placement> = Object.fromEntries(
+    placements.map((p) => [p.entityId, p]),
+  )
+  const centerOf = (entityId: string): { x: number; y: number } | null => {
+    const p = placementByEntity[entityId]
+    if (!p) return null
+    return absoluteCenter(p, groupById, heightById[entityId] ?? H)
+  }
+
+  const edges: DEdge[] = diagram.edges.map((e) => {
+    const s = centerOf(e.from)
+    const t = centerOf(e.to)
+    if (!s || !t) return e
+    return { ...e, ...handlesFor(e.orientation, s, t) }
+  })
+
+  return { placements, groups, edges }
 }

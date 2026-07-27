@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import { handlers, createMcpServer, edgeAttrsShape, wrap } from './mcp'
 import { createStore, type Store } from './store'
+import { getDiagram } from '../src/model'
 
 const mkStore = (): Promise<Store> =>
   createStore({
@@ -169,7 +170,7 @@ describe('handlers', () => {
       expect(updated.color).toBe('#fff')
       expect(updated.label).toBe('renamed')
       expect(updated.type).toBe(originalType)
-      expect(Object.keys(updated).sort()).toEqual(['color', 'from', 'id', 'label', 'to', 'type'])
+      expect(Object.keys(updated).sort()).toEqual(['color', 'from', 'id', 'label', 'sourceHandle', 'targetHandle', 'to', 'type'])
     })
 
     it('edgeAttrsShape (shared by connect and setEdge) strips unknown keys and rejects a bad type field', () => {
@@ -215,6 +216,42 @@ describe('handlers', () => {
       expect(r).toEqual({ ok: true })
       expect('error' in handlers.layout(store, 'nope')).toBe(true)
     })
+  })
+})
+
+describe('edge orientation', () => {
+  it('connect stores orientation on the edge', async () => {
+    const store = await mkStore()
+    const { diagramId } = handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['plex', 'sonarr'],
+    }) as { diagramId: string }
+    handlers.connect(store, { diagramId, from: 'plex', to: 'sonarr', orientation: 'vertical' })
+    const edge = getDiagram(store.getState().model, diagramId)!.edges.find((e) => e.from === 'plex' && e.to === 'sonarr')!
+    expect(edge.orientation).toBe('vertical')
+  })
+
+  it('set_edge patch updates orientation', async () => {
+    const store = await mkStore()
+    const { diagramId } = handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['plex', 'sonarr'],
+      edges: [['plex', 'sonarr']],
+    }) as { diagramId: string }
+    const edgeId = getDiagram(store.getState().model, diagramId)!.edges[0].id
+    handlers.setEdge(store, { diagramId, edgeId, patch: { orientation: 'horizontal' } })
+    const edge = getDiagram(store.getState().model, diagramId)!.edges.find((e) => e.id === edgeId)!
+    expect(edge.orientation).toBe('horizontal')
+  })
+
+  it('the edge-attrs zod shape rejects an invalid orientation', () => {
+    const parsed = z.object(edgeAttrsShape).safeParse({ orientation: 'sideways' })
+    expect(parsed.success).toBe(false)
+  })
+
+  it('the edge-attrs zod shape accepts a valid orientation', () => {
+    const parsed = z.object(edgeAttrsShape).safeParse({ orientation: 'auto' })
+    expect(parsed.success).toBe(true)
   })
 })
 

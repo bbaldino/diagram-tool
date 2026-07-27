@@ -1,5 +1,5 @@
 import type { EdgeDir } from '../src/graph'
-import type { Diagram, DiagramType, Entity, Group, Model, Placement } from '../src/model'
+import type { Diagram, DiagramType, EdgeOrientation, Entity, Group, Model, Placement } from '../src/model'
 import { addDiagram, addEntity } from '../src/model'
 import { diffToOps } from '../src/diff'
 import type { Op } from '../src/ops'
@@ -9,7 +9,7 @@ export interface AuthorSpec {
   name: string
   type?: DiagramType // default 'canvas'
   nodes: (string | { new: string; icon?: string })[] // existing entity id, or new-by-label
-  edges?: [string, string, { label?: string; dir?: EdgeDir; color?: string }?][] // [fromId,toId,attrs]
+  edges?: [string, string, { label?: string; dir?: EdgeDir; color?: string; orientation?: EdgeOrientation }?][] // [fromId,toId,attrs]
   groups?: { label: string; members: string[] }[] // members = entity ids
   notes?: Record<string, string> // entityId -> note
   positions?: Record<string, { x: number; y: number }> // optional agent overrides, entityId -> pos
@@ -115,7 +115,7 @@ export function authorDiagramOps(model: Model, spec: AuthorSpec): { ops: Op[]; d
     return override ? { ...p, position: override } : p
   })
 
-  const finalDiagram: Diagram = { ...diagram, placements: finalPlacements, groups: laidOut.groups }
+  const finalDiagram: Diagram = { ...diagram, placements: finalPlacements, groups: laidOut.groups, edges: laidOut.edges }
 
   cloned = {
     ...cloned,

@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { EdgeDir } from '../src/graph'
-import type { DEdge, Diagram, Placement } from '../src/model'
+import type { DEdge, Diagram, EdgeOrientation, Placement } from '../src/model'
 import { getDiagram } from '../src/model'
 import type { Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
@@ -28,12 +28,13 @@ export interface ConnectArgs {
   label?: string
   dir?: EdgeDir
   color?: string
+  orientation?: EdgeOrientation
 }
 
 export interface SetEdgeArgs {
   diagramId: string
   edgeId: string
-  patch: Partial<Pick<DEdge, 'label' | 'dir' | 'color'>>
+  patch: Partial<Pick<DEdge, 'label' | 'dir' | 'color' | 'orientation'>>
 }
 
 export interface SetNoteArgs {
@@ -131,6 +132,7 @@ export const handlers = {
     if (a.label !== undefined) edge.label = a.label
     if (a.dir !== undefined) edge.dir = a.dir
     if (a.color !== undefined) edge.color = a.color
+    if (a.orientation !== undefined) edge.orientation = a.orientation
     store.apply([{ t: 'edge.add', diagramId: a.diagramId, edge }], 'mcp')
     return { ok: true }
   },
@@ -190,7 +192,7 @@ export const handlers = {
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
     const laid = layoutDiagram(diagram)
-    const nextDiagram: Diagram = { ...diagram, placements: laid.placements, groups: laid.groups }
+    const nextDiagram: Diagram = { ...diagram, placements: laid.placements, groups: laid.groups, edges: laid.edges }
     const nextModel = {
       ...model,
       diagrams: model.diagrams.map((d) => (d.id === diagramId ? nextDiagram : d)),
@@ -222,6 +224,7 @@ export const edgeAttrsShape = {
   label: z.string().optional(),
   dir: z.enum(['forward', 'backward', 'both']).optional(),
   color: z.string().optional(),
+  orientation: z.enum(['auto', 'horizontal', 'vertical']).optional(),
 }
 
 const authorSpecShape = {
@@ -233,13 +236,7 @@ const authorSpecShape = {
       z.tuple([
         z.string(),
         z.string(),
-        z
-          .object({
-            label: z.string().optional(),
-            dir: z.enum(['forward', 'backward', 'both']).optional(),
-            color: z.string().optional(),
-          })
-          .optional(),
+        z.object(edgeAttrsShape).optional(),
       ]),
     )
     .optional(),
@@ -271,7 +268,11 @@ export function createMcpServer(store: Store): McpServer {
 
   server.registerTool(
     'author_diagram',
-    { description: 'Create a new, automatically laid-out diagram from a high-level spec.', inputSchema: authorSpecShape },
+    {
+      description:
+        'Create a new, automatically laid-out diagram from a high-level spec. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
+      inputSchema: authorSpecShape,
+    },
     (args) => wrap(handlers.authorDiagram(store, args as AuthorSpec)),
   )
 
@@ -293,7 +294,8 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'connect',
     {
-      description: 'Add an edge between two placed nodes in a diagram.',
+      description:
+        'Add an edge between two placed nodes in a diagram. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: {
         diagramId: z.string(),
         from: z.string(),
@@ -307,7 +309,8 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'set_edge',
     {
-      description: 'Update an existing edge in a diagram.',
+      description:
+        'Update an existing edge in a diagram. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: {
         diagramId: z.string(),
         edgeId: z.string(),

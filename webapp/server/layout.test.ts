@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { layoutDiagram } from './layout'
-import type { Diagram } from '../src/model'
+import { layoutDiagram, handlesFor, absoluteCenter } from './layout'
+import type { Diagram, Group } from '../src/model'
 
 const D = (over: Partial<Diagram>): Diagram => ({
   id: 'd',
@@ -155,5 +155,88 @@ describe('layoutDiagram', () => {
     expect(g.size.height).toBeGreaterThan(0)
     expect(Number.isNaN(g.position.x)).toBe(false)
     expect(Number.isNaN(g.position.y)).toBe(false)
+  })
+})
+
+describe('handlesFor', () => {
+  const S = { x: 0, y: 0 }
+  it('auto: target to the right → source right, target left', () => {
+    expect(handlesFor('auto', S, { x: 300, y: 0 })).toEqual({ sourceHandle: 'right', targetHandle: 'left' })
+  })
+  it('auto: target to the left (backward edge) → source left, target right', () => {
+    expect(handlesFor('auto', S, { x: -300, y: 0 })).toEqual({ sourceHandle: 'left', targetHandle: 'right' })
+  })
+  it('auto: target below → source bottom, target top', () => {
+    expect(handlesFor('auto', S, { x: 0, y: 300 })).toEqual({ sourceHandle: 'bottom', targetHandle: 'top' })
+  })
+  it('auto: target above → source top, target bottom', () => {
+    expect(handlesFor('auto', S, { x: 0, y: -300 })).toEqual({ sourceHandle: 'top', targetHandle: 'bottom' })
+  })
+  it('auto: exact tie (|dx| == |dy|) resolves horizontal', () => {
+    expect(handlesFor('auto', S, { x: 100, y: 100 })).toEqual({ sourceHandle: 'right', targetHandle: 'left' })
+  })
+  it('undefined orientation behaves like auto', () => {
+    expect(handlesFor(undefined, S, { x: 300, y: 0 })).toEqual({ sourceHandle: 'right', targetHandle: 'left' })
+  })
+  it('horizontal forces left/right even when nodes are stacked vertically', () => {
+    expect(handlesFor('horizontal', S, { x: 20, y: 300 })).toEqual({ sourceHandle: 'right', targetHandle: 'left' })
+  })
+  it('vertical forces top/bottom even when nodes are side by side', () => {
+    expect(handlesFor('vertical', S, { x: 300, y: 20 })).toEqual({ sourceHandle: 'bottom', targetHandle: 'top' })
+  })
+})
+
+describe('layoutDiagram edge handles', () => {
+  it('bakes geometry-derived handles onto returned edges', () => {
+    const diagram = {
+      id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
+      placements: [
+        { entityId: 'a', position: { x: 0, y: 0 } },
+        { entityId: 'b', position: { x: 0, y: 0 } },
+      ],
+      groups: [],
+      edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }],
+      notes: [],
+    }
+    const { edges } = layoutDiagram(diagram)
+    // rankdir LR places the source (a) left of the target (b), so a forward
+    // edge exits a's right into b's left.
+    expect(edges[0].sourceHandle).toBe('right')
+    expect(edges[0].targetHandle).toBe('left')
+  })
+
+  it('leaves handles unchanged when an endpoint is not placed', () => {
+    const diagram = {
+      id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
+      placements: [{ entityId: 'a', position: { x: 0, y: 0 } }],
+      groups: [],
+      edges: [{ id: 'e1', from: 'a', to: 'ghost', type: 'talks-to' as const, sourceHandle: 'top' as const }],
+      notes: [],
+    }
+    const { edges } = layoutDiagram(diagram)
+    expect(edges[0].sourceHandle).toBe('top') // untouched
+  })
+
+  it('absoluteCenter: ungrouped node center = position + half node size (W=180, given height)', () => {
+    const center = absoluteCenter({ entityId: 'a', position: { x: 10, y: 20 } }, {}, 64)
+    // W/2 = 90, height/2 = 32
+    expect(center).toEqual({ x: 100, y: 52 })
+  })
+
+  it('absoluteCenter: grouped node center adds the parent group\'s absolute position back onto the parent-relative placement', () => {
+    // Group origin is clearly non-zero so the add-back is actually exercised
+    // (a bug that drops `x += group.position.x; y += group.position.y` would
+    // leave the result at the ungrouped value below instead).
+    const group: Group = { id: 'g', label: 'G', color: '#000', position: { x: 500, y: 300 }, size: { width: 0, height: 0 } }
+    const child = { entityId: 'inner', position: { x: 10, y: 20 }, parentId: 'g' }
+    const withoutParent = absoluteCenter({ entityId: 'inner', position: { x: 10, y: 20 } }, {}, 64)
+
+    const center = absoluteCenter(child, { g: group }, 64)
+
+    // Exact coordinates: group.position + placement.position + (W/2, h/2).
+    expect(center).toEqual({ x: 500 + 10 + 90, y: 300 + 20 + 32 })
+    // Equivalently: differs from the no-parent case by exactly the group's
+    // position — this is what removing the `+=` lines would break.
+    expect(center).toEqual({ x: withoutParent.x + group.position.x, y: withoutParent.y + group.position.y })
   })
 })

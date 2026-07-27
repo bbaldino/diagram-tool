@@ -45,6 +45,8 @@ export interface Group {
   position: { x: number; y: number }
   size: { width: number; height: number }
 }
+export type EdgeOrientation = 'auto' | 'horizontal' | 'vertical'
+
 export interface DEdge {
   id: string
   from: string // entityId
@@ -58,6 +60,7 @@ export interface DEdge {
   targetHandle?: string // which side of the target node
   dir?: EdgeDir // arrowhead direction — forward (default) | backward | both
   color?: string // per-edge color override; falls back to the relationship type color
+  orientation?: EdgeOrientation // routing axis hint; absent = 'auto' (geometry decides)
 }
 export interface Note {
   id: string

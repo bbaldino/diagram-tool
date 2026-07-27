@@ -88,4 +88,17 @@ describe('authorDiagramOps', () => {
     expect(d.placements).toHaveLength(1)
     expect(d.placements[0].entityId).toBe('plex')
   })
+
+  it('bakes geometry-derived handles onto authored edges', () => {
+    const { ops, diagramId } = authorDiagramOps(base(), {
+      name: 'Flow',
+      nodes: ['plex', { new: 'Grafana' }],
+      edges: [['plex', 'grafana']],
+    })
+    const model = applyOps(base(), ops)
+    const edge = getDiagram(model, diagramId)!.edges[0]
+    // dagre LR: plex is left of grafana → forward edge exits plex's right into grafana's left.
+    expect(edge.sourceHandle).toBe('right')
+    expect(edge.targetHandle).toBe('left')
+  })
 })
