@@ -60,10 +60,13 @@ function modelApi(): Plugin {
     name: 'model-api',
     configureServer(server) {
       const file = resolve(server.config.root, 'model.json')
+      const historyFile = resolve(server.config.root, 'history.json')
       const storeReady: Promise<Store> = createStore({
         file,
         load: async () => JSON.parse(await readFile(file, 'utf8')),
         save: (model) => writeFile(file, JSON.stringify(model, null, 2)),
+        loadHistory: async () => JSON.parse(await readFile(historyFile, 'utf8')),
+        saveHistory: (h) => writeFile(historyFile, JSON.stringify(h)),
       })
 
       // Registered before the plain '/api/model' route below: connect mounts
@@ -135,6 +138,33 @@ function modelApi(): Plugin {
           res.end(JSON.stringify({ error: String(e) }))
         }
       })
+
+      // POST /api/undo|redo {diagramId} — walk the diagram's shared history.
+      // The reverting change streams to all clients over SSE; the JSON body is
+      // only for the caller's immediate button state.
+      const historyRoute = (kind: 'undo' | 'redo') =>
+        async (req: import('http').IncomingMessage, res: import('http').ServerResponse, next: () => void) => {
+          if (req.method !== 'POST') return next()
+          const chunks: Buffer[] = []
+          for await (const c of req) chunks.push(c as Buffer)
+          try {
+            const { diagramId } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+              diagramId: string
+            }
+            if (typeof diagramId !== 'string') throw new Error('diagramId required')
+            const store = await storeReady
+            const s = kind === 'undo' ? store.undo(diagramId) : store.redo(diagramId)
+            const flags = s.undo[diagramId] ?? { canUndo: false, canRedo: false }
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ rev: s.rev, ...flags }))
+          } catch (e) {
+            res.statusCode = 400
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: String(e) }))
+          }
+        }
+      server.middlewares.use('/api/undo', historyRoute('undo'))
+      server.middlewares.use('/api/redo', historyRoute('redo'))
 
       // MCP over Streamable HTTP so agents can drive the app live. Shares the
       // single store above (the one writer). The installed SDK forbids reusing

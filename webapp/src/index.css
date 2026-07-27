@@ -103,6 +103,18 @@ body {
   font-size: 12px;
 }
 .panel h4 { margin: 0 0 6px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: #64748b; }
+
+/* App chrome must not capture text selection: a Shift+drag box-select that
+   crosses a panel should draw the marquee, not highlight the panel's text.
+   Real inputs stay selectable so field/note editing works normally. */
+.tabbar, .diagrambar, .panel, .palette, .addmenu, .colorpick, .dialog {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
 .toolbar button {
   font: inherit; font-size: 12px; cursor: pointer;
   border: 1px solid #cbd5e1; background: #fff; color: #1f2937;

@@ -36,7 +36,7 @@ import { Palette } from './Palette'
 import { EntitiesPage } from './EntitiesPage'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { useDialogs } from './Dialog'
-import { fetchState, subscribe, sendOps, clientId } from './modelClient'
+import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
 import {
   entitiesById,
@@ -165,11 +165,13 @@ function Flow({
   setModel,
   activeId,
   setActiveId,
+  undoFlags,
 }: {
   model: Model
   setModel: React.Dispatch<React.SetStateAction<Model>>
   activeId: string
   setActiveId: (id: string) => void
+  undoFlags: { canUndo: boolean; canRedo: boolean }
 }) {
   const { showConfirm } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
@@ -273,6 +275,16 @@ function Flow({
     }, 400)
     return () => clearTimeout(t)
   }, [nodes, edges, activeId])
+
+  // Flush the canvas into the model immediately at gesture end (e.g. drag
+  // release), so an undo taken right after doesn't race the 400ms debounced
+  // write-back above.
+  const flushNow = useCallback(() => {
+    setModel((m) => {
+      skipReseed.current = true
+      return flushCanvasInto(m, activeId, nodes, edges)
+    })
+  }, [activeId, nodes, edges, setModel])
 
   const onSelectionChange = useCallback(
     ({ nodes: sn, edges: se }: { nodes: Node[]; edges: Edge[] }) => {
@@ -536,6 +548,13 @@ function Flow({
     [],
   )
 
+  const doUndo = useCallback(() => {
+    void undoReq(activeId).catch(() => {})
+  }, [activeId])
+  const doRedo = useCallback(() => {
+    void redoReq(activeId).catch(() => {})
+  }, [activeId])
+
   const tidy = useCallback(() => {
     // Run the server-side dagre flow layout (the same engine the MCP uses);
     // the resulting moves stream back over SSE and re-seed the canvas. Then
@@ -638,6 +657,23 @@ function Flow({
     return () => window.removeEventListener('keydown', onKey)
   }, [zoomAtPointer, rf])
 
+  // Keyboard: Ctrl/Cmd-Z undo, Ctrl/Cmd-Shift-Z or Ctrl-Y redo. Inert while a
+  // text input/textarea/contentEditable is focused so the browser's own undo
+  // still works in the Inspector/note textarea. Separate from the zoom
+  // handler above, which early-returns on ANY modifier.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (!(e.metaKey || e.ctrlKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo() }
+      else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [doUndo, doRedo])
+
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selNode) ?? null,
     [nodes, selNode],
@@ -707,6 +743,7 @@ function Flow({
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
+        onNodeDragStop={flushNow}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
@@ -728,6 +765,8 @@ function Flow({
           <div className="panel toolbar">
             <button onClick={() => addGroup()}>+ Group</button>
             <button onClick={() => addNote()}>+ Note</button>
+            <button onClick={doUndo} disabled={!undoFlags.canUndo} title="Undo (Ctrl/Cmd-Z)">↶ Undo</button>
+            <button onClick={doRedo} disabled={!undoFlags.canRedo} title="Redo (Ctrl/Cmd-Shift-Z)">↷ Redo</button>
             <button onClick={tidy}>Tidy</button>
             <label className="edgestyle">
               Edges:
@@ -832,6 +871,7 @@ export default function App() {
   const [activeId, setActiveId] = useState<string | null>(null)
   const [view, setView] = useState<'diagrams' | 'entities'>('entities')
   const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [undoMap, setUndoMap] = useState<Record<string, { canUndo: boolean; canRedo: boolean }>>({})
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
   const loaded = useRef(false)
@@ -863,6 +903,7 @@ export default function App() {
       ownRev.current = snap.rev
       setModel(snap.model)
       setActiveId(id)
+      setUndoMap(snap.undo ?? {})
       loaded.current = true
     })()
     return () => {
@@ -878,6 +919,7 @@ export default function App() {
         const prevServerRev = lastServerRev.current
         lastServerRev.current = s.rev
         lastServerModel.current = s.model
+        setUndoMap(s.undo ?? {})
         if (s.writerId === clientId) {
           // Our own echo — refs already rebased; never clobber local edits.
           ownRev.current = s.rev
@@ -971,6 +1013,7 @@ export default function App() {
             setModel={setModelNonNull}
             activeId={activeId!}
             setActiveId={handleSetActive}
+            undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
           />
         </ReactFlowProvider>
       ) : (

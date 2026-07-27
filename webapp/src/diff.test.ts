@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { diffToOps } from './diff'
+import { diffToOps, diffDiagramContents } from './diff'
 import { applyOps } from './ops'
 import {
   addDiagram,
@@ -134,5 +134,21 @@ describe('diffToOps', () => {
     }
     const ops = diffToOps(prev, next)
     expect(applyOps(prev, ops)).toEqual(next)
+  })
+})
+
+describe('diffDiagramContents (exported)', () => {
+  it('emits a single placement.set for a moved node', () => {
+    const prev = {
+      placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
+      groups: [], edges: [], notes: [],
+    }
+    const next = {
+      placements: [{ entityId: 'e1', position: { x: 100, y: 40 } }],
+      groups: [], edges: [], notes: [],
+    }
+    expect(diffDiagramContents('d1', prev, next)).toEqual([
+      { t: 'placement.set', diagramId: 'd1', entityId: 'e1', patch: { position: { x: 100, y: 40 } } },
+    ])
   })
 })

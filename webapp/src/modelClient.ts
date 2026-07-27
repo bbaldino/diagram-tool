@@ -5,6 +5,7 @@ export interface Snapshot {
   rev: number
   model: Model
   writerId?: string
+  undo?: Record<string, { canUndo: boolean; canRedo: boolean }>
 }
 
 // Stable per-tab id sent with every ops POST and echoed back on the SSE
@@ -51,3 +52,14 @@ export async function sendOps(ops: Op[]): Promise<{ rev: number } | { error: str
   })
   return res.json()
 }
+
+async function navigate(kind: 'undo' | 'redo', diagramId: string) {
+  const res = await fetch(`/api/${kind}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ diagramId }),
+  })
+  return res.json() as Promise<{ rev: number; canUndo: boolean; canRedo: boolean } | { error: string }>
+}
+export const undo = (diagramId: string) => navigate('undo', diagramId)
+export const redo = (diagramId: string) => navigate('redo', diagramId)

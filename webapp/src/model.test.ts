@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { entitiesById, migrateFromGraph, updateEntity, addEntity, deleteEntity, addPlacement, removePlacement, addDiagram, deleteDiagram, getDiagram, normalizeModel, fieldVisible, addTemplate, deleteTemplate, applyTemplate, setEntityFields, setFieldShow, setPlacement, addGroup, updateGroup, removeGroup, addNote, updateNote, removeNote, addEdge, updateEdge, removeEdge, type Model, type Entity, type Template, type Placement } from './model'
+import { entitiesById, migrateFromGraph, updateEntity, addEntity, deleteEntity, addPlacement, removePlacement, addDiagram, deleteDiagram, getDiagram, normalizeModel, fieldVisible, addTemplate, deleteTemplate, applyTemplate, setEntityFields, setFieldShow, setPlacement, addGroup, updateGroup, removeGroup, addNote, updateNote, removeNote, addEdge, updateEdge, removeEdge, diagramContent, type Model, type Entity, type Template, type Placement } from './model'
 import { buildDiagramGraph } from './buildGraph'
 
 const model: Model = {
@@ -258,5 +258,19 @@ describe('setFieldShow', () => {
     expect(on.diagrams[0].placements[0].fieldShow).toEqual({ ip: true })
     const cleared = setFieldShow(on, 'd', 'e', 'ip', undefined)
     expect(cleared.diagrams[0].placements[0].fieldShow).toEqual({})
+  })
+})
+
+describe('diagramContent', () => {
+  it('extracts only the four undoable content arrays', () => {
+    const d = {
+      id: 'd1', name: 'D', title: 'D', type: 'canvas' as const,
+      placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
+      groups: [], edges: [], notes: [],
+    }
+    expect(diagramContent(d)).toEqual({
+      placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
+      groups: [], edges: [], notes: [],
+    })
   })
 })

@@ -75,6 +75,20 @@ export interface Diagram {
   edges: DEdge[]
   notes: Note[]
 }
+
+// The undoable slice of a diagram (see undo/redo). Everything else on a
+// Diagram (id/name/title/type) is identity, not content.
+export interface DiagramContent {
+  placements: Placement[]
+  groups: Group[]
+  edges: DEdge[]
+  notes: Note[]
+}
+
+export function diagramContent(d: Diagram): DiagramContent {
+  return { placements: d.placements, groups: d.groups, edges: d.edges, notes: d.notes }
+}
+
 export interface Model {
   version: number
   entities: Entity[]

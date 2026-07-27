@@ -1,5 +1,5 @@
 import type { Op } from './ops'
-import type { Model, Diagram, Placement, Group, Note, DEdge } from './model'
+import type { Model, Diagram, Placement, Group, Note, DEdge, DiagramContent } from './model'
 
 const changed = (a: unknown, b: unknown): boolean => JSON.stringify(a) !== JSON.stringify(b)
 
@@ -67,7 +67,7 @@ function diffById<T extends { id: string }>(
   return ops
 }
 
-function diffDiagramContents(diagramId: string, prev: Diagram, next: Diagram): Op[] {
+export function diffDiagramContents(diagramId: string, prev: DiagramContent, next: DiagramContent): Op[] {
   const ops: Op[] = []
   ops.push(...diffPlacements(diagramId, prev.placements, next.placements))
   ops.push(

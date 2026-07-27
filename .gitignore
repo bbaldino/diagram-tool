@@ -4,4 +4,5 @@ webapp/dist/
 .playwright-mcp/
 *.log
 webapp/model.json
+webapp/history.json
 .superpowers/

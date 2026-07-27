@@ -73,7 +73,7 @@ export function NoteNode({ id, data, selected }: NodeProps) {
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       <textarea
-        defaultValue={d.text ?? ''}
+        value={d.text ?? ''}
         placeholder="note…"
         onChange={(e) =>
           setNodes((ns) =>
