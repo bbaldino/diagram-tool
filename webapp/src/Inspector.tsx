@@ -12,6 +12,8 @@ interface Props {
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
   onDelete: () => void
+  onRemoveFromDiagram: () => void
+  onDeleteEntity: () => void
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -23,7 +25,20 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-export function Inspector({ node, edge, groups, onNodeData, onNodeParent, onEdge, onDistribute, onShrink, onGroupSize, onDelete }: Props) {
+export function Inspector({
+  node,
+  edge,
+  groups,
+  onNodeData,
+  onNodeParent,
+  onEdge,
+  onDistribute,
+  onShrink,
+  onGroupSize,
+  onDelete,
+  onRemoveFromDiagram,
+  onDeleteEntity,
+}: Props) {
   // ----- edge selected -----
   if (edge && !node) {
     const d = (edge.data ?? {}) as any
@@ -129,6 +144,7 @@ export function Inspector({ node, edge, groups, onNodeData, onNodeParent, onEdge
     return (
       <div className="panel insp">
         <h4>Edit node</h4>
+        <div className="insp__sub">shared across diagrams</div>
         <Field label="Label">
           <input value={d.label ?? ''} onChange={(e) => onNodeData({ label: e.target.value })} />
         </Field>
@@ -164,8 +180,11 @@ export function Inspector({ node, edge, groups, onNodeData, onNodeParent, onEdge
             ))}
           </select>
         </Field>
-        <button className="insp__delete" onClick={onDelete}>
-          Delete node
+        <button className="insp__action" onClick={onRemoveFromDiagram}>
+          Remove from this diagram
+        </button>
+        <button className="insp__delete" onClick={onDeleteEntity}>
+          Delete entity (all diagrams)
         </button>
       </div>
     )
@@ -176,8 +195,8 @@ export function Inspector({ node, edge, groups, onNodeData, onNodeParent, onEdge
     <div className="panel insp insp--empty">
       <h4>Inspector</h4>
       <div className="insp__hint">
-        Select a node, group, or edge to edit its fields. Use <b>+ Service</b> / <b>+ Group</b> to
-        add new ones (a selected group becomes the parent).
+        Select a node, group, or edge to edit its fields. Add entities from the <b>palette</b>{' '}
+        (bottom-left); use <b>+ Group</b> / <b>+ Note</b> for diagram structure.
       </div>
     </div>
   )

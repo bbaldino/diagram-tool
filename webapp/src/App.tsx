@@ -29,8 +29,29 @@ import {
   type RelType,
 } from './graph'
 import { Inspector } from './Inspector'
+import { DiagramBar } from './DiagramBar'
+import { Palette } from './Palette'
+import {
+  loadModel,
+  saveModel,
+  buildDiagramGraph,
+  entitiesById,
+  getDiagram,
+  patchDiagram,
+  updateEntity,
+  addEntity,
+  addPlacement,
+  removePlacement,
+  deleteEntity,
+  addDiagram,
+  renameDiagram,
+  deleteDiagram,
+  type Model,
+  type DEdge,
+  type Entity,
+} from './model'
 
-const API = '/api/graph'
+const ACTIVE_KEY = 'homelab-active-diagram'
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
 // RF needs every parent node to appear before its children in the array.
@@ -39,9 +60,83 @@ const groupsFirst = (ns: Node[]): Node[] => [
   ...ns.filter((n) => n.type !== 'group'),
 ]
 
+// Map the live React Flow nodes back into the model's per-diagram arrays.
+// Entity fields (label/sub/icon/status) are intentionally NOT written here —
+// those live on the shared entity catalog and are handled via updateEntity.
+function nodesToDiagramParts(nodes: Node[]) {
+  const groups = nodes
+    .filter((n) => n.type === 'group')
+    .map((n) => ({
+      id: n.id,
+      label: (n.data as any).label,
+      color: (n.data as any).color,
+      position: n.position,
+      size: {
+        width: Number((n.style as any)?.width) || 320,
+        height: Number((n.style as any)?.height) || 200,
+      },
+    }))
+  const placements = nodes
+    .filter((n) => n.type === 'service')
+    .map((n) => ({ entityId: n.id, position: n.position, parentId: n.parentId ?? null }))
+  const notes = nodes
+    .filter((n) => n.type === 'note')
+    .map((n) => ({
+      id: n.id,
+      position: n.position,
+      size: {
+        width: Number((n.style as any)?.width) || 190,
+        height: Number((n.style as any)?.height) || 110,
+      },
+      text: (n.data as any).text ?? '',
+    }))
+  return { groups, placements, notes }
+}
+
+function edgesToDEdges(edges: Edge[]): DEdge[] {
+  return edges.map((e) => ({
+    id: e.id,
+    from: e.source,
+    to: e.target,
+    type: (e.data as any)?.rel ?? 'talks-to',
+    label: typeof e.label === 'string' ? e.label : undefined,
+    inferred: !!(e.data as any)?.inferred,
+    shape: (e.data as any)?.shape ?? 'default',
+    points: (e.data as any)?.points,
+  }))
+}
+
+// Flush the live canvas (nodes/edges) into the model for the given diagram:
+// map node/edge geometry into the diagram's arrays, and push every service
+// node's entity fields onto the shared entity catalog. This is the pure form
+// of the debounced write-back; call it before any model mutation so pending
+// canvas edits aren't lost when the canvas is rebuilt from `model`.
+function flushCanvasInto(m: Model, diagramId: string, nodes: Node[], edges: Edge[]): Model {
+  let next = patchDiagram(m, diagramId, {
+    ...nodesToDiagramParts(nodes),
+    edges: edgesToDEdges(edges),
+  })
+  const known = new Set(m.entities.map((e) => e.id))
+  for (const n of nodes) {
+    if (n.type !== 'service') continue
+    const data = n.data as any
+    const patch = {
+      label: data.label,
+      sub: data.sub,
+      icon: data.icon,
+      status: data.status,
+      kind: data.kind,
+    }
+    next = known.has(n.id) ? updateEntity(next, n.id, patch) : addEntity(next, { id: n.id, ...patch })
+  }
+  return next
+}
+
 function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [model, setModel] = useState<Model | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
@@ -51,66 +146,112 @@ function Flow() {
   const loaded = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const pointer = useRef({ x: 0, y: 0 })
+  // entity id to select + center after the next re-seed (palette place/create)
+  const pendingSelect = useRef<string | null>(null)
+  // When the write-back effect pushes canvas edits into the model, model
+  // identity changes — but the canvas already reflects that state, so we must
+  // NOT re-seed from it (that would clobber in-flight edits). This flag lets
+  // the re-seed effect skip exactly those self-inflicted model updates.
+  const skipReseed = useRef(false)
+  // The active diagram id at the last re-seed. Used to fitView only when the
+  // diagram actually changed, so same-diagram re-seeds (place/remove/rename)
+  // don't jump the viewport.
+  const lastSeededId = useRef<string | null>(null)
 
-  const save = useCallback((n: Node[], e: Edge[]) => {
-    setSaveState('saving')
-    fetch(API, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nodes: n, edges: e }, null, 2),
-    })
-      .then((r) => setSaveState(r.ok ? 'saved' : 'error'))
-      .catch(() => setSaveState('error'))
-  }, [])
+  const byId = useMemo(() => (model ? entitiesById(model) : {}), [model])
+  const active = useMemo(
+    () => (model && activeId ? getDiagram(model, activeId) : undefined),
+    [model, activeId],
+  )
+  const placedIds = useMemo(
+    () => new Set(active?.placements.map((p) => p.entityId) ?? []),
+    [active],
+  )
 
-  // Load graph.json (source of truth); seed the file on first run.
+  // Load the shared model once on mount; pick the active diagram from
+  // localStorage (validated against the model) or fall back to the first.
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      try {
-        const res = await fetch(API)
-        if (res.status === 200) {
-          const p = await res.json()
-          if (!cancelled && p?.nodes?.length) {
-            const migrated = (p.edges ?? []).map((e: any) => ({
-              ...e,
-              type: 'waypoint',
-              data: {
-                ...(e.data || {}),
-                shape: e.data?.shape ?? (e.type && e.type !== 'waypoint' ? e.type : 'default'),
-              },
-            }))
-            setNodes(p.nodes)
-            setEdges(migrated)
-            setEdgeStyle((migrated[0]?.data?.shape as any) || 'default')
-            loaded.current = true
-            setSaveState('saved')
-            setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
-            return
-          }
-        }
-      } catch {
-        /* server offline — fall through to seed */
-      }
-      const s = buildSeed()
+      const m = await loadModel()
       if (cancelled) return
-      setNodes(s.nodes)
-      setEdges(s.edges)
-      loaded.current = true
-      save(s.nodes, s.edges)
-      setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+      const stored = localStorage.getItem(ACTIVE_KEY)
+      const id = m.diagrams.find((d) => d.id === stored)?.id ?? m.diagrams[0]?.id ?? null
+      setModel(m)
+      setActiveId(id)
     })()
     return () => {
       cancelled = true
     }
-  }, [rf, setNodes, setEdges, save])
+  }, [])
 
-  // Autosave edits back to the file (debounced), once initial load is done.
+  // Re-seed the live canvas from the model whenever the active diagram changes
+  // or the model is loaded/replaced externally. Skips model updates that came
+  // from our own write-back so live drags aren't clobbered.
   useEffect(() => {
-    if (!loaded.current) return
-    const t = setTimeout(() => save(nodes, edges), 500)
+    if (!model || !activeId) return
+    if (skipReseed.current) {
+      skipReseed.current = false
+      return
+    }
+    const d = getDiagram(model, activeId)
+    if (!d) return
+    const built = buildDiagramGraph(d, byId)
+    const sel = pendingSelect.current
+    pendingSelect.current = null
+    setNodes(
+      sel
+        ? groupsFirst(built.nodes).map((n) => ({ ...n, selected: n.id === sel }))
+        : groupsFirst(built.nodes),
+    )
+    setEdges(built.edges)
+    setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
+    loaded.current = true
+    setSaveState('saved')
+    const changed = lastSeededId.current !== activeId
+    lastSeededId.current = activeId
+    if (changed) setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+    // Newly placed/created entity: select it + center so it's obvious it landed.
+    if (sel) {
+      setSelNode(sel)
+      setSelEdge(null)
+      const p = built.nodes.find((n) => n.id === sel)?.position
+      if (p) setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
+    }
+    // byId is derived from model; excluded to avoid a redundant re-seed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, activeId])
+
+  // Persist the chosen active diagram across reloads.
+  useEffect(() => {
+    if (activeId) localStorage.setItem(ACTIVE_KEY, activeId)
+  }, [activeId])
+
+  // Write canvas edits back into the active diagram (and shared entities),
+  // debounced on the settle of nodes/edges. This maps every edit — drag,
+  // group/note changes, edges, reparenting, tidy/distribute/shrink — to the
+  // right level of the model. Entity fields go through updateEntity/addEntity.
+  useEffect(() => {
+    if (!loaded.current || !activeId) return
+    const t = setTimeout(() => {
+      setModel((m) => {
+        if (!m) return m
+        skipReseed.current = true
+        return flushCanvasInto(m, activeId, nodes, edges)
+      })
+    }, 400)
     return () => clearTimeout(t)
-  }, [nodes, edges, save])
+  }, [nodes, edges, activeId])
+
+  // Autosave the whole model (debounced) once the initial load is done.
+  useEffect(() => {
+    if (!loaded.current || !model) return
+    setSaveState('saving')
+    const t = setTimeout(() => {
+      saveModel(model).then((ok) => setSaveState(ok ? 'saved' : 'error'))
+    }, 500)
+    return () => clearTimeout(t)
+  }, [model])
 
   const onSelectionChange = useCallback(
     ({ nodes: sn, edges: se }: { nodes: Node[]; edges: Edge[] }) => {
@@ -118,6 +259,82 @@ function Flow() {
       setSelEdge(se[0]?.id ?? null)
     },
     [],
+  )
+
+  // ---- diagram switcher handlers ----
+  // Each handler first flushes the live canvas into the model, then applies its
+  // mutation to that flushed base — so pending canvas edits survive the re-seed.
+  const selectDiagram = useCallback(
+    (id: string) => {
+      if (!model || !activeId || id === activeId) return
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      setModel(base)
+      setActiveId(id)
+    },
+    [model, activeId, nodes, edges],
+  )
+
+  const newDiagram = useCallback(
+    (name: string) => {
+      if (!model || !activeId) return
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      const { model: m2, id } = addDiagram(base, name, 'canvas')
+      setModel(m2)
+      setActiveId(id)
+    },
+    [model, activeId, nodes, edges],
+  )
+
+  const renameDiagramById = useCallback(
+    (id: string, name: string) => {
+      if (!model || !activeId) return
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      setModel(renameDiagram(base, id, name))
+    },
+    [model, activeId, nodes, edges],
+  )
+
+  const deleteActiveDiagram = useCallback(
+    (id: string) => {
+      if (!model || !activeId) return
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      const m = deleteDiagram(base, id)
+      setModel(m)
+      if (id === activeId) {
+        const rest = m.diagrams
+        setActiveId(rest[0]?.id ?? null)
+      }
+    },
+    [model, activeId, nodes, edges],
+  )
+
+  // ---- palette handlers ----
+  const placeEntity = useCallback(
+    (entityId: string) => {
+      if (!model || !activeId) return
+      const pos = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      setModel(addPlacement(base, activeId, { entityId, position: pos, parentId: null }))
+      pendingSelect.current = entityId
+    },
+    [model, activeId, rf, nodes, edges],
+  )
+
+  const createEntity = useCallback(
+    (entity: Entity) => {
+      if (!model || !activeId) return
+      const pos = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      setModel(
+        addPlacement(addEntity(base, entity), activeId, {
+          entityId: entity.id,
+          position: pos,
+          parentId: null,
+        }),
+      )
+      pendingSelect.current = entity.id
+    },
+    [model, activeId, rf, nodes, edges],
   )
 
   const onConnect = useCallback(
@@ -190,23 +407,20 @@ function Flow() {
     }
   }, [selNode, selEdge, setNodes, setEdges])
 
-  const addService = useCallback(() => {
-    const id = `svc-${Date.now()}`
-    const parent = nodes.find((n) => n.id === selNode && n.type === 'group')
-    const base = parent
-      ? { parentId: parent.id, extent: 'parent' as const, position: { x: 24, y: 52 } }
-      : { position: rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 }) }
-    const newNode = {
-      id,
-      type: 'service',
-      data: { label: 'new-service', sub: '', status: 'up' },
-      selected: true,
-      ...base,
-    } as Node
-    setNodes((ns) => groupsFirst([...ns.map((n) => ({ ...n, selected: false })), newNode] as Node[]))
-    setSelNode(id)
-    setSelEdge(null)
-  }, [rf, nodes, selNode, setNodes])
+  const removeFromDiagram = useCallback(() => {
+    if (!model || !activeId || !selNode) return
+    const base = flushCanvasInto(model, activeId, nodes, edges)
+    setModel(removePlacement(base, activeId, selNode))
+    setSelNode(null)
+  }, [model, activeId, selNode, nodes, edges])
+
+  const removeEntityEverywhere = useCallback(() => {
+    if (!model || !activeId || !selNode) return
+    if (!confirm('Delete this entity from ALL diagrams?')) return
+    const base = flushCanvasInto(model, activeId, nodes, edges)
+    setModel(deleteEntity(base, selNode))
+    setSelNode(null)
+  }, [model, activeId, selNode, nodes, edges])
 
   const addGroup = useCallback(() => {
     const id = `grp-${Date.now()}`
@@ -239,16 +453,19 @@ function Flow() {
   }, [rf, setNodes])
 
   const exportJson = useCallback(() => {
-    const blob = new Blob([JSON.stringify({ nodes, edges }, null, 2)], {
+    if (!model || !activeId) return
+    // Include the current canvas by flushing it into the model before export.
+    const full = flushCanvasInto(model, activeId, nodes, edges)
+    const blob = new Blob([JSON.stringify(full, null, 2)], {
       type: 'application/json',
     })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'homelab-canvas.json'
+    a.download = 'homelab-model.json'
     a.click()
     URL.revokeObjectURL(url)
-  }, [nodes, edges])
+  }, [model, activeId, nodes, edges])
 
   const onImport = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,10 +473,10 @@ function Flow() {
       if (!f) return
       f.text().then((t) => {
         try {
-          const p = JSON.parse(t)
-          if (p.nodes && p.edges) {
-            setNodes(p.nodes)
-            setEdges(p.edges)
+          const parsed = JSON.parse(t)
+          if (Array.isArray(parsed?.entities) && Array.isArray(parsed?.diagrams)) {
+            setModel(parsed as Model)
+            setActiveId(parsed.diagrams[0]?.id ?? null)
           }
         } catch {
           /* ignore bad file */
@@ -267,7 +484,7 @@ function Flow() {
       })
       e.target.value = ''
     },
-    [setNodes, setEdges],
+    [],
   )
 
   const tidy = useCallback(() => {
@@ -315,9 +532,9 @@ function Flow() {
     const s = buildSeed()
     setNodes(s.nodes)
     setEdges(s.edges)
-    save(s.nodes, s.edges)
+    // The debounced write-back persists the reset canvas into the model.
     setTimeout(() => rf.fitView({ padding: 0.2 }), 40)
-  }, [rf, setNodes, setEdges, save])
+  }, [rf, setNodes, setEdges])
 
   const miniColor = useCallback((n: Node) => {
     if (n.type === 'group') return (n.data as any).color as string
@@ -384,7 +601,7 @@ function Flow() {
     saveState === 'saving'
       ? '● saving…'
       : saveState === 'saved'
-        ? '✓ saved to graph.json'
+        ? '✓ saved to model.json'
         : saveState === 'error'
           ? '⚠ not saved (no server)'
           : ''
@@ -423,7 +640,6 @@ function Flow() {
 
         <Panel position="top-right" className="stack-tr">
           <div className="panel toolbar">
-            <button onClick={addService}>+ Service</button>
             <button onClick={addGroup}>+ Group</button>
             <button onClick={addNote}>+ Note</button>
             <button onClick={tidy}>Tidy</button>
@@ -458,31 +674,57 @@ function Flow() {
             onShrink={shrinkGroup}
             onGroupSize={setGroupSize}
             onDelete={deleteSelected}
+            onRemoveFromDiagram={removeFromDiagram}
+            onDeleteEntity={removeEntityEverywhere}
           />
         </Panel>
 
-        <Panel position="top-left" className="panel">
-          <h4>Relationships</h4>
-          {Object.entries(REL).map(([k, v]) => (
-            <div className="legend__row" key={k}>
-              <span className="legend__line" style={{ borderTopColor: v.color }} />
-              <span>{v.label}</span>
-            </div>
-          ))}
-          <div className="legend__row" style={{ marginTop: 6 }}>
-            <span
-              className="legend__line"
-              style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+        <Panel position="top-left" className="stack-tl">
+          {model && activeId && (
+            <DiagramBar
+              diagrams={model.diagrams}
+              activeId={activeId}
+              onSelect={selectDiagram}
+              onNew={newDiagram}
+              onRename={renameDiagramById}
+              onDelete={deleteActiveDiagram}
             />
-            <span>dashed = inferred (guess)</span>
+          )}
+
+          <div className="panel">
+            <h4>Relationships</h4>
+            {Object.entries(REL).map(([k, v]) => (
+              <div className="legend__row" key={k}>
+                <span className="legend__line" style={{ borderTopColor: v.color }} />
+                <span>{v.label}</span>
+              </div>
+            ))}
+            <div className="legend__row" style={{ marginTop: 6 }}>
+              <span
+                className="legend__line"
+                style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+              />
+              <span>dashed = inferred (guess)</span>
+            </div>
+            <h4 style={{ marginTop: 10 }}>Status</h4>
+            <div className="legend__row">
+              <span className="legend__dot status-up" /> up
+            </div>
+            <div className="legend__row">
+              <span className="legend__dot status-idle" /> on-demand / idle
+            </div>
           </div>
-          <h4 style={{ marginTop: 10 }}>Status</h4>
-          <div className="legend__row">
-            <span className="legend__dot status-up" /> up
-          </div>
-          <div className="legend__row">
-            <span className="legend__dot status-idle" /> on-demand / idle
-          </div>
+        </Panel>
+
+        <Panel position="bottom-left">
+          {model && (
+            <Palette
+              entities={model.entities}
+              placedIds={placedIds}
+              onPlace={placeEntity}
+              onCreate={createEntity}
+            />
+          )}
         </Panel>
       </ReactFlow>
     </div>
