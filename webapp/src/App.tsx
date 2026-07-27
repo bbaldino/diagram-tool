@@ -21,7 +21,6 @@ import {
   buildSeed,
   makeEdge,
   restyleEdge,
-  relayout,
   distributeGroupChildren,
   shrinkGroupToChildren,
   REL,
@@ -538,9 +537,17 @@ function Flow({
   )
 
   const tidy = useCallback(() => {
-    setNodes((ns) => relayout(ns))
-    setTimeout(() => rf.fitView({ padding: 0.2 }), 40)
-  }, [rf, setNodes])
+    // Run the server-side dagre flow layout (the same engine the MCP uses);
+    // the resulting moves stream back over SSE and re-seed the canvas. Then
+    // fit the view once the new positions have landed.
+    fetch('/api/layout', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ diagramId: activeId }),
+    })
+      .catch(() => {})
+      .finally(() => setTimeout(() => rf.fitView({ padding: 0.2 }), 250))
+  }, [rf, activeId])
 
   const distributeGroup = useCallback(() => {
     if (!selNode) return
@@ -868,11 +875,21 @@ export default function App() {
   useEffect(
     () =>
       subscribe((s) => {
+        const prevServerRev = lastServerRev.current
         lastServerRev.current = s.rev
         lastServerModel.current = s.model
         if (s.writerId === clientId) {
           // Our own echo — refs already rebased; never clobber local edits.
           ownRev.current = s.rev
+          return
+        }
+        // Server restart: its rev counter reset, so this frame's rev is LOWER
+        // than the last we saw. Adopt it and resync ownRev — otherwise our
+        // stale-high ownRev makes us ignore every post-restart broadcast
+        // (frozen tab until manual reload).
+        if (s.rev < prevServerRev) {
+          ownRev.current = s.rev
+          setModel(s.model)
           return
         }
         if (s.rev > ownRev.current) setModel(s.model)
@@ -896,7 +913,10 @@ export default function App() {
       sendOps(ops)
         .then((res) => {
           const rev = 'rev' in res ? res.rev : undefined
-          if (typeof rev === 'number' && rev > 0) {
+          // rev 0 is a valid server revision (fresh server, or a no-op the
+          // server recognized and didn't bump); only a 400 returns no numeric
+          // rev. `>= 0` — a `> 0` check falsely flags rev-0 responses as errors.
+          if (typeof rev === 'number' && rev >= 0) {
             ownRev.current = rev
             lastServerModel.current = next
             setSaveState('saved')

@@ -2,7 +2,9 @@ import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createStore, type Snapshot, type Store } from './server/store'
+import { createMcpServer, handlers } from './server/mcp'
 import type { Op } from './src/ops'
 
 // Tiny persistence API: GET/PUT /api/graph <-> webapp/graph.json
@@ -108,6 +110,58 @@ function modelApi(): Plugin {
           res.statusCode = 400
           res.setHeader('Content-Type', 'application/json')
           res.end(JSON.stringify({ error: String(e) }))
+        }
+      })
+
+      // POST /api/layout {diagramId} — re-run the dagre flow layout on a
+      // diagram (the same engine the MCP uses). The UI "Tidy" button calls
+      // this; the resulting placement/group moves apply through the store and
+      // stream to every client over SSE.
+      server.middlewares.use('/api/layout', async (req, res, next) => {
+        if (req.method !== 'POST') return next()
+        const chunks: Buffer[] = []
+        for await (const c of req) chunks.push(c as Buffer)
+        try {
+          const { diagramId } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+            diagramId: string
+          }
+          const result = handlers.layout(await storeReady, diagramId)
+          res.setHeader('Content-Type', 'application/json')
+          if ('error' in result) res.statusCode = 400
+          res.end(JSON.stringify(result))
+        } catch (e) {
+          res.statusCode = 400
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ error: String(e) }))
+        }
+      })
+
+      // MCP over Streamable HTTP so agents can drive the app live. Shares the
+      // single store above (the one writer). The installed SDK forbids reusing
+      // a stateless transport across requests
+      // ("Stateless transport cannot be reused across requests"), so we build a
+      // fresh McpServer + transport per request; all servers share `store`.
+      server.middlewares.use('/mcp', async (req, res, next) => {
+        if (req.method !== 'POST' && req.method !== 'GET' && req.method !== 'DELETE') {
+          return next()
+        }
+        const store = await storeReady
+        const mcp = createMcpServer(store)
+        const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined })
+        res.on('close', () => {
+          void transport.close()
+          void mcp.close()
+        })
+        try {
+          await mcp.connect(transport)
+          await transport.handleRequest(req, res)
+        } catch (e) {
+          console.error('[mcp] request error', e)
+          if (!res.headersSent) {
+            res.statusCode = 500
+            res.setHeader('Content-Type', 'application/json')
+            res.end(JSON.stringify({ error: String(e) }))
+          }
         }
       })
     },
