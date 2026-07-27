@@ -179,6 +179,13 @@ function Flow({
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
+  const [layoutEngine, setLayoutEngine] = useState<'elk' | 'graphviz'>(
+    () => (localStorage.getItem('homelab-layout-engine') as 'elk' | 'graphviz') || 'elk',
+  )
+  const chooseEngine = useCallback((e: 'elk' | 'graphviz') => {
+    setLayoutEngine(e)
+    localStorage.setItem('homelab-layout-engine', e)
+  }, [])
   // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
   // for popup placement, flow = flow coords for the new node.
   const [addMenu, setAddMenu] = useState<{
@@ -556,17 +563,17 @@ function Flow({
   }, [activeId])
 
   const tidy = useCallback(() => {
-    // Run the server-side dagre flow layout (the same engine the MCP uses);
-    // the resulting moves stream back over SSE and re-seed the canvas. Then
+    // Run the server-side layout (elkjs/Graphviz per the selector); the
+    // resulting moves stream back over SSE and re-seed the canvas. Then
     // fit the view once the new positions have landed.
     fetch('/api/layout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diagramId: activeId }),
+      body: JSON.stringify({ diagramId: activeId, engine: layoutEngine }),
     })
       .catch(() => {})
       .finally(() => setTimeout(() => rf.fitView({ padding: 0.2 }), 250))
-  }, [rf, activeId])
+  }, [rf, activeId, layoutEngine])
 
   const distributeGroup = useCallback(() => {
     if (!selNode) return
@@ -768,6 +775,13 @@ function Flow({
             <button onClick={doUndo} disabled={!undoFlags.canUndo} title="Undo (Ctrl/Cmd-Z)">↶ Undo</button>
             <button onClick={doRedo} disabled={!undoFlags.canRedo} title="Redo (Ctrl/Cmd-Shift-Z)">↷ Redo</button>
             <button onClick={tidy}>Tidy</button>
+            <label className="edgestyle">
+              Layout:
+              <select value={layoutEngine} onChange={(e) => chooseEngine(e.target.value as 'elk' | 'graphviz')}>
+                <option value="elk">elkjs</option>
+                <option value="graphviz">Graphviz</option>
+              </select>
+            </label>
             <label className="edgestyle">
               Edges:
               <select value={edgeStyle} onChange={(e) => applyEdgeStyle(e.target.value as any)}>

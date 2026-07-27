@@ -11,9 +11,9 @@ const base = () =>
   })
 
 describe('authorDiagramOps', () => {
-  it('creates a laid-out diagram with existing + new nodes, an edge, and a note', () => {
+  it('creates a laid-out diagram with existing + new nodes, an edge, and a note', async () => {
     const m = base()
-    const { ops, diagramId } = authorDiagramOps(m, {
+    const { ops, diagramId } = await authorDiagramOps(m, {
       name: 'Flow',
       nodes: ['plex', { new: 'Grafana' }],
       edges: [['plex', 'grafana', { label: 'metrics' }]],
@@ -30,12 +30,12 @@ describe('authorDiagramOps', () => {
     expect(px).toBeLessThan(gx) // laid out (source left of target)
   })
 
-  it('throws on an unknown existing entity id', () => {
-    expect(() => authorDiagramOps(base(), { name: 'X', nodes: ['nope'] })).toThrow()
+  it('throws on an unknown existing entity id', async () => {
+    await expect(authorDiagramOps(base(), { name: 'X', nodes: ['nope'] })).rejects.toThrow()
   })
 
-  it('honors an agent-supplied position override', () => {
-    const { ops, diagramId } = authorDiagramOps(base(), {
+  it('honors an agent-supplied position override', async () => {
+    const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'X',
       nodes: ['plex'],
       positions: { plex: { x: 999, y: 5 } },
@@ -44,28 +44,28 @@ describe('authorDiagramOps', () => {
     expect(d.placements[0].position).toEqual({ x: 999, y: 5 })
   })
 
-  it('throws when an edge references a node id not in nodes', () => {
-    expect(() =>
+  it('throws when an edge references a node id not in nodes', async () => {
+    await expect(
       authorDiagramOps(base(), {
         name: 'X',
         nodes: ['plex'],
         edges: [['plex', 'ghost', {}]],
       })
-    ).toThrow(/unknown node id "ghost"/)
+    ).rejects.toThrow(/unknown node id "ghost"/)
   })
 
-  it('throws when a group member references a node id not in nodes', () => {
-    expect(() =>
+  it('throws when a group member references a node id not in nodes', async () => {
+    await expect(
       authorDiagramOps(base(), {
         name: 'X',
         nodes: ['plex'],
         groups: [{ label: 'Media', members: ['plex', 'ghost'] }],
       })
-    ).toThrow(/group "Media" references unknown node id "ghost"/)
+    ).rejects.toThrow(/group "Media" references unknown node id "ghost"/)
   })
 
-  it('slugifies a whitespace/symbol-only {new} label to a valid non-empty entity id + placement', () => {
-    const { ops, diagramId } = authorDiagramOps(base(), {
+  it('slugifies a whitespace/symbol-only {new} label to a valid non-empty entity id + placement', async () => {
+    const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'X',
       nodes: [{ new: '   ' }],
     })
@@ -79,8 +79,8 @@ describe('authorDiagramOps', () => {
     expect(next.entities.some((e) => e.id === id)).toBe(true)
   })
 
-  it('dedupes duplicate node ids to exactly one placement', () => {
-    const { ops, diagramId } = authorDiagramOps(base(), {
+  it('dedupes duplicate node ids to exactly one placement', async () => {
+    const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'X',
       nodes: ['plex', 'plex'],
     })
@@ -89,15 +89,16 @@ describe('authorDiagramOps', () => {
     expect(d.placements[0].entityId).toBe('plex')
   })
 
-  it('bakes geometry-derived handles onto authored edges', () => {
-    const { ops, diagramId } = authorDiagramOps(base(), {
+  it('bakes geometry-derived handles onto authored edges', async () => {
+    const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'Flow',
       nodes: ['plex', { new: 'Grafana' }],
       edges: [['plex', 'grafana']],
     })
     const model = applyOps(base(), ops)
     const edge = getDiagram(model, diagramId)!.edges[0]
-    // dagre LR: plex is left of grafana → forward edge exits plex's right into grafana's left.
+    // default engine (elk, direction RIGHT): plex is left of grafana → forward
+    // edge exits plex's right into grafana's left.
     expect(edge.sourceHandle).toBe('right')
     expect(edge.targetHandle).toBe('left')
   })

@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createStore, type Snapshot, type Store } from './server/store'
 import { createMcpServer, handlers } from './server/mcp'
+import { DEFAULT_ENGINE, type LayoutEngine } from './server/layout'
 import type { Op } from './src/ops'
 
 // Tiny persistence API: GET/PUT /api/graph <-> webapp/graph.json
@@ -116,19 +117,22 @@ function modelApi(): Plugin {
         }
       })
 
-      // POST /api/layout {diagramId} — re-run the dagre flow layout on a
-      // diagram (the same engine the MCP uses). The UI "Tidy" button calls
-      // this; the resulting placement/group moves apply through the store and
-      // stream to every client over SSE.
+      // POST /api/layout {diagramId, engine?} — re-run automatic layout on a
+      // diagram, defaulting to 'elk' (unknown engine values coerce to the
+      // default). The UI "Tidy" button calls this; the resulting
+      // placement/group moves apply through the store and stream to every
+      // client over SSE.
       server.middlewares.use('/api/layout', async (req, res, next) => {
         if (req.method !== 'POST') return next()
         const chunks: Buffer[] = []
         for await (const c of req) chunks.push(c as Buffer)
         try {
-          const { diagramId } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+          const { diagramId, engine } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
             diagramId: string
+            engine?: string
           }
-          const result = handlers.layout(await storeReady, diagramId)
+          const eng: LayoutEngine = engine === 'elk' || engine === 'graphviz' ? engine : DEFAULT_ENGINE
+          const result = await handlers.layout(await storeReady, diagramId, eng)
           res.setHeader('Content-Type', 'application/json')
           if ('error' in result) res.statusCode = 400
           res.end(JSON.stringify(result))

@@ -25,7 +25,7 @@ const slugify = (s: string): string => {
 // Assemble the ops that create the diagram (+ any new entities), laid out.
 // Throws Error on an unresolvable existing entity id, an edge referencing a node id
 // not in this diagram, or a group member id not in this diagram. Pure.
-export function authorDiagramOps(model: Model, spec: AuthorSpec): { ops: Op[]; diagramId: string } {
+export async function authorDiagramOps(model: Model, spec: AuthorSpec): Promise<{ ops: Op[]; diagramId: string }> {
   let cloned: Model = model
 
   // Resolve/create entities, in spec.nodes order.
@@ -108,7 +108,7 @@ export function authorDiagramOps(model: Model, spec: AuthorSpec): { ops: Op[]; d
     notes: [],
   }
 
-  const laidOut = layoutDiagram(diagram)
+  const laidOut = await layoutDiagram(diagram)
 
   const finalPlacements: Placement[] = laidOut.placements.map((p) => {
     const override = spec.positions?.[p.entityId]

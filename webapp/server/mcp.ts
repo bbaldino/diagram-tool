@@ -5,7 +5,7 @@ import type { DEdge, Diagram, EdgeOrientation, Placement } from '../src/model'
 import { getDiagram } from '../src/model'
 import type { Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
-import { layoutDiagram } from './layout'
+import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
 
@@ -80,11 +80,11 @@ export const handlers = {
     return d ?? err(`unknown diagram "${id}"`)
   },
 
-  authorDiagram(store: Store, spec: AuthorSpec): { diagramId: string } | ErrorResult {
+  async authorDiagram(store: Store, spec: AuthorSpec): Promise<{ diagramId: string } | ErrorResult> {
     const model = store.getState().model
     let built: { ops: Op[]; diagramId: string }
     try {
-      built = authorDiagramOps(model, spec)
+      built = await authorDiagramOps(model, spec)
     } catch (e) {
       return err(e instanceof Error ? e.message : String(e))
     }
@@ -187,11 +187,11 @@ export const handlers = {
     return { ok: true }
   },
 
-  layout(store: Store, diagramId: string): OkResult | ErrorResult {
+  async layout(store: Store, diagramId: string, engine: LayoutEngine = DEFAULT_ENGINE): Promise<OkResult | ErrorResult> {
     const model = store.getState().model
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
-    const laid = layoutDiagram(diagram)
+    const laid = await layoutDiagram(diagram, engine)
     const nextDiagram: Diagram = { ...diagram, placements: laid.placements, groups: laid.groups, edges: laid.edges }
     const nextModel = {
       ...model,
@@ -273,7 +273,7 @@ export function createMcpServer(store: Store): McpServer {
         'Create a new, automatically laid-out diagram from a high-level spec. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: authorSpecShape,
     },
-    (args) => wrap(handlers.authorDiagram(store, args as AuthorSpec)),
+    async (args) => wrap(await handlers.authorDiagram(store, args as AuthorSpec)),
   )
 
   server.registerTool(
@@ -346,7 +346,7 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'layout',
     { description: 'Re-run automatic layout on a diagram.', inputSchema: { diagramId: z.string() } },
-    (args) => wrap(handlers.layout(store, args.diagramId)),
+    async (args) => wrap(await handlers.layout(store, args.diagramId)),
   )
 
   return server

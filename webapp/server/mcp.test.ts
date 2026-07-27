@@ -33,7 +33,7 @@ describe('handlers', () => {
 
     it('listDiagrams returns id/name/type', async () => {
       const store = await mkStore()
-      handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })
+      await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })
       const ds = handlers.listDiagrams(store)
       expect(ds).toHaveLength(1)
       expect(ds[0]).toMatchObject({ name: 'Flow', type: 'canvas' })
@@ -41,7 +41,7 @@ describe('handlers', () => {
 
     it('getDiagram returns the diagram or an error', async () => {
       const store = await mkStore()
-      const res = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const res = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as { diagramId: string }
       const d = handlers.getDiagram(store, res.diagramId)
       expect('error' in d).toBe(false)
       expect((d as { id: string }).id).toBe(res.diagramId)
@@ -52,11 +52,11 @@ describe('handlers', () => {
   describe('authorDiagram', () => {
     it('creates a laid-out diagram in the store', async () => {
       const store = await mkStore()
-      const res = handlers.authorDiagram(store, {
+      const res = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', { new: 'Grafana' }],
         edges: [['plex', 'grafana']],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const d = store.getState().model.diagrams.find((x) => x.id === res.diagramId)!
       expect(d.placements.map((p) => p.entityId).sort()).toEqual(['grafana', 'plex'])
       expect(d.edges).toHaveLength(1)
@@ -69,7 +69,7 @@ describe('handlers', () => {
     it('returns { error } and leaves rev unchanged on a bad spec', async () => {
       const store = await mkStore()
       const rev0 = store.getState().rev
-      const r = handlers.authorDiagram(store, { name: 'Bad', nodes: ['ghost'] })
+      const r = await handlers.authorDiagram(store, { name: 'Bad', nodes: ['ghost'] })
       expect('error' in r).toBe(true)
       expect(store.getState().rev).toBe(rev0)
     })
@@ -78,7 +78,9 @@ describe('handlers', () => {
   describe('writes', () => {
     it('placeEntity adds a placement', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
       const r = handlers.placeEntity(store, { diagramId, entityId: 'sonarr', position: { x: 10, y: 20 } })
       expect(r).toEqual({ ok: true })
       const d = store.getState().model.diagrams.find((x) => x.id === diagramId)!
@@ -87,7 +89,9 @@ describe('handlers', () => {
 
     it('placeEntity errors for an unknown entity', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
       const rev0 = store.getState().rev
       expect('error' in handlers.placeEntity(store, { diagramId, entityId: 'ghost' })).toBe(true)
       expect(store.getState().rev).toBe(rev0)
@@ -95,7 +99,9 @@ describe('handlers', () => {
 
     it('placeEntity errors for a parentId that is not a group, leaving rev unchanged', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
       const rev0 = store.getState().rev
       const r = handlers.placeEntity(store, { diagramId, entityId: 'sonarr', parentId: 'no-such-group' })
       expect('error' in r).toBe(true)
@@ -108,10 +114,10 @@ describe('handlers', () => {
 
     it('connect adds an edge', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, {
+      const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', 'sonarr'],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const r = handlers.connect(store, { diagramId, from: 'plex', to: 'sonarr', label: 'talks' })
       expect(r).toEqual({ ok: true })
       const d = store.getState().model.diagrams.find((x) => x.id === diagramId)!
@@ -121,10 +127,10 @@ describe('handlers', () => {
 
     it('connect with only {from,to} succeeds and defaults edge type to talks-to', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, {
+      const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', 'sonarr'],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const r = handlers.connect(store, { diagramId, from: 'plex', to: 'sonarr' })
       expect(r).toEqual({ ok: true })
       const d = store.getState().model.diagrams.find((x) => x.id === diagramId)!
@@ -142,11 +148,11 @@ describe('handlers', () => {
 
     it('setEdge updates an edge', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, {
+      const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', 'sonarr'],
         edges: [['plex', 'sonarr']],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const edgeId = store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0].id
       const r = handlers.setEdge(store, { diagramId, edgeId, patch: { label: 'renamed' } })
       expect(r).toEqual({ ok: true })
@@ -156,11 +162,11 @@ describe('handlers', () => {
 
     it('setEdge with {color,label} updates only those fields, leaving type unchanged and no stray keys', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, {
+      const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', 'sonarr'],
         edges: [['plex', 'sonarr']],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const diagram = store.getState().model.diagrams.find((x) => x.id === diagramId)!
       const edgeId = diagram.edges[0].id
       const originalType = diagram.edges[0].type
@@ -183,7 +189,9 @@ describe('handlers', () => {
 
     it('setNote sets an inline note on a placement', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
       const r = handlers.setNote(store, { diagramId, entityId: 'plex', note: '4k' })
       expect(r).toEqual({ ok: true })
       expect(store.getState().model.diagrams.find((x) => x.id === diagramId)!.placements[0].note).toBe('4k')
@@ -192,11 +200,11 @@ describe('handlers', () => {
 
     it('remove deletes a placement and an edge', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, {
+      const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['plex', 'sonarr'],
         edges: [['plex', 'sonarr']],
-      }) as { diagramId: string }
+      })) as { diagramId: string }
       const edgeId = store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0].id
       expect(handlers.remove(store, { diagramId, edgeId })).toEqual({ ok: true })
       expect(store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges).toHaveLength(0)
@@ -209,12 +217,23 @@ describe('handlers', () => {
 
     it('layout re-lays-out a diagram', async () => {
       const store = await mkStore()
-      const { diagramId } = handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] }) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
       // move the placement to a nonsense spot, then re-layout
       handlers.placeEntity(store, { diagramId, entityId: 'sonarr', position: { x: 9999, y: 9999 } })
-      const r = handlers.layout(store, diagramId)
+      const r = await handlers.layout(store, diagramId)
       expect(r).toEqual({ ok: true })
-      expect('error' in handlers.layout(store, 'nope')).toBe(true)
+      expect('error' in (await handlers.layout(store, 'nope'))).toBe(true)
+    })
+
+    it('layout accepts the graphviz engine without throwing', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['plex'] })) as {
+        diagramId: string
+      }
+      const r = await handlers.layout(store, diagramId, 'graphviz')
+      expect(r).toEqual({ ok: true })
     })
   })
 })
@@ -222,10 +241,10 @@ describe('handlers', () => {
 describe('edge orientation', () => {
   it('connect stores orientation on the edge', async () => {
     const store = await mkStore()
-    const { diagramId } = handlers.authorDiagram(store, {
+    const { diagramId } = (await handlers.authorDiagram(store, {
       name: 'Flow',
       nodes: ['plex', 'sonarr'],
-    }) as { diagramId: string }
+    })) as { diagramId: string }
     handlers.connect(store, { diagramId, from: 'plex', to: 'sonarr', orientation: 'vertical' })
     const edge = getDiagram(store.getState().model, diagramId)!.edges.find((e) => e.from === 'plex' && e.to === 'sonarr')!
     expect(edge.orientation).toBe('vertical')
@@ -233,11 +252,11 @@ describe('edge orientation', () => {
 
   it('set_edge patch updates orientation', async () => {
     const store = await mkStore()
-    const { diagramId } = handlers.authorDiagram(store, {
+    const { diagramId } = (await handlers.authorDiagram(store, {
       name: 'Flow',
       nodes: ['plex', 'sonarr'],
       edges: [['plex', 'sonarr']],
-    }) as { diagramId: string }
+    })) as { diagramId: string }
     const edgeId = getDiagram(store.getState().model, diagramId)!.edges[0].id
     handlers.setEdge(store, { diagramId, edgeId, patch: { orientation: 'horizontal' } })
     const edge = getDiagram(store.getState().model, diagramId)!.edges.find((e) => e.id === edgeId)!
