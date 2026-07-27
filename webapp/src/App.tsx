@@ -234,20 +234,27 @@ function Flow({
     [active, currentFlowId],
   )
 
+  // Maps an element id to its flow-walkthrough class for the current flow/step,
+  // or undefined when no flow is active (normal rendering). Shared by the
+  // re-seed (so freshly built nodes/edges are classed from creation) and the
+  // re-tag effect (so step-only changes re-class without a re-seed).
+  const flowClassOf = useCallback(
+    (id: string): string | undefined => {
+      if (flowMode === 'none' || !currentFlow) return undefined
+      const s = flowStates(currentFlow, currentStep)[id]
+      return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
+    },
+    [flowMode, currentFlow, currentStep],
+  )
+
   // Tag every live node/edge with a flow-walkthrough class (flow-active /
   // flow-lit / flow-ghost) when a flow is selected and mode isn't 'none';
   // clears the class (normal rendering) otherwise. Maps the existing
   // nodes/edges in place — no re-seed from the model.
   useEffect(() => {
-    const states = flowMode !== 'none' && currentFlow ? flowStates(currentFlow, currentStep) : null
-    const cls = (id: string): string | undefined => {
-      if (!states) return undefined
-      const s = states[id]
-      return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
-    }
-    setNodes((ns) => ns.map((n) => ({ ...n, className: cls(n.id) })))
-    setEdges((es) => es.map((e) => ({ ...e, className: cls(e.id) })))
-  }, [currentFlowId, currentStep, flowMode, currentFlow, setNodes, setEdges])
+    setNodes((ns) => ns.map((n) => ({ ...n, className: flowClassOf(n.id) })))
+    setEdges((es) => es.map((e) => ({ ...e, className: flowClassOf(e.id) })))
+  }, [flowClassOf, setNodes, setEdges])
 
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came
@@ -273,10 +280,10 @@ function Flow({
       // would otherwise pop the Inspector open for a node the user never
       // picked in this diagram.
       const keepId = sel ?? (changed ? null : (ns.find((n) => n.selected)?.id ?? null))
-      const base = groupsFirst(built.nodes)
+      const base = groupsFirst(built.nodes).map((n) => ({ ...n, className: flowClassOf(n.id) }))
       return keepId ? base.map((n) => ({ ...n, selected: n.id === keepId })) : base
     })
-    setEdges(built.edges)
+    setEdges(built.edges.map((e) => ({ ...e, className: flowClassOf(e.id) })))
     setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
     loaded.current = true
     lastSeededId.current = activeId
@@ -294,6 +301,9 @@ function Flow({
       if (p) setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
     // byId is derived from model; excluded to avoid a redundant re-seed.
+    // flowClassOf (and its flowMode/currentFlow/currentStep deps) is also
+    // excluded for the same reason: a re-seed must stay keyed on
+    // [model, activeId] only, and the closure already reads current values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, activeId])
 
