@@ -242,10 +242,11 @@ function Flow({
   const flowClassOf = useCallback(
     (id: string): string | undefined => {
       if (flowMode === 'none' || !currentFlow) return undefined
-      const s = flowStates(currentFlow, currentStep)[id]
+      const activeStep = flowMode === 'edit' ? selStep : currentStep
+      const s = flowStates(currentFlow, activeStep)[id]
       return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
     },
-    [flowMode, currentFlow, currentStep],
+    [flowMode, currentFlow, currentStep, selStep],
   )
 
   // Tag every live node/edge with a flow-walkthrough class (flow-active /
