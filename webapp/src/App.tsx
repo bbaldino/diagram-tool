@@ -38,6 +38,7 @@ import { CanvasAddMenu } from './CanvasAddMenu'
 import { useDialogs } from './Dialog'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
+import { flowStates } from './flowState'
 import {
   entitiesById,
   getDiagram,
@@ -232,6 +233,21 @@ function Flow({
     () => active?.flows?.find((f) => f.id === currentFlowId) ?? null,
     [active, currentFlowId],
   )
+
+  // Tag every live node/edge with a flow-walkthrough class (flow-active /
+  // flow-lit / flow-ghost) when a flow is selected and mode isn't 'none';
+  // clears the class (normal rendering) otherwise. Maps the existing
+  // nodes/edges in place — no re-seed from the model.
+  useEffect(() => {
+    const states = flowMode !== 'none' && currentFlow ? flowStates(currentFlow, currentStep) : null
+    const cls = (id: string): string | undefined => {
+      if (!states) return undefined
+      const s = states[id]
+      return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
+    }
+    setNodes((ns) => ns.map((n) => ({ ...n, className: cls(n.id) })))
+    setEdges((es) => es.map((e) => ({ ...e, className: cls(e.id) })))
+  }, [currentFlowId, currentStep, flowMode, currentFlow, setNodes, setEdges])
 
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came

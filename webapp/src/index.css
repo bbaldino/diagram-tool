@@ -562,3 +562,10 @@ input, textarea, [contenteditable="true"] {
 .detail__fieldremove:hover { background: #fee2e2; }
 .detail__fields-empty { font-size: 11.5px; color: #94a3b8; padding: 4px 0; }
 .detail__delete { margin-top: 4px; }
+
+/* Flow walkthrough element states (applied to node/edge wrappers in flow mode) */
+.react-flow__node, .react-flow__edge { transition: opacity .2s ease; }
+.react-flow__node.flow-ghost, .react-flow__edge.flow-ghost { opacity: .18; }
+.react-flow__edge.flow-ghost .react-flow__edge-path { stroke-dasharray: 5 5; }
+.react-flow__node.flow-active { box-shadow: 0 0 0 4px color-mix(in srgb, #6366f1 30%, transparent); border-radius: 12px; }
+.react-flow__edge.flow-active .react-flow__edge-path { stroke-width: 4 !important; }
