@@ -352,6 +352,7 @@ input, textarea, [contenteditable="true"] {
   background: #ffffff; padding: 1px 5px; border-radius: 4px;
   pointer-events: none; white-space: nowrap;
   box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.08);
+  transition: opacity .2s ease;
 }
 .wp-dot {
   position: absolute; width: 11px; height: 11px; border-radius: 50%;
@@ -630,3 +631,9 @@ input, textarea, [contenteditable="true"] {
 .react-flow__edge.flow-ghost .react-flow__edge-path { stroke-dasharray: 5 5; }
 .react-flow__node.flow-active { box-shadow: 0 0 0 4px color-mix(in srgb, #6366f1 30%, transparent); border-radius: 12px; }
 .react-flow__edge.flow-active .react-flow__edge-path { stroke-width: 4 !important; }
+/* Edge labels render in a portal outside the edge <g>, so the edge's flow
+   class can't reach them — App threads the state into data.flowState and
+   WaypointEdge puts it on the label. Match the edge: dim when ghosted,
+   emphasize when active, normal when lit. */
+.wp-label.flow-ghost { opacity: .18; }
+.wp-label.flow-active { font-weight: 700; }

@@ -211,7 +211,9 @@ export function WaypointEdge(props: EdgeProps) {
           <path ref={measureRef} d={d} fill="none" stroke="none" style={{ pointerEvents: 'none' }} />
           <EdgeLabelRenderer>
             <div
-              className={selected ? 'wp-label nopan nodrag' : 'wp-label'}
+              className={['wp-label', selected ? 'nopan nodrag' : '', (data?.flowState as string) || '']
+                .filter(Boolean)
+                .join(' ')}
               style={{
                 transform: `translate(-50%,-50%) translate(${lx}px,${ly}px)`,
                 color: relColor,

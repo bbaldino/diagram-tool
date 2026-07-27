@@ -255,7 +255,14 @@ function Flow({
   // nodes/edges in place — no re-seed from the model.
   useEffect(() => {
     setNodes((ns) => ns.map((n) => ({ ...n, className: flowClassOf(n.id) })))
-    setEdges((es) => es.map((e) => ({ ...e, className: flowClassOf(e.id) })))
+    setEdges((es) =>
+      es.map((e) => {
+        const fc = flowClassOf(e.id)
+        // Also stash the state in data: the label renders in a portal outside
+        // the edge <g>, so the className alone can't reach it (see WaypointEdge).
+        return { ...e, className: fc, data: { ...e.data, flowState: fc } }
+      }),
+    )
   }, [flowClassOf, setNodes, setEdges])
 
   // Re-seed the live canvas from the model whenever the active diagram changes
@@ -285,7 +292,12 @@ function Flow({
       const base = groupsFirst(built.nodes).map((n) => ({ ...n, className: flowClassOf(n.id) }))
       return keepId ? base.map((n) => ({ ...n, selected: n.id === keepId })) : base
     })
-    setEdges(built.edges.map((e) => ({ ...e, className: flowClassOf(e.id) })))
+    setEdges(
+      built.edges.map((e) => {
+        const fc = flowClassOf(e.id)
+        return { ...e, className: fc, data: { ...e.data, flowState: fc } }
+      }),
+    )
     setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
     loaded.current = true
     lastSeededId.current = activeId
