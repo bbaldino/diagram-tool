@@ -5,9 +5,14 @@ body {
   color: #1f2937;
 }
 
-/* Layer order: edges < edge labels < nodes (so labels sit above lines but under nodes). */
-.react-flow__edgelabel-renderer { z-index: 4; }
-.react-flow__nodes { z-index: 5; }
+/* Paint order (in the viewport stacking context): group panes (node zIndex -1)
+   < edges < edge labels < service/note nodes (node zIndex 2). The nodes layer
+   must NOT form its own stacking context (z-index:auto), so each node's own
+   z-index interleaves with the edges/label layers below — that's what lets a
+   group pane sit BEHIND edges while node cards stay in front of them. */
+.react-flow__nodes { z-index: auto; }
+.react-flow__edges { z-index: 0; }
+.react-flow__edgelabel-renderer { z-index: 1; }
 
 /* ---------- Service node ---------- */
 .node {
@@ -80,7 +85,11 @@ body {
   width: 100%; height: 100%;
   border: 2px solid var(--group-color, #94a3b8);
   border-radius: 16px;
-  background: color-mix(in srgb, var(--group-color, #94a3b8) 7%, white);
+  /* Translucent (alpha), not mixed-with-white: React Flow paints group panes
+     above the edges layer, so an opaque fill would hide any edge crossing the
+     group. A see-through tint keeps the group readable while edges (incl. a
+     selected one) stay visible through it. */
+  background: color-mix(in srgb, var(--group-color, #94a3b8) 12%, transparent);
 }
 .group__label {
   position: absolute;

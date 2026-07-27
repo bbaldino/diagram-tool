@@ -169,6 +169,20 @@ export function Inspector({
     )
   }
 
+  // ----- note selected -----
+  if (node && node.type === 'note') {
+    return (
+      <div className="panel insp">
+        <h4>Edit note</h4>
+        <div className="insp__sub">standalone note — this diagram</div>
+        <div className="insp__hint">Edit the text directly on the note.</div>
+        <button className="insp__delete" onClick={onDelete}>
+          Delete note
+        </button>
+      </div>
+    )
+  }
+
   // ----- service node selected -----
   if (node) {
     const d = node.data as any
