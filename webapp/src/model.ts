@@ -6,6 +6,23 @@ export type { RelType }
 export type Status = 'up' | 'down' | 'idle'
 export type DiagramType = 'canvas' | 'topology' | 'call-flow'
 
+export interface EntityField {
+  key: string
+  value: string
+  showOnNode?: boolean
+}
+export interface TemplateField {
+  key: string
+  showOnNode?: boolean
+  default?: string
+}
+export interface Template {
+  id: string
+  name: string
+  icon?: string
+  fields: TemplateField[]
+}
+
 export interface Entity {
   id: string
   label: string
@@ -13,11 +30,14 @@ export interface Entity {
   sub?: string
   status?: Status
   kind?: 'actor'
+  template?: string
+  fields: EntityField[]
 }
 export interface Placement {
   entityId: string
   position: { x: number; y: number }
   parentId?: string | null // group id
+  fieldShow?: Record<string, boolean>
 }
 export interface Group {
   id: string
@@ -56,10 +76,20 @@ export interface Model {
   version: number
   entities: Entity[]
   diagrams: Diagram[]
+  templates: Template[]
 }
 
 export function entitiesById(model: Model): Record<string, Entity> {
   return Object.fromEntries(model.entities.map((e) => [e.id, e]))
+}
+
+export function normalizeModel(m: any): Model {
+  return {
+    version: m.version ?? 1,
+    templates: Array.isArray(m.templates) ? m.templates : [],
+    entities: (m.entities ?? []).map((e: any) => ({ ...e, fields: Array.isArray(e.fields) ? e.fields : [] })),
+    diagrams: m.diagrams ?? [],
+  }
 }
 
 export function migrateFromGraph(graph: any): Model {
@@ -98,6 +128,7 @@ export function migrateFromGraph(graph: any): Model {
         sub: n.data?.sub,
         status: n.data?.status,
         kind: n.data?.kind,
+        fields: [],
       })
       placements.push({ entityId: n.id, position: n.position ?? { x: 0, y: 0 }, parentId: n.parentId ?? null })
     }
@@ -116,6 +147,7 @@ export function migrateFromGraph(graph: any): Model {
 
   return {
     version: 1,
+    templates: [],
     entities,
     diagrams: [
       { id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas', placements, groups, edges: dedges, notes },
@@ -128,7 +160,7 @@ export async function loadModel(): Promise<Model> {
     const res = await fetch('/api/model')
     if (res.status === 200) {
       const m = await res.json()
-      if (m?.entities && m?.diagrams) return m as Model
+      if (m?.entities && m?.diagrams) return normalizeModel(m)
     }
     // migrate from the old graph.json on first run
     const g = await fetch('/api/graph')
@@ -140,7 +172,7 @@ export async function loadModel(): Promise<Model> {
   } catch {
     // network error — fall through to the seed fallback below
   }
-  return { version: 1, entities: [], diagrams: [{ id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas', placements: [], groups: [], edges: [], notes: [] }] }
+  return { version: 1, templates: [], entities: [], diagrams: [{ id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas', placements: [], groups: [], edges: [], notes: [] }] }
 }
 export async function saveModel(model: Model): Promise<boolean> {
   try {
@@ -151,7 +183,7 @@ export async function saveModel(model: Model): Promise<boolean> {
   }
 }
 
-export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>): { nodes: Node[]; edges: Edge[] } {
+export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>, templates: Template[] = []): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = []
   // groups first (parents before children)
   for (const g of diagram.groups) {
@@ -166,13 +198,15 @@ export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>
   for (const p of diagram.placements) {
     const e = byId[p.entityId]
     if (!e) continue // entity deleted from catalog; skip stale placement
+    const tmpl = e.template ? templates.find((t) => t.id === e.template) : undefined
+    const shownFields = (e.fields ?? []).filter((f) => fieldVisible(p, e, tmpl, f.key)).map((f) => ({ key: f.key, value: f.value }))
     nodes.push({
       id: e.id,
       type: 'service',
       position: p.position,
       parentId: p.parentId ?? undefined,
       extent: p.parentId ? 'parent' : undefined,
-      data: { label: e.label, sub: e.sub, icon: e.icon, status: e.status, kind: e.kind },
+      data: { label: e.label, sub: e.sub, icon: e.icon, status: e.status, kind: e.kind, shownFields },
     })
   }
   for (const n of diagram.notes) {
@@ -254,4 +288,63 @@ export function renameDiagram(model: Model, id: string, name: string): Model {
 
 export function deleteDiagram(model: Model, id: string): Model {
   return { ...model, diagrams: model.diagrams.filter((d) => d.id !== id) }
+}
+
+export function fieldVisible(placement: Placement | undefined, entity: Entity, template: Template | undefined, key: string): boolean {
+  const po = placement?.fieldShow?.[key]
+  if (po !== undefined) return po
+  const ef = entity.fields.find((f) => f.key === key)?.showOnNode
+  if (ef !== undefined) return ef
+  const tf = template?.fields.find((f) => f.key === key)?.showOnNode
+  if (tf !== undefined) return tf
+  return false
+}
+
+export function addTemplate(model: Model, name: string): { model: Model; id: string } {
+  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
+  const existing = new Set(model.templates.map((t) => t.id))
+  let id = `t-${slug}`
+  for (let n = 2; existing.has(id); n++) id = `t-${slug}-${n}`
+  const t: Template = { id, name, fields: [] }
+  return { model: { ...model, templates: [...model.templates, t] }, id }
+}
+
+export function updateTemplate(model: Model, id: string, patch: Partial<Omit<Template, 'id'>>): Model {
+  return { ...model, templates: model.templates.map((t) => (t.id === id ? { ...t, ...patch, id: t.id } : t)) }
+}
+
+export function deleteTemplate(model: Model, id: string): Model {
+  return {
+    ...model,
+    templates: model.templates.filter((t) => t.id !== id),
+    entities: model.entities.map((e) => (e.template === id ? { ...e, template: undefined } : e)),
+  }
+}
+
+export function applyTemplate(entity: Entity, template: Template): Entity {
+  const have = new Set(entity.fields.map((f) => f.key))
+  const added = template.fields.filter((tf) => !have.has(tf.key)).map((tf) => ({ key: tf.key, value: tf.default ?? '' }))
+  return { ...entity, template: template.id, icon: entity.icon ?? template.icon, fields: [...entity.fields, ...added] }
+}
+
+export function setEntityFields(model: Model, entityId: string, fields: EntityField[]): Model {
+  return { ...model, entities: model.entities.map((e) => (e.id === entityId ? { ...e, fields } : e)) }
+}
+
+export function setFieldShow(model: Model, diagramId: string, entityId: string, key: string, value: boolean | undefined): Model {
+  return {
+    ...model,
+    diagrams: model.diagrams.map((d) =>
+      d.id !== diagramId ? d : {
+        ...d,
+        placements: d.placements.map((p) => {
+          if (p.entityId !== entityId) return p
+          const fs = { ...(p.fieldShow ?? {}) }
+          if (value === undefined) delete fs[key]
+          else fs[key] = value
+          return { ...p, fieldShow: fs }
+        }),
+      },
+    ),
+  }
 }

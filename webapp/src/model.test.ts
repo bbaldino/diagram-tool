@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildDiagramGraph, entitiesById, migrateFromGraph, updateEntity, deleteEntity, removePlacement, addDiagram, deleteDiagram, type Model } from './model'
+import { buildDiagramGraph, entitiesById, migrateFromGraph, updateEntity, deleteEntity, removePlacement, addDiagram, deleteDiagram, normalizeModel, fieldVisible, addTemplate, deleteTemplate, applyTemplate, setEntityFields, setFieldShow, type Model, type Entity, type Template, type Placement } from './model'
 
 const model: Model = {
   version: 1,
+  templates: [],
   entities: [
-    { id: 'plex', label: 'Plex' },
-    { id: 'sonarr', label: 'Sonarr' },
+    { id: 'plex', label: 'Plex', fields: [] },
+    { id: 'sonarr', label: 'Sonarr', fields: [] },
   ],
   diagrams: [],
 }
@@ -49,7 +50,7 @@ describe('migrateFromGraph', () => {
 })
 
 describe('buildDiagramGraph', () => {
-  const byId = { plex: { id: 'plex', label: 'Plex', icon: 'plex', sub: ':32400', status: 'up' as const }, users: { id: 'users', label: 'Internet users', kind: 'actor' as const } }
+  const byId = { plex: { id: 'plex', label: 'Plex', icon: 'plex', sub: ':32400', status: 'up' as const, fields: [] }, users: { id: 'users', label: 'Internet users', kind: 'actor' as const, fields: [] } }
   const diagram = {
     id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas' as const,
     groups: [{ id: 'media', label: 'Media', color: '#2f6fed', position: { x: 0, y: 0 }, size: { width: 400, height: 200 } }],
@@ -77,10 +78,23 @@ describe('buildDiagramGraph', () => {
   })
 })
 
+describe('buildDiagramGraph shownFields', () => {
+  const templates = [{ id: 't', name: 'C', fields: [{ key: 'image', showOnNode: true }] }]
+  const byId = { plex: { id: 'plex', label: 'Plex', template: 't', fields: [{ key: 'image', value: 'lscr/plex' }, { key: 'ip', value: '10.0.0.5', showOnNode: true }, { key: 'note', value: 'hi' }] } }
+  const diagram = { id: 'd', name: 'D', title: 'D', type: 'canvas' as const, groups: [], notes: [], edges: [],
+    placements: [{ entityId: 'plex', position: { x: 0, y: 0 }, parentId: null, fieldShow: { ip: false } }] }
+  it('passes only visible fields, in order', () => {
+    const { nodes } = buildDiagramGraph(diagram as any, byId as any, templates as any)
+    const plex = nodes.find((n) => n.id === 'plex')!
+    expect((plex.data as any).shownFields).toEqual([{ key: 'image', value: 'lscr/plex' }]) // template shows image; placement hid ip; note default off
+  })
+})
+
 describe('model mutations', () => {
   const base: Model = {
     version: 1,
-    entities: [{ id: 'plex', label: 'Plex' }, { id: 'users', label: 'Users', kind: 'actor' }],
+    templates: [],
+    entities: [{ id: 'plex', label: 'Plex', fields: [] }, { id: 'users', label: 'Users', kind: 'actor', fields: [] }],
     diagrams: [{
       id: 'logical', name: 'Logical', title: 'Logical', type: 'canvas',
       placements: [{ entityId: 'plex', position: { x: 0, y: 0 }, parentId: null }, { entityId: 'users', position: { x: 1, y: 1 }, parentId: null }],
@@ -130,5 +144,69 @@ describe('model mutations', () => {
     const third = addDiagram(second.model, 'Topology', 'canvas')
     expect(third.id).not.toBe(second.id)
     expect(third.model.diagrams.map((d) => d.id)).toEqual(['logical', 'd-topology', 'd-topology-2'])
+  })
+})
+
+describe('normalizeModel', () => {
+  it('fills new fields with safe defaults', () => {
+    const m = normalizeModel({ version: 1, entities: [{ id: 'plex', label: 'Plex' }], diagrams: [] })
+    expect(m.templates).toEqual([])
+    expect(m.entities[0].fields).toEqual([])
+  })
+})
+
+describe('fieldVisible cascade', () => {
+  const tmpl: Template = { id: 't', name: 'Container', fields: [{ key: 'image', showOnNode: true }, { key: 'port' }] }
+  const ent: Entity = { id: 'e', label: 'E', template: 't', fields: [{ key: 'image', value: 'x' }, { key: 'ip', value: '1.2.3.4', showOnNode: true }, { key: 'port', value: '80' }] }
+  it('template default applies when nothing overrides', () => {
+    expect(fieldVisible(undefined, ent, tmpl, 'image')).toBe(true)   // template says show
+    expect(fieldVisible(undefined, ent, tmpl, 'port')).toBe(false)   // template default false
+  })
+  it('entity default overrides template', () => {
+    expect(fieldVisible(undefined, ent, tmpl, 'ip')).toBe(true)      // entity showOnNode
+  })
+  it('placement override wins', () => {
+    const p: Placement = { entityId: 'e', position: { x: 0, y: 0 }, fieldShow: { image: false, port: true } }
+    expect(fieldVisible(p, ent, tmpl, 'image')).toBe(false)          // placement hides what template showed
+    expect(fieldVisible(p, ent, tmpl, 'port')).toBe(true)           // placement shows what template hid
+  })
+  it('defaults to false with no signal', () => {
+    expect(fieldVisible(undefined, { id: 'x', label: 'X', fields: [{ key: 'a', value: 'b' }] }, undefined, 'a')).toBe(false)
+  })
+})
+
+describe('template + field helpers', () => {
+  const base = { version: 1, templates: [], entities: [{ id: 'e', label: 'E', fields: [] }], diagrams: [] } as any
+  it('addTemplate returns unique id and appends', () => {
+    const { model, id } = addTemplate(base, 'Container')
+    expect(model.templates.find((t: any) => t.id === id)?.name).toBe('Container')
+  })
+  it('applyTemplate seeds fields + icon + template id (soft, no dupes)', () => {
+    const tmpl = { id: 't', name: 'C', icon: 'docker', fields: [{ key: 'image', default: 'nginx' }, { key: 'port' }] }
+    const e = applyTemplate({ id: 'e', label: 'E', fields: [{ key: 'image', value: 'keep' }] } as any, tmpl as any)
+    expect(e.template).toBe('t'); expect(e.icon).toBe('docker')
+    expect(e.fields).toEqual([{ key: 'image', value: 'keep' }, { key: 'port', value: '' }]) // existing image kept, port added
+  })
+  it('deleteTemplate clears entity.template references', () => {
+    const m = { ...base, templates: [{ id: 't', name: 'C', fields: [] }], entities: [{ id: 'e', label: 'E', template: 't', fields: [] }] }
+    const out = deleteTemplate(m as any, 't')
+    expect(out.templates).toHaveLength(0)
+    expect(out.entities[0].template).toBeUndefined()
+  })
+  it('setEntityFields replaces an entity\'s fields immutably', () => {
+    const out = setEntityFields(base, 'e', [{ key: 'a', value: 'b', showOnNode: true }])
+    expect(out.entities[0].fields).toEqual([{ key: 'a', value: 'b', showOnNode: true }])
+    expect(base.entities[0].fields).toEqual([])
+  })
+})
+
+describe('setFieldShow', () => {
+  const m = { version: 1, templates: [], entities: [], diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas', groups: [], edges: [], notes: [],
+    placements: [{ entityId: 'e', position: { x: 0, y: 0 } }] }] } as any
+  it('sets and clears an override', () => {
+    const on = setFieldShow(m, 'd', 'e', 'ip', true)
+    expect(on.diagrams[0].placements[0].fieldShow).toEqual({ ip: true })
+    const cleared = setFieldShow(on, 'd', 'e', 'ip', undefined)
+    expect(cleared.diagrams[0].placements[0].fieldShow).toEqual({})
   })
 })

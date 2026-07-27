@@ -3,3 +3,4 @@ webapp/node_modules/
 webapp/dist/
 .playwright-mcp/
 *.log
+webapp/model.json

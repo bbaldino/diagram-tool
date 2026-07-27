@@ -43,7 +43,7 @@ export function Palette({ entities, placedIds, onPlace, onCreate }: Props) {
     if (!label) return
     const existingIds = new Set(entities.map((e) => e.id))
     const id = uniqueId(slugify(label), existingIds)
-    onCreate({ id, label })
+    onCreate({ id, label, fields: [] })
   }
 
   if (collapsed) {

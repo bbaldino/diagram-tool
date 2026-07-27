@@ -39,6 +39,13 @@ export function ServiceNode({ data, selected }: NodeProps) {
           <div className={`node__status status-${d.status}`} title={d.status} />
         ) : null}
       </div>
+      {Array.isArray((d as any).shownFields) && (d as any).shownFields.length > 0 && (
+        <div className="node__fields">
+          {(d as any).shownFields.map((f: { key: string; value: string }) => (
+            <div className="node__field" key={f.key}><span className="node__field-k">{f.key}</span>{f.value}</div>
+          ))}
+        </div>
+      )}
       <Handle type="source" position={Position.Right} />
     </div>
   )

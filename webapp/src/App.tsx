@@ -31,6 +31,7 @@ import {
 import { Inspector } from './Inspector'
 import { DiagramBar } from './DiagramBar'
 import { Palette } from './Palette'
+import { EntitiesPage } from './EntitiesPage'
 import {
   loadModel,
   saveModel,
@@ -46,6 +47,8 @@ import {
   addDiagram,
   renameDiagram,
   deleteDiagram,
+  fieldVisible,
+  setFieldShow,
   type Model,
   type DEdge,
   type Entity,
@@ -112,8 +115,21 @@ function edgesToDEdges(edges: Edge[]): DEdge[] {
 // of the debounced write-back; call it before any model mutation so pending
 // canvas edits aren't lost when the canvas is rebuilt from `model`.
 function flushCanvasInto(m: Model, diagramId: string, nodes: Node[], edges: Edge[]): Model {
+  // The canvas carries only geometry, so nodesToDiagramParts can't know about
+  // per-diagram field overrides. Re-attach each existing placement's fieldShow
+  // by entityId so the write-back doesn't wipe them.
+  const prevFieldShow = new Map(
+    (getDiagram(m, diagramId)?.placements ?? []).map((p) => [p.entityId, p.fieldShow]),
+  )
+  const parts = nodesToDiagramParts(nodes)
+  const placements = parts.placements.map((p) => {
+    const fs = prevFieldShow.get(p.entityId)
+    return fs ? { ...p, fieldShow: fs } : p
+  })
   let next = patchDiagram(m, diagramId, {
-    ...nodesToDiagramParts(nodes),
+    groups: parts.groups,
+    notes: parts.notes,
+    placements,
     edges: edgesToDEdges(edges),
   })
   const known = new Set(m.entities.map((e) => e.id))
@@ -127,17 +143,24 @@ function flushCanvasInto(m: Model, diagramId: string, nodes: Node[], edges: Edge
       status: data.status,
       kind: data.kind,
     }
-    next = known.has(n.id) ? updateEntity(next, n.id, patch) : addEntity(next, { id: n.id, ...patch })
+    next = known.has(n.id) ? updateEntity(next, n.id, patch) : addEntity(next, { id: n.id, ...patch, fields: [] })
   }
   return next
 }
 
-function Flow() {
+function Flow({
+  model,
+  setModel,
+  activeId,
+  setActiveId,
+}: {
+  model: Model
+  setModel: React.Dispatch<React.SetStateAction<Model>>
+  activeId: string
+  setActiveId: (id: string) => void
+}) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
-  const [model, setModel] = useState<Model | null>(null)
-  const [activeId, setActiveId] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
@@ -168,23 +191,6 @@ function Flow() {
     [active],
   )
 
-  // Load the shared model once on mount; pick the active diagram from
-  // localStorage (validated against the model) or fall back to the first.
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      const m = await loadModel()
-      if (cancelled) return
-      const stored = localStorage.getItem(ACTIVE_KEY)
-      const id = m.diagrams.find((d) => d.id === stored)?.id ?? m.diagrams[0]?.id ?? null
-      setModel(m)
-      setActiveId(id)
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [])
-
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came
   // from our own write-back so live drags aren't clobbered.
@@ -196,19 +202,25 @@ function Flow() {
     }
     const d = getDiagram(model, activeId)
     if (!d) return
-    const built = buildDiagramGraph(d, byId)
+    const built = buildDiagramGraph(d, byId, model.templates)
+    const changed = lastSeededId.current !== activeId
     const sel = pendingSelect.current
     pendingSelect.current = null
-    setNodes(
-      sel
-        ? groupsFirst(built.nodes).map((n) => ({ ...n, selected: n.id === sel }))
-        : groupsFirst(built.nodes),
-    )
+    setNodes((ns) => {
+      // Preserve selection across same-diagram model-driven re-seeds (e.g.
+      // toggling a field override) — without this, rebuilt nodes lose
+      // `selected`, React Flow clears selection, and onSelectionChange
+      // collapses the Inspector. On a diagram SWITCH, clear selection instead:
+      // the previously-selected id may also exist in the new diagram and
+      // would otherwise pop the Inspector open for a node the user never
+      // picked in this diagram.
+      const keepId = sel ?? (changed ? null : (ns.find((n) => n.selected)?.id ?? null))
+      const base = groupsFirst(built.nodes)
+      return keepId ? base.map((n) => ({ ...n, selected: n.id === keepId })) : base
+    })
     setEdges(built.edges)
     setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
     loaded.current = true
-    setSaveState('saved')
-    const changed = lastSeededId.current !== activeId
     lastSeededId.current = activeId
     if (changed) setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
     // Newly placed/created entity: select it + center so it's obvious it landed.
@@ -235,23 +247,12 @@ function Flow() {
     if (!loaded.current || !activeId) return
     const t = setTimeout(() => {
       setModel((m) => {
-        if (!m) return m
         skipReseed.current = true
         return flushCanvasInto(m, activeId, nodes, edges)
       })
     }, 400)
     return () => clearTimeout(t)
   }, [nodes, edges, activeId])
-
-  // Autosave the whole model (debounced) once the initial load is done.
-  useEffect(() => {
-    if (!loaded.current || !model) return
-    setSaveState('saving')
-    const t = setTimeout(() => {
-      saveModel(model).then((ok) => setSaveState(ok ? 'saved' : 'error'))
-    }, 500)
-    return () => clearTimeout(t)
-  }, [model])
 
   const onSelectionChange = useCallback(
     ({ nodes: sn, edges: se }: { nodes: Node[]; edges: Edge[] }) => {
@@ -301,8 +302,8 @@ function Flow() {
       const m = deleteDiagram(base, id)
       setModel(m)
       if (id === activeId) {
-        const rest = m.diagrams
-        setActiveId(rest[0]?.id ?? null)
+        const nextId = m.diagrams[0]?.id
+        setActiveId(nextId ?? null)
       }
     },
     [model, activeId, nodes, edges],
@@ -476,7 +477,8 @@ function Flow() {
           const parsed = JSON.parse(t)
           if (Array.isArray(parsed?.entities) && Array.isArray(parsed?.diagrams)) {
             setModel(parsed as Model)
-            setActiveId(parsed.diagrams[0]?.id ?? null)
+            const nextId = parsed.diagrams[0]?.id
+            if (nextId) setActiveId(nextId)
           }
         } catch {
           /* ignore bad file */
@@ -597,23 +599,36 @@ function Flow() {
     [nodes],
   )
 
-  const saveLabel =
-    saveState === 'saving'
-      ? '● saving…'
-      : saveState === 'saved'
-        ? '✓ saved to model.json'
-        : saveState === 'error'
-          ? '⚠ not saved (no server)'
-          : ''
-  const saveColor =
-    saveState === 'error' ? '#dc2626' : saveState === 'saving' ? '#d97706' : '#16a34a'
+  const selEntity = selNode ? byId[selNode] : undefined
+  const selPlacement = active?.placements.find((p) => p.entityId === selNode)
+  const selTemplate = selEntity?.template
+    ? model.templates.find((t) => t.id === selEntity.template)
+    : undefined
+  const inspectorFields = useMemo(
+    () =>
+      selEntity
+        ? selEntity.fields.map((f) => ({
+            key: f.key,
+            value: f.value,
+            effective: fieldVisible(selPlacement, selEntity, selTemplate, f.key),
+            overridden: selPlacement?.fieldShow?.[f.key] !== undefined,
+          }))
+        : [],
+    [selEntity, selPlacement, selTemplate],
+  )
+  const onFieldShow = useCallback(
+    (key: string, value: boolean | undefined) => {
+      if (activeId && selNode) setModel((m) => setFieldShow(m, activeId, selNode, key, value))
+    },
+    [activeId, selNode, setModel],
+  )
 
   const groupEditing = selectedNode?.type === 'group'
   return (
     <div
       ref={wrapperRef}
       className={groupEditing ? 'group-editing' : undefined}
-      style={{ width: '100vw', height: '100vh' }}
+      style={{ width: '100vw', height: 'calc(100vh - 40px)' }}
       onMouseMove={(e) => {
         pointer.current = { x: e.clientX, y: e.clientY }
       }}
@@ -654,7 +669,6 @@ function Flow() {
             <button onClick={exportJson}>Export</button>
             <button onClick={() => fileRef.current?.click()}>Import</button>
             <button onClick={reset}>Reset</button>
-            <span style={{ marginLeft: 8, fontSize: 11, color: saveColor }}>{saveLabel}</span>
             <input
               ref={fileRef}
               type="file"
@@ -676,6 +690,8 @@ function Flow() {
             onDelete={deleteSelected}
             onRemoveFromDiagram={removeFromDiagram}
             onDeleteEntity={removeEntityEverywhere}
+            fields={inspectorFields}
+            onFieldShow={onFieldShow}
           />
         </Panel>
 
@@ -732,9 +748,97 @@ function Flow() {
 }
 
 export default function App() {
+  const [model, setModel] = useState<Model | null>(null)
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [view, setView] = useState<'diagrams' | 'entities'>('diagrams')
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  // Becomes true once the initial model load has completed, so the autosave
+  // effect below doesn't fire before there's anything to save.
+  const loaded = useRef(false)
+
+  // Load the shared model once on mount; pick the active diagram from
+  // localStorage (validated against the model) or fall back to the first.
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      const m = await loadModel()
+      if (cancelled) return
+      const stored = localStorage.getItem(ACTIVE_KEY)
+      const id = m.diagrams.find((d) => d.id === stored)?.id ?? m.diagrams[0]?.id ?? null
+      setModel(m)
+      setActiveId(id)
+      loaded.current = true
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Autosave the whole model (debounced) once the initial load is done.
+  useEffect(() => {
+    if (!loaded.current || !model) return
+    setSaveState('saving')
+    const t = setTimeout(() => {
+      saveModel(model).then((ok) => setSaveState(ok ? 'saved' : 'error'))
+    }, 500)
+    return () => clearTimeout(t)
+  }, [model])
+
+  const handleSetActive = useCallback((id: string) => setActiveId(id), [])
+  // App owns the model, so setModel here is typed against a non-null Model;
+  // Flow/EntitiesPage receive it once model has loaded (never null below).
+  const setModelNonNull = setModel as React.Dispatch<React.SetStateAction<Model>>
+
+  const saveLabel =
+    saveState === 'saving'
+      ? '● saving…'
+      : saveState === 'saved'
+        ? '✓ saved to model.json'
+        : saveState === 'error'
+          ? '⚠ not saved (no server)'
+          : ''
+  const saveColor =
+    saveState === 'error' ? '#dc2626' : saveState === 'saving' ? '#d97706' : '#16a34a'
+
   return (
-    <ReactFlowProvider>
-      <Flow />
-    </ReactFlowProvider>
+    <>
+      <div className="tabbar">
+        <button
+          className={view === 'diagrams' ? 'active' : ''}
+          onClick={() => setView('diagrams')}
+        >
+          Diagrams
+        </button>
+        <button
+          className={view === 'entities' ? 'active' : ''}
+          onClick={() => setView('entities')}
+        >
+          Entities
+        </button>
+        <span className="tabbar__save" style={{ color: saveColor }}>
+          {saveLabel}
+        </span>
+      </div>
+      {!model ? null : view === 'diagrams' ? (
+        <ReactFlowProvider>
+          <Flow
+            model={model}
+            setModel={setModelNonNull}
+            activeId={activeId!}
+            setActiveId={handleSetActive}
+          />
+        </ReactFlowProvider>
+      ) : (
+        <EntitiesPage
+          model={model}
+          setModel={setModelNonNull}
+          onJump={(id) => {
+            setActiveId(id)
+            localStorage.setItem(ACTIVE_KEY, id)
+            setView('diagrams')
+          }}
+        />
+      )}
+    </>
   )
 }

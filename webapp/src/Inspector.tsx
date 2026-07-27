@@ -14,6 +14,8 @@ interface Props {
   onDelete: () => void
   onRemoveFromDiagram: () => void
   onDeleteEntity: () => void
+  fields: { key: string; value: string; effective: boolean; overridden: boolean }[]
+  onFieldShow: (key: string, value: boolean | undefined) => void
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -38,6 +40,8 @@ export function Inspector({
   onDelete,
   onRemoveFromDiagram,
   onDeleteEntity,
+  fields,
+  onFieldShow,
 }: Props) {
   // ----- edge selected -----
   if (edge && !node) {
@@ -180,6 +184,32 @@ export function Inspector({
             ))}
           </select>
         </Field>
+        {fields.length > 0 && (
+          <div className="insp__fields">
+            <div className="insp__fields-title">Fields on this node</div>
+            {fields.map((f) => (
+              <div className="insp__fields-row" key={f.key}>
+                <label className="insp__check insp__fields-check">
+                  <input
+                    type="checkbox"
+                    checked={f.effective}
+                    onChange={(e) => onFieldShow(f.key, e.target.checked)}
+                  />
+                  <span>{f.key}</span>
+                </label>
+                {f.overridden && (
+                  <button
+                    type="button"
+                    className="insp__fields-reset"
+                    onClick={() => onFieldShow(f.key, undefined)}
+                  >
+                    reset
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
         <button className="insp__action" onClick={onRemoveFromDiagram}>
           Remove from this diagram
         </button>
