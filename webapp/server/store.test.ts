@@ -202,8 +202,8 @@ describe('store history persistence', () => {
       d: {
         pointer: 1,
         entries: [
-          { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
-          { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
+          { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+          { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
         ],
       },
     }

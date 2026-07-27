@@ -15,6 +15,7 @@ import {
   renameDiagram,
   deleteDiagram,
   setFieldShow,
+  diagramContent,
   type Model,
 } from './model'
 
@@ -164,14 +165,51 @@ describe('diffDiagramContents (exported)', () => {
   it('emits a single placement.set for a moved node', () => {
     const prev = {
       placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
-      groups: [], edges: [], notes: [],
+      groups: [], edges: [], notes: [], flows: [],
     }
     const next = {
       placements: [{ entityId: 'e1', position: { x: 100, y: 40 } }],
-      groups: [], edges: [], notes: [],
+      groups: [], edges: [], notes: [], flows: [],
     }
     expect(diffDiagramContents('d1', prev, next)).toEqual([
       { t: 'placement.set', diagramId: 'd1', entityId: 'e1', patch: { position: { x: 100, y: 40 } } },
     ])
+  })
+})
+
+describe('flows data layer', () => {
+  const base = {
+    version: 1, templates: [], entities: [],
+    diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
+      placements: [], groups: [], edges: [], notes: [] }],
+  }
+  const flow = { id: 'f1', name: 'Doorbell', steps: [{ id: 's1', elementIds: ['a'], caption: 'press' }] }
+
+  it('adds a flow via diff -> flow.add and applyOps', () => {
+    const next = structuredClone(base); (next.diagrams[0] as any).flows = [flow]
+    const ops = diffToOps(base, next)
+    expect(ops).toContainEqual({ t: 'flow.add', diagramId: 'd', flow })
+    expect((applyOps(base, ops).diagrams[0] as any).flows).toEqual([flow])
+  })
+
+  it('updates a flow (steps change) via flow.update patch', () => {
+    const withFlow = structuredClone(base); (withFlow.diagrams[0] as any).flows = [flow]
+    const next = structuredClone(withFlow)
+    ;(next.diagrams[0] as any).flows[0].steps.push({ id: 's2', elementIds: ['b'], caption: 'to cam' })
+    const ops = diffToOps(withFlow, next)
+    expect(ops.some((o) => o.t === 'flow.update' && (o as any).id === 'f1')).toBe(true)
+    expect((applyOps(withFlow, ops).diagrams[0] as any).flows[0].steps).toHaveLength(2)
+  })
+
+  it('removes a flow via flow.remove', () => {
+    const withFlow = structuredClone(base); (withFlow.diagrams[0] as any).flows = [flow]
+    const ops = diffToOps(withFlow, base)
+    expect(ops).toContainEqual({ t: 'flow.remove', diagramId: 'd', id: 'f1' })
+    expect((applyOps(withFlow, ops).diagrams[0] as any).flows).toEqual([])
+  })
+
+  it('diagramContent includes flows (undo snapshot)', () => {
+    const d = { ...base.diagrams[0], flows: [flow] }
+    expect(diagramContent(d as any).flows).toEqual([flow])
   })
 })

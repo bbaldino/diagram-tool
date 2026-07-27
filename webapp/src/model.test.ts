@@ -270,7 +270,7 @@ describe('diagramContent', () => {
     }
     expect(diagramContent(d)).toEqual({
       placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
-      groups: [], edges: [], notes: [],
+      groups: [], edges: [], notes: [], flows: [],
     })
   })
 })

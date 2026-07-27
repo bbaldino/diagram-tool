@@ -1,5 +1,6 @@
 import type { Op } from './ops'
-import type { Model, Diagram, Placement, Group, Note, DEdge, DiagramContent } from './model'
+import type { Model, Diagram, Placement, Group, Note, DEdge, Flow, DiagramContent } from './model'
+import { diagramContent } from './model'
 
 const changed = (a: unknown, b: unknown): boolean => JSON.stringify(a) !== JSON.stringify(b)
 
@@ -97,6 +98,15 @@ export function diffDiagramContents(diagramId: string, prev: DiagramContent, nex
       (id) => ({ t: 'edge.remove', diagramId, id }),
     ),
   )
+  ops.push(
+    ...diffById<Flow>(
+      prev.flows,
+      next.flows,
+      (f) => ({ t: 'flow.add', diagramId, flow: f }),
+      (id, patch) => ({ t: 'flow.update', diagramId, id, patch }),
+      (id) => ({ t: 'flow.remove', diagramId, id }),
+    ),
+  )
   return ops
 }
 
@@ -160,8 +170,8 @@ export function diffToOps(prev: Model, next: Model): Op[] {
   // diagrams diff against an empty shell so their initial placements/groups/notes/edges
   // still get emitted (diagram.add only creates an empty diagram).
   for (const d of next.diagrams) {
-    const before = prevDiagrams.get(d.id) ?? { ...d, placements: [], groups: [], edges: [], notes: [] }
-    ops.push(...diffDiagramContents(d.id, before, d))
+    const before = prevDiagrams.get(d.id) ?? { ...d, placements: [], groups: [], edges: [], notes: [], flows: [] }
+    ops.push(...diffDiagramContents(d.id, diagramContent(before), diagramContent(d)))
   }
 
   return ops
