@@ -31,6 +31,7 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
+import { FlowPanel } from './FlowPanel'
 import { DiagramBar } from './DiagramBar'
 import { Palette } from './Palette'
 import { EntitiesPage } from './EntitiesPage'
@@ -431,6 +432,25 @@ function Flow({
       }
     },
     [activeId, currentFlowId, setModel],
+  )
+
+  const toggleInStep = useCallback(
+    (elementId: string) => {
+      if (flowMode !== 'edit' || !currentFlow || !activeId) return
+      if (!currentFlow.steps[selStep]) return
+      const steps = currentFlow.steps.map((s, i) =>
+        i !== selStep
+          ? s
+          : {
+              ...s,
+              elementIds: s.elementIds.includes(elementId)
+                ? s.elementIds.filter((x) => x !== elementId)
+                : [...s.elementIds, elementId],
+            },
+      )
+      setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))
+    },
+    [flowMode, currentFlow, activeId, selStep, setModel],
   )
 
   // ---- palette handlers ----
@@ -840,6 +860,8 @@ function Flow({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onSelectionChange={onSelectionChange}
+        onNodeClick={(_, n) => toggleInStep(n.id)}
+        onEdgeClick={(_, e) => toggleInStep(e.id)}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -922,23 +944,34 @@ function Flow({
               onChange={onImport}
             />
           </div>
-          <Inspector
-            node={selectedNode}
-            edge={selectedEdge}
-            groups={groupList}
-            onNodeData={updateNodeData}
-            onNodeParent={reparent}
-            onEdge={updateEdge}
-            onDistribute={distributeGroup}
-            onShrink={shrinkGroup}
-            onGroupSize={setGroupSize}
-            onDelete={deleteSelected}
-            onRemoveFromDiagram={removeFromDiagram}
-            onDeleteEntity={removeEntityEverywhere}
-            fields={inspectorFields}
-            onFieldShow={onFieldShow}
-            diagramColors={diagramColors}
-          />
+          {flowMode !== 'none' && currentFlow ? (
+            <FlowPanel
+              flow={currentFlow}
+              mode={flowMode === 'edit' ? 'edit' : 'play'}
+              selStep={flowMode === 'edit' ? selStep : currentStep}
+              onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
+              onChange={(steps) => activeId && setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))}
+              onExit={() => setFlowMode('none')}
+            />
+          ) : (
+            <Inspector
+              node={selectedNode}
+              edge={selectedEdge}
+              groups={groupList}
+              onNodeData={updateNodeData}
+              onNodeParent={reparent}
+              onEdge={updateEdge}
+              onDistribute={distributeGroup}
+              onShrink={shrinkGroup}
+              onGroupSize={setGroupSize}
+              onDelete={deleteSelected}
+              onRemoveFromDiagram={removeFromDiagram}
+              onDeleteEntity={removeEntityEverywhere}
+              fields={inspectorFields}
+              onFieldShow={onFieldShow}
+              diagramColors={diagramColors}
+            />
+          )}
         </Panel>
 
         <Panel position="top-left" className="stack-tl">

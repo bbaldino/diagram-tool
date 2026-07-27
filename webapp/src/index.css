@@ -242,6 +242,50 @@ input, textarea, [contenteditable="true"] {
 }
 .insp__fields-reset:hover { background: #f1f5f9; }
 
+/* ---------- FlowPanel ---------- */
+.flowpanel { width: 240px; }
+.flowpanel .insp__hint { font-size: 11.5px; color: #64748b; line-height: 1.45; margin-bottom: 10px; }
+.flowstep {
+  position: relative; cursor: pointer; margin-bottom: 8px; padding: 7px 8px 7px 10px;
+  border: 1px solid #e2e8f0; border-radius: 8px; background: #f8fafc;
+}
+.flowstep:hover { background: #f1f5f9; }
+.flowstep.sel { background: #eef2ff; border-color: #c7d2fe; }
+.flowstep.sel::before {
+  content: ''; position: absolute; top: 6px; bottom: 6px; left: 0; width: 3px;
+  border-radius: 2px; background: #4f46e5;
+}
+.flowstep__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+.flowstep__num { font-size: 11px; font-weight: 700; color: #4f46e5; }
+.flowstep__ctl { display: flex; gap: 3px; }
+.flowstep__ctl button {
+  font: inherit; font-size: 11px; line-height: 1; cursor: pointer;
+  border: 1px solid #cbd5e1; background: #fff; color: #475569;
+  border-radius: 5px; padding: 3px 5px;
+}
+.flowstep__ctl button:hover { background: #f1f5f9; }
+.flowstep__cap {
+  font: inherit; font-size: 12px; padding: 5px 7px; width: 100%; box-sizing: border-box;
+  border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937; margin-bottom: 6px;
+}
+.flowstep__capview { font-size: 11.5px; color: #475569; margin-bottom: 6px; }
+.flowstep__chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.flowstep__chip {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; color: #4f46e5;
+  background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 2px 6px;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.flowstep__chip button {
+  font: inherit; font-size: 11px; line-height: 1; cursor: pointer; padding: 0;
+  border: none; background: transparent; color: #4f46e5;
+}
+.flowstep__empty { font-size: 10.5px; color: #94a3b8; }
+.flowstep__add {
+  font: inherit; font-size: 12px; cursor: pointer; width: 100%;
+  border: 1px solid #cbd5e1; background: #f8fafc; color: #1f2937; border-radius: 8px; padding: 6px 10px; margin-bottom: 8px;
+}
+.flowstep__add:hover { background: #f1f5f9; }
+
 /* ---------- Palette ---------- */
 .palette { width: 220px; display: flex; flex-direction: column; }
 .palette__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
