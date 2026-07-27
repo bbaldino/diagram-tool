@@ -1,5 +1,6 @@
 import { ICON_BASE } from './graph'
 import { addTemplate, deleteTemplate, updateTemplate, type Model, type Template, type TemplateField } from './model'
+import { useDialogs } from './Dialog'
 
 interface Props {
   model: Model
@@ -7,8 +8,9 @@ interface Props {
 }
 
 export function Templates({ model, setModel }: Props) {
-  const handleNew = () => {
-    const name = prompt('New template name?')?.trim()
+  const { showPrompt } = useDialogs()
+  const handleNew = async () => {
+    const name = (await showPrompt({ title: 'New template', label: 'Name', placeholder: 'e.g. Docker service' }))?.trim()
     if (!name) return
     setModel((m) => addTemplate(m, name).model)
   }
@@ -38,6 +40,7 @@ function TemplateRow({
   template: Template
   setModel: React.Dispatch<React.SetStateAction<Model>>
 }) {
+  const { showConfirm } = useDialogs()
   const patch = (p: Partial<Omit<Template, 'id'>>) => setModel((m) => updateTemplate(m, template.id, p))
   const setFields = (fields: TemplateField[]) => patch({ fields })
 
@@ -51,10 +54,12 @@ function TemplateRow({
     setFields([...template.fields, { key: '', showOnNode: true }])
   }
 
-  const handleDelete = () => {
-    const ok = confirm(
-      `Delete template "${template.name}"? Entities using it will keep their fields but lose the template link.`,
-    )
+  const handleDelete = async () => {
+    const ok = await showConfirm({
+      title: `Delete template “${template.name}”?`,
+      message: 'Entities using it keep their fields but lose the template link.',
+      danger: true,
+    })
     if (!ok) return
     setModel((m) => deleteTemplate(m, template.id))
   }

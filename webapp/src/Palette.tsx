@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { ICON_BASE } from './graph'
 import type { Entity } from './model'
+import { useDialogs } from './Dialog'
 
 interface Props {
   entities: Entity[]
@@ -26,6 +27,7 @@ function uniqueId(base: string, existing: Set<string>): string {
 }
 
 export function Palette({ entities, placedIds, onPlace, onCreate }: Props) {
+  const { showPrompt } = useDialogs()
   const [search, setSearch] = useState('')
   const [collapsed, setCollapsed] = useState(false)
 
@@ -38,8 +40,8 @@ export function Palette({ entities, placedIds, onPlace, onCreate }: Props) {
     )
   }, [entities, search])
 
-  const handleCreate = () => {
-    const label = prompt('New entity label?')?.trim()
+  const handleCreate = async () => {
+    const label = (await showPrompt({ title: 'New entity', label: 'Label', placeholder: 'e.g. Grafana' }))?.trim()
     if (!label) return
     const existingIds = new Set(entities.map((e) => e.id))
     const id = uniqueId(slugify(label), existingIds)

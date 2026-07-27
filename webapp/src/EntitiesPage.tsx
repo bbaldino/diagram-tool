@@ -13,6 +13,7 @@ import {
   type Template,
 } from './model'
 import { Templates } from './Templates'
+import { useDialogs } from './Dialog'
 
 interface Props {
   model: Model
@@ -37,6 +38,7 @@ function uniqueId(base: string, existing: Set<string>): string {
 }
 
 export function EntitiesPage({ model, setModel, onJump }: Props) {
+  const { showPrompt, showConfirm } = useDialogs()
   const [search, setSearch] = useState('')
   const [templateFilter, setTemplateFilter] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -78,8 +80,8 @@ export function EntitiesPage({ model, setModel, onJump }: Props) {
     [model.entities, selectedId],
   )
 
-  const handleNew = () => {
-    const label = prompt('New entity label?')?.trim()
+  const handleNew = async () => {
+    const label = (await showPrompt({ title: 'New entity', label: 'Label', placeholder: 'e.g. Grafana' }))?.trim()
     if (!label) return
     const existingIds = new Set(model.entities.map((e) => e.id))
     const id = uniqueId(slugify(label), existingIds)
@@ -87,13 +89,17 @@ export function EntitiesPage({ model, setModel, onJump }: Props) {
     setSelectedId(id)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const label = model.entities.find((e) => e.id === id)?.label ?? id
     const usedIn = usedInByEntity[id] ?? []
-    const msg = usedIn.length
-      ? `Delete "${label}"? It is used in ${usedIn.length} diagram(s) and will be removed from all of them.`
-      : `Delete "${label}"?`
-    if (!confirm(msg)) return
+    const ok = await showConfirm({
+      title: `Delete “${label}”?`,
+      message: usedIn.length
+        ? `It is used in ${usedIn.length} diagram(s) and will be removed from all of them.`
+        : 'This removes the entity from the catalog.',
+      danger: true,
+    })
+    if (!ok) return
     setModel((m) => deleteEntity(m, id))
     if (selectedId === id) setSelectedId(null)
   }

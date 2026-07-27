@@ -7,6 +7,20 @@ import {
 } from '@xyflow/react'
 import { ICON_BASE } from './graph'
 
+// Connection points on all four sides, each with a stable id so edges remember
+// which side they attach to. connectionMode="loose" (set on ReactFlow) lets any
+// point connect to any other regardless of the source/target type.
+function SideHandles() {
+  return (
+    <>
+      <Handle id="left" type="source" position={Position.Left} />
+      <Handle id="right" type="source" position={Position.Right} />
+      <Handle id="top" type="source" position={Position.Top} />
+      <Handle id="bottom" type="source" position={Position.Bottom} />
+    </>
+  )
+}
+
 function initials(label: string): string {
   return label
     .replace(/[^a-zA-Z0-9 ]/g, ' ')
@@ -22,7 +36,7 @@ export function ServiceNode({ data, selected }: NodeProps) {
   const iconUrl = d.icon ? `${ICON_BASE}/${d.icon}.svg` : null
   return (
     <div className={`node ${selected ? 'selected' : ''}`}>
-      <Handle type="target" position={Position.Left} />
+      <SideHandles />
       <div className="node__row">
         {iconUrl ? (
           <img className="node__icon" src={iconUrl} alt="" />
@@ -46,7 +60,7 @@ export function ServiceNode({ data, selected }: NodeProps) {
           ))}
         </div>
       )}
-      <Handle type="source" position={Position.Right} />
+      {(d as any).note ? <div className="node__note">{(d as any).note}</div> : null}
     </div>
   )
 }
@@ -57,7 +71,7 @@ export function NoteNode({ id, data, selected }: NodeProps) {
   return (
     <div className="note">
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
-      <Handle type="target" position={Position.Left} />
+      <SideHandles />
       <textarea
         defaultValue={d.text ?? ''}
         placeholder="note…"
@@ -69,7 +83,6 @@ export function NoteNode({ id, data, selected }: NodeProps) {
           )
         }
       />
-      <Handle type="source" position={Position.Right} />
     </div>
   )
 }
@@ -86,9 +99,8 @@ export function GroupNode({ data, selected }: NodeProps) {
         handleStyle={{ width: 20, height: 20, borderRadius: 4, border: '2px solid #fff' }}
         lineStyle={{ borderWidth: 12, opacity: 0 }}
       />
-      <Handle type="target" position={Position.Left} />
+      <SideHandles />
       <div className="group__label">{d.label}</div>
-      <Handle type="source" position={Position.Right} />
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import type { RelType } from './graph'
-import { makeEdge, restyleEdge } from './graph'
+import { makeEdge, restyleEdge, type EdgeDir } from './graph'
 import { type Node, type Edge } from '@xyflow/react'
 export type { RelType }
 
@@ -38,6 +38,7 @@ export interface Placement {
   position: { x: number; y: number }
   parentId?: string | null // group id
   fieldShow?: Record<string, boolean>
+  note?: string // inline note shown inside this entity's box, in THIS diagram only
 }
 export interface Group {
   id: string
@@ -55,6 +56,10 @@ export interface DEdge {
   inferred?: boolean
   shape?: 'default' | 'smoothstep' | 'straight'
   points?: { x: number; y: number }[]
+  sourceHandle?: string // which side of the source node ('top'|'right'|'bottom'|'left')
+  targetHandle?: string // which side of the target node
+  dir?: EdgeDir // arrowhead direction — forward (default) | backward | both
+  color?: string // per-edge color override; falls back to the relationship type color
 }
 export interface Note {
   id: string
@@ -206,14 +211,20 @@ export function buildDiagramGraph(diagram: Diagram, byId: Record<string, Entity>
       position: p.position,
       parentId: p.parentId ?? undefined,
       extent: p.parentId ? 'parent' : undefined,
-      data: { label: e.label, sub: e.sub, icon: e.icon, status: e.status, kind: e.kind, shownFields },
+      data: { label: e.label, sub: e.sub, icon: e.icon, status: e.status, kind: e.kind, shownFields, note: p.note },
     })
   }
   for (const n of diagram.notes) {
     nodes.push({ id: n.id, type: 'note', position: n.position, data: { text: n.text }, style: { width: n.size.width, height: n.size.height }, zIndex: 5 })
   }
   const edges: Edge[] = diagram.edges.map((de, i) => {
-    let edge = makeEdge(de.from, de.to, de.type, de.label, de.inferred, i)
+    // Existing edges predate multi-side handles → default to right→left forward.
+    let edge = makeEdge(de.from, de.to, de.type, de.label, de.inferred, i, {
+      sourceHandle: de.sourceHandle ?? 'right',
+      targetHandle: de.targetHandle ?? 'left',
+      dir: de.dir ?? 'forward',
+      color: de.color,
+    })
     edge.id = de.id
     edge.data = { ...edge.data, shape: de.shape ?? 'default', points: de.points }
     edge = restyleEdge(edge, de.type, !!de.inferred) // keeps id/source/target/data via spread

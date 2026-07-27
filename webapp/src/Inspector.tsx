@@ -1,5 +1,6 @@
 import { type Node, type Edge } from '@xyflow/react'
-import { REL, REL_TYPES, type RelType } from './graph'
+import { REL, type RelType, type EdgeDir } from './graph'
+import { ColorPicker } from './ColorPicker'
 
 interface Props {
   node: Node | null
@@ -7,7 +8,8 @@ interface Props {
   groups: { id: string; label: string }[]
   onNodeData: (patch: Record<string, unknown>) => void
   onNodeParent: (parentId: string) => void
-  onEdge: (patch: { type?: RelType; label?: string; inferred?: boolean }) => void
+  onEdge: (patch: { type?: RelType; label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => void
+  diagramColors: string[]
   onDistribute: () => void
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
@@ -42,25 +44,50 @@ export function Inspector({
   onDeleteEntity,
   fields,
   onFieldShow,
+  diagramColors,
 }: Props) {
   // ----- edge selected -----
   if (edge && !node) {
     const d = (edge.data ?? {}) as any
     const type = (d.rel as RelType) ?? 'talks-to'
+    const dir = (d.dir as EdgeDir) ?? 'forward'
+    const colorOverridden = typeof d.color === 'string'
+    const color = colorOverridden ? (d.color as string) : REL[type].color
+    const DIRS: { v: EdgeDir; glyph: string; title: string }[] = [
+      { v: 'forward', glyph: '→', title: 'one-way (arrow at target)' },
+      { v: 'backward', glyph: '←', title: 'reversed (arrow at source)' },
+      { v: 'both', glyph: '↔', title: 'two-way (arrows at both ends)' },
+    ]
     return (
       <div className="panel insp">
         <h4>Edit edge</h4>
         <div className="insp__sub">
           {String(edge.source)} → {String(edge.target)}
         </div>
-        <Field label="Relationship">
-          <select value={type} onChange={(e) => onEdge({ type: e.target.value as RelType })}>
-            {REL_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {REL[t].label}
-              </option>
+        <Field label="Direction">
+          <div className="insp__dir">
+            {DIRS.map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                title={o.title}
+                className={dir === o.v ? 'active' : ''}
+                onClick={() => onEdge({ dir: o.v })}
+              >
+                {o.glyph}
+              </button>
             ))}
-          </select>
+          </div>
+        </Field>
+        <Field label="Color">
+          <ColorPicker
+            value={color}
+            overridden={colorOverridden}
+            defaultLabel="default"
+            diagramColors={diagramColors}
+            onChange={(hex) => onEdge({ color: hex })}
+            onReset={() => onEdge({ color: undefined })}
+          />
         </Field>
         <Field label="Label">
           <input
@@ -183,6 +210,14 @@ export function Inspector({
               </option>
             ))}
           </select>
+        </Field>
+        <Field label="Note (this diagram)">
+          <textarea
+            className="insp__note"
+            value={d.note ?? ''}
+            placeholder="shown inside this box, on this diagram only"
+            onChange={(e) => onNodeData({ note: e.target.value || undefined })}
+          />
         </Field>
         {fields.length > 0 && (
           <div className="insp__fields">

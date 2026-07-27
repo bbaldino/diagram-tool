@@ -89,7 +89,7 @@ function edgePath(
 }
 
 export function WaypointEdge(props: EdgeProps) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerEnd, style, label, selected } = props
+  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerStart, markerEnd, style, label, selected } = props
   const { setEdges, screenToFlowPosition, getZoom } = useReactFlow()
   const shape = (data?.shape as string) || 'default'
   const points = (data?.points as Pt[]) || []
@@ -150,7 +150,7 @@ export function WaypointEdge(props: EdgeProps) {
 
   return (
     <>
-      <BaseEdge id={id} path={d} markerEnd={markerEnd} style={style} interactionWidth={26} />
+      <BaseEdge id={id} path={d} markerStart={markerStart} markerEnd={markerEnd} style={style} interactionWidth={26} />
       {label ? (
         <EdgeLabelRenderer>
           <div

@@ -10,6 +10,7 @@ import {
   useNodesState,
   useEdgesState,
   useReactFlow,
+  ConnectionMode,
   type Node,
   type Edge,
   type Connection,
@@ -27,11 +28,14 @@ import {
   GROUP_COLOR,
   parentGroup,
   type RelType,
+  type EdgeDir,
 } from './graph'
 import { Inspector } from './Inspector'
 import { DiagramBar } from './DiagramBar'
 import { Palette } from './Palette'
 import { EntitiesPage } from './EntitiesPage'
+import { CanvasAddMenu } from './CanvasAddMenu'
+import { useDialogs } from './Dialog'
 import {
   loadModel,
   saveModel,
@@ -81,7 +85,12 @@ function nodesToDiagramParts(nodes: Node[]) {
     }))
   const placements = nodes
     .filter((n) => n.type === 'service')
-    .map((n) => ({ entityId: n.id, position: n.position, parentId: n.parentId ?? null }))
+    .map((n) => ({
+      entityId: n.id,
+      position: n.position,
+      parentId: n.parentId ?? null,
+      note: ((n.data as any).note as string) || undefined,
+    }))
   const notes = nodes
     .filter((n) => n.type === 'note')
     .map((n) => ({
@@ -106,6 +115,10 @@ function edgesToDEdges(edges: Edge[]): DEdge[] {
     inferred: !!(e.data as any)?.inferred,
     shape: (e.data as any)?.shape ?? 'default',
     points: (e.data as any)?.points,
+    sourceHandle: e.sourceHandle ?? undefined,
+    targetHandle: e.targetHandle ?? undefined,
+    dir: (e.data as any)?.dir ?? 'forward',
+    color: (e.data as any)?.color ?? undefined,
   }))
 }
 
@@ -159,11 +172,19 @@ function Flow({
   activeId: string
   setActiveId: (id: string) => void
 }) {
+  const { showConfirm } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
+  // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
+  // for popup placement, flow = flow coords for the new node.
+  const [addMenu, setAddMenu] = useState<{
+    sx: number
+    sy: number
+    flow: { x: number; y: number }
+  } | null>(null)
   const rf = useReactFlow()
   const fileRef = useRef<HTMLInputElement>(null)
   const loaded = useRef(false)
@@ -311,9 +332,9 @@ function Flow({
 
   // ---- palette handlers ----
   const placeEntity = useCallback(
-    (entityId: string) => {
+    (entityId: string, at?: { x: number; y: number }) => {
       if (!model || !activeId) return
-      const pos = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
       const base = flushCanvasInto(model, activeId, nodes, edges)
       setModel(addPlacement(base, activeId, { entityId, position: pos, parentId: null }))
       pendingSelect.current = entityId
@@ -341,7 +362,10 @@ function Flow({
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.source || !c.target) return
-      const e = makeEdge(c.source, c.target, 'talks-to')
+      const e = makeEdge(c.source, c.target, 'talks-to', undefined, false, undefined, {
+        sourceHandle: c.sourceHandle ?? undefined,
+        targetHandle: c.targetHandle ?? undefined,
+      })
       e.data = { ...e.data, shape: edgeStyle }
       setEdges((eds) => addEdge(e, eds))
     },
@@ -379,7 +403,7 @@ function Flow({
   )
 
   const updateEdge = useCallback(
-    (patch: { type?: RelType; label?: string; inferred?: boolean }) => {
+    (patch: { type?: RelType; label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => {
       if (!selEdge) return
       setEdges((es) =>
         es.map((e) => {
@@ -387,8 +411,14 @@ function Flow({
           const cur = (e.data ?? {}) as any
           const type = patch.type ?? (cur.rel as RelType) ?? 'talks-to'
           const inferred = patch.inferred ?? !!cur.inferred
+          const dir = patch.dir ?? (cur.dir as EdgeDir) ?? 'forward'
           const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
-          return restyleEdge(withLabel, type, inferred)
+          // stash dir (and, if the patch touches it, the color override) in data
+          // so restyleEdge recomputes stroke/arrowheads/label from them. 'color'
+          // in patch — even undefined — means "set it" (undefined = reset to type).
+          let next: Edge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
+          if ('color' in patch) next = { ...next, data: { ...next.data, color: patch.color } }
+          return restyleEdge(next, type, inferred)
         }),
       )
     },
@@ -415,17 +445,22 @@ function Flow({
     setSelNode(null)
   }, [model, activeId, selNode, nodes, edges])
 
-  const removeEntityEverywhere = useCallback(() => {
+  const removeEntityEverywhere = useCallback(async () => {
     if (!model || !activeId || !selNode) return
-    if (!confirm('Delete this entity from ALL diagrams?')) return
+    const ok = await showConfirm({
+      title: 'Delete entity from all diagrams?',
+      message: 'The entity is removed from the catalog and every diagram that places it.',
+      danger: true,
+    })
+    if (!ok) return
     const base = flushCanvasInto(model, activeId, nodes, edges)
     setModel(deleteEntity(base, selNode))
     setSelNode(null)
-  }, [model, activeId, selNode, nodes, edges])
+  }, [model, activeId, selNode, nodes, edges, showConfirm])
 
-  const addGroup = useCallback(() => {
+  const addGroup = useCallback((at?: { x: number; y: number }) => {
     const id = `grp-${Date.now()}`
-    const pos = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+    const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
     const newNode = {
       id,
       type: 'group',
@@ -439,19 +474,32 @@ function Flow({
     setSelEdge(null)
   }, [rf, setNodes])
 
-  const addNote = useCallback(() => {
+  const addNote = useCallback((at?: { x: number; y: number }) => {
     const id = `note-${Date.now()}`
     setNodes((ns) =>
       ns.concat({
         id,
         type: 'note',
-        position: rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 220 }),
+        position: at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 220 }),
         data: { text: '' },
         style: { width: 190, height: 110 },
         zIndex: 5,
       } as Node),
     )
   }, [rf, setNodes])
+
+  // Double-click on empty canvas opens the Add menu at the cursor. Ignore
+  // double-clicks that land on a node/edge/handle — only the pane counts.
+  const onCanvasDoubleClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (!(e.target as HTMLElement).classList.contains('react-flow__pane')) return
+      const flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY })
+      const sx = Math.min(e.clientX, window.innerWidth - 240)
+      const sy = Math.min(e.clientY, window.innerHeight - 260)
+      setAddMenu({ sx, sy, flow })
+    },
+    [rf],
+  )
 
   const exportJson = useCallback(() => {
     if (!model || !activeId) return
@@ -598,6 +646,20 @@ function Flow({
         .map((n) => ({ id: n.id, label: (n.data as any).label as string })),
     [nodes],
   )
+  // Distinct colors already used in this diagram (edge stroke + group color), for
+  // the "In this diagram" quick-pick section of the edge color picker.
+  const diagramColors = useMemo(() => {
+    const set = new Set<string>()
+    for (const e of edges) {
+      const c = ((e.data as any)?.color as string) ?? REL[((e.data as any)?.rel as RelType) ?? 'talks-to']?.color
+      if (c) set.add(c.toLowerCase())
+    }
+    for (const n of nodes) {
+      const c = n.type === 'group' ? ((n.data as any)?.color as string) : undefined
+      if (c) set.add(c.toLowerCase())
+    }
+    return [...set]
+  }, [edges, nodes])
 
   const selEntity = selNode ? byId[selNode] : undefined
   const selPlacement = active?.placements.find((p) => p.entityId === selNode)
@@ -632,6 +694,7 @@ function Flow({
       onMouseMove={(e) => {
         pointer.current = { x: e.clientX, y: e.clientY }
       }}
+      onDoubleClick={onCanvasDoubleClick}
     >
       <ReactFlow
         nodes={nodes}
@@ -646,6 +709,7 @@ function Flow({
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.15}
         deleteKeyCode={['Backspace', 'Delete']}
+        connectionMode={ConnectionMode.Loose}
         zoomOnDoubleClick={false}
         proOptions={{ hideAttribution: true }}
       >
@@ -655,8 +719,8 @@ function Flow({
 
         <Panel position="top-right" className="stack-tr">
           <div className="panel toolbar">
-            <button onClick={addGroup}>+ Group</button>
-            <button onClick={addNote}>+ Note</button>
+            <button onClick={() => addGroup()}>+ Group</button>
+            <button onClick={() => addNote()}>+ Note</button>
             <button onClick={tidy}>Tidy</button>
             <label className="edgestyle">
               Edges:
@@ -692,6 +756,7 @@ function Flow({
             onDeleteEntity={removeEntityEverywhere}
             fields={inspectorFields}
             onFieldShow={onFieldShow}
+            diagramColors={diagramColors}
           />
         </Panel>
 
@@ -708,14 +773,8 @@ function Flow({
           )}
 
           <div className="panel">
-            <h4>Relationships</h4>
-            {Object.entries(REL).map(([k, v]) => (
-              <div className="legend__row" key={k}>
-                <span className="legend__line" style={{ borderTopColor: v.color }} />
-                <span>{v.label}</span>
-              </div>
-            ))}
-            <div className="legend__row" style={{ marginTop: 6 }}>
+            <h4>Legend</h4>
+            <div className="legend__row">
               <span
                 className="legend__line"
                 style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
@@ -743,6 +802,20 @@ function Flow({
           )}
         </Panel>
       </ReactFlow>
+
+      {addMenu && (
+        <CanvasAddMenu
+          x={addMenu.sx}
+          y={addMenu.sy}
+          entities={model.entities
+            .filter((e) => !placedIds.has(e.id))
+            .sort((a, b) => a.label.localeCompare(b.label))}
+          onPlaceEntity={(id) => placeEntity(id, addMenu.flow)}
+          onAddGroup={() => addGroup(addMenu.flow)}
+          onAddNote={() => addNote(addMenu.flow)}
+          onClose={() => setAddMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -750,7 +823,7 @@ function Flow({
 export default function App() {
   const [model, setModel] = useState<Model | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [view, setView] = useState<'diagrams' | 'entities'>('diagrams')
+  const [view, setView] = useState<'diagrams' | 'entities'>('entities')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
@@ -804,16 +877,16 @@ export default function App() {
     <>
       <div className="tabbar">
         <button
-          className={view === 'diagrams' ? 'active' : ''}
-          onClick={() => setView('diagrams')}
-        >
-          Diagrams
-        </button>
-        <button
           className={view === 'entities' ? 'active' : ''}
           onClick={() => setView('entities')}
         >
           Entities
+        </button>
+        <button
+          className={view === 'diagrams' ? 'active' : ''}
+          onClick={() => setView('diagrams')}
+        >
+          Diagrams
         </button>
         <span className="tabbar__save" style={{ color: saveColor }}>
           {saveLabel}

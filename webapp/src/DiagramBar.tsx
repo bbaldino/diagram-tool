@@ -1,4 +1,5 @@
 import { type Diagram } from './model'
+import { useDialogs } from './Dialog'
 
 interface Props {
   diagrams: Diagram[]
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export function DiagramBar({ diagrams, activeId, onSelect, onNew, onRename, onDelete }: Props) {
+  const { showPrompt, showConfirm } = useDialogs()
   return (
     <div className="panel diagrambar">
       <select value={activeId} onChange={(e) => onSelect(e.target.value)}>
@@ -20,25 +22,31 @@ export function DiagramBar({ diagrams, activeId, onSelect, onNew, onRename, onDe
         ))}
       </select>
       <button
-        onClick={() => {
-          const n = prompt('New diagram name?')
+        onClick={async () => {
+          const n = (await showPrompt({ title: 'New diagram', label: 'Name', placeholder: 'e.g. Call flow' }))?.trim()
           if (n) onNew(n)
         }}
       >
         + Diagram
       </button>
       <button
-        onClick={() => {
+        onClick={async () => {
           const cur = diagrams.find((d) => d.id === activeId)
-          const n = prompt('Rename diagram', cur?.name)
+          const n = (await showPrompt({ title: 'Rename diagram', label: 'Name', defaultValue: cur?.name }))?.trim()
           if (n && cur) onRename(cur.id, n)
         }}
       >
         Rename
       </button>
       <button
-        onClick={() => {
-          if (diagrams.length > 1 && confirm('Delete this diagram? (entities are kept)')) onDelete(activeId)
+        onClick={async () => {
+          if (diagrams.length < 2) return
+          const ok = await showConfirm({
+            title: 'Delete this diagram?',
+            message: 'The diagram is removed. Entities are kept in the catalog.',
+            danger: true,
+          })
+          if (ok) onDelete(activeId)
         }}
       >
         Delete

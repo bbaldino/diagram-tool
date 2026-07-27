@@ -216,6 +216,20 @@ export function parentGroup(id: string): string | undefined {
   return PARENT_OF[id]
 }
 
+// Edge direction: which ends carry an arrowhead. Decoupled from which handles
+// the edge attaches to, so geometry (layout) and semantics (one/two-way) are
+// independent. forward = arrow at target (default); backward = arrow at source;
+// both = arrows at both ends (two-way / request-response).
+export type EdgeDir = 'forward' | 'backward' | 'both'
+
+function markersFor(dir: EdgeDir, color: string) {
+  const arrow = { type: MarkerType.ArrowClosed, color, width: 15, height: 15 }
+  return {
+    markerStart: dir === 'backward' || dir === 'both' ? arrow : undefined,
+    markerEnd: dir === 'forward' || dir === 'both' ? arrow : undefined,
+  }
+}
+
 export function makeEdge(
   from: string,
   to: string,
@@ -223,27 +237,33 @@ export function makeEdge(
   label?: string,
   inferred?: boolean,
   i = Math.floor(performance.now()),
+  extra?: { sourceHandle?: string; targetHandle?: string; dir?: EdgeDir; color?: string },
 ): Edge {
   const r = REL[type]
+  const dir = extra?.dir ?? 'forward'
+  // Per-edge color override; falls back to the relationship type's color.
+  const color = extra?.color ?? r.color
   return {
     id: `e${i}-${from}-${to}`,
     source: from,
     target: to,
+    sourceHandle: extra?.sourceHandle,
+    targetHandle: extra?.targetHandle,
     type: 'waypoint',
     label,
     interactionWidth: 26, // wider invisible hit area — edges are easy to click
-    markerEnd: { type: MarkerType.ArrowClosed, color: r.color, width: 15, height: 15 },
+    ...markersFor(dir, color),
     style: {
-      stroke: r.color,
+      stroke: color,
       strokeWidth: 2,
       strokeDasharray: inferred ? '5 4' : undefined,
       opacity: inferred ? 0.8 : 1,
     },
-    labelStyle: { fontSize: 10, fill: r.color, fontWeight: 600 },
+    labelStyle: { fontSize: 10, fill: color, fontWeight: 600 },
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     labelBgPadding: [3, 2],
     labelBgBorderRadius: 3,
-    data: { rel: type, inferred: !!inferred, shape: 'default' },
+    data: { rel: type, inferred: !!inferred, shape: 'default', dir, color: extra?.color },
   }
 }
 
@@ -252,20 +272,23 @@ export const REL_TYPES = Object.keys(REL) as RelType[]
 // Re-apply relationship styling to an existing edge (used when its type changes).
 export function restyleEdge(e: Edge, type: RelType, inferred: boolean): Edge {
   const r = REL[type]
+  const dir = ((e.data?.dir as EdgeDir) ?? 'forward')
+  const colorOverride = e.data?.color as string | undefined
+  const color = colorOverride ?? r.color
   return {
     ...e,
-    markerEnd: { type: MarkerType.ArrowClosed, color: r.color, width: 15, height: 15 },
+    ...markersFor(dir, color),
     style: {
-      stroke: r.color,
+      stroke: color,
       strokeWidth: 2,
       strokeDasharray: inferred ? '5 4' : undefined,
       opacity: inferred ? 0.8 : 1,
     },
-    labelStyle: { fontSize: 10, fill: r.color, fontWeight: 600 },
+    labelStyle: { fontSize: 10, fill: color, fontWeight: 600 },
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     labelBgPadding: [3, 2],
     labelBgBorderRadius: 3,
-    data: { ...(e.data ?? {}), rel: type, inferred },
+    data: { ...(e.data ?? {}), rel: type, inferred, color: colorOverride },
   }
 }
 
