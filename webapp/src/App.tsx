@@ -21,6 +21,7 @@ import {
   buildSeed,
   makeEdge,
   restyleEdge,
+  applyReconnect,
   distributeGroupChildren,
   shrinkGroupToChildren,
   REL,
@@ -372,6 +373,13 @@ function Flow({
     [edgeStyle, setEdges],
   )
 
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      setEdges((els) => applyReconnect(oldEdge, newConnection, els))
+    },
+    [setEdges],
+  )
+
   // ---- editing handlers ----
   const updateNodeData = useCallback(
     (patch: Record<string, unknown>) => {
@@ -718,6 +726,21 @@ function Flow({
     [activeId, selNode, setModel],
   )
 
+  // Reconnect anchors are live only on the selected edge (so overlapping
+  // endpoints at a shared node stay individually grabbable). Annotate a derived
+  // copy; onEdgesChange still owns the base `edges` state. Return the SAME array
+  // when nothing changed so React Flow doesn't churn.
+  const flowEdges = useMemo(() => {
+    let changed = false
+    const next = edges.map((e) => {
+      const want = e.id === selEdge
+      if (!!e.reconnectable === want) return e
+      changed = true
+      return { ...e, reconnectable: want }
+    })
+    return changed ? next : edges
+  }, [edges, selEdge])
+
   const groupEditing = selectedNode?.type === 'group'
   return (
     <div
@@ -731,11 +754,14 @@ function Flow({
     >
       <ReactFlow
         nodes={nodes}
-        edges={edges}
+        edges={flowEdges}
         onNodesChange={onNodesChange}
         onNodeDragStop={flushNow}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onReconnect={onReconnect}
+        edgesReconnectable={false}
+        elevateEdgesOnSelect
         onSelectionChange={onSelectionChange}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
