@@ -1,4 +1,4 @@
-import { type Node, type Edge, MarkerType } from '@xyflow/react'
+import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
 
 // dashboard-icons (homarr-labs) — same set used in the D2 diagram
 export const ICON_BASE =
@@ -290,6 +290,16 @@ export function restyleEdge(e: Edge, type: RelType, inferred: boolean): Edge {
     labelBgBorderRadius: 3,
     data: { ...(e.data ?? {}), rel: type, inferred, color: colorOverride },
   }
+}
+
+// Rewire one edge's endpoint to a new connection. Keeps the edge id stable
+// (shouldReplaceId:false — the default REGENERATES it, which would break flow
+// references and our e{i}-{from}-{to} ids) and clears manual waypoints so the
+// rewired edge gets a clean route instead of doglegs shaped for the old geometry.
+export function applyReconnect(oldEdge: Edge, conn: Connection, edges: Edge[]): Edge[] {
+  return reconnectEdge(oldEdge, conn, edges, { shouldReplaceId: false }).map((e) =>
+    e.id === oldEdge.id ? { ...e, data: { ...e.data, points: [] } } : e,
+  )
 }
 
 // Shared spacing for the grid layout — bump these for more breathing room.
