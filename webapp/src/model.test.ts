@@ -158,11 +158,15 @@ describe('model mutations', () => {
     expect(after.entities.map((e) => e.id)).toEqual(['plex', 'users']) // plex survives (still in 'logical')
   })
   it('deleteDiagram does not sweep pre-existing catalog-only entities', () => {
-    // 'orphanCatalog' is never placed anywhere; deleting an unrelated diagram must not remove it
+    // 'orphanCatalog' is never placed anywhere; deleting a diagram that DOES trigger a
+    // real sweep must still not remove it.
     const withOrphan = addEntity(base, { id: 'orphanCatalog', label: 'Never Placed', fields: [] })
     const { model: m2, id: d2 } = addDiagram(withOrphan, 'Unrelated', 'canvas')
-    const after = deleteDiagram(m2, d2)
-    expect(after.entities.some((e) => e.id === 'orphanCatalog')).toBe(true)
+    // give d2 a real placement so candidates is non-empty and the filter branch runs
+    const placed = addPlacement(m2, d2, { entityId: 'plex', position: { x: 0, y: 0 }, parentId: null })
+    const after = deleteDiagram(placed, d2)
+    expect(after.entities.some((e) => e.id === 'orphanCatalog')).toBe(true) // never a candidate → survives
+    expect(after.entities.some((e) => e.id === 'plex')).toBe(true)          // still placed in 'logical' → survives
   })
   it('addDiagram does not reuse an id after a delete (collision-safe)', () => {
     const first = addDiagram(base, 'Topology', 'canvas')
