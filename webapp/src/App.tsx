@@ -24,6 +24,7 @@ import {
   applyReconnect,
   distributeGroupChildren,
   shrinkGroupToChildren,
+  topoOrderByParent,
   REL,
   GROUP_COLOR,
   parentGroup,
@@ -52,9 +53,13 @@ import type {
 const ACTIVE_KEY = 'homelab-active-diagram'
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 
-// RF needs every parent node to appear before its children in the array.
+// RF needs every parent node to appear before its children in the array —
+// and since groups can nest, "groups before non-groups" alone isn't enough:
+// the groups themselves must be topologically ordered outer-to-inner (see
+// topoOrderByParent), or a group reparented under a later-in-array group
+// renders mispositioned/clipped wrong and RF warns "Parent node not found."
 const groupsFirst = (ns: Node[]): Node[] => [
-  ...ns.filter((n) => n.type === 'group'),
+  ...topoOrderByParent(ns.filter((n) => n.type === 'group')),
   ...ns.filter((n) => n.type !== 'group'),
 ]
 

@@ -4,6 +4,39 @@ import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from
 export const ICON_BASE =
   'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg'
 
+// Topologically order items so every item with a parentId comes after its
+// parent. Needed because React Flow's `adoptUserNodes` is a single forward
+// pass over the `nodes` array: a child appearing before its parent doesn't
+// get its `positionAbsolute` resolved against the parent, so it renders
+// mispositioned/clipped wrong and RF logs "Parent node not found... parent
+// nodes must be in front of their child nodes." Groups can nest (a group's
+// parentId can point at another group), so "groups before non-groups" alone
+// isn't enough — the groups themselves must be emitted outer-to-inner.
+// Generic over anything id/parentId-shaped (model Group[] or live RF Node[])
+// so buildGraph.ts (model → canvas) and App.tsx (live canvas mutations) share
+// one implementation and can't drift apart. Stable: items with no ordering
+// constraint between them keep their original relative order. A cycle
+// (shouldn't happen) just stops recursing instead of looping forever.
+export function topoOrderByParent<T extends { id: string; parentId?: string | null }>(items: T[]): T[] {
+  const byId = new Map(items.map((it) => [it.id, it]))
+  const ordered: T[] = []
+  const done = new Set<string>()
+  const visiting = new Set<string>()
+  function visit(it: T) {
+    if (done.has(it.id) || visiting.has(it.id)) return // done, or a cycle — stop recursing
+    visiting.add(it.id)
+    const parent = it.parentId ? byId.get(it.parentId) : undefined
+    if (parent) visit(parent)
+    visiting.delete(it.id)
+    if (!done.has(it.id)) {
+      done.add(it.id)
+      ordered.push(it)
+    }
+  }
+  for (const it of items) visit(it)
+  return ordered
+}
+
 // ---- Relationship vocabulary (this is the "typed edges" bit) ----
 export type RelType =
   | 'talks-to'

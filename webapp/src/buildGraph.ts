@@ -1,31 +1,6 @@
 import { type Node, type Edge } from '@xyflow/react'
-import { makeEdge, restyleEdge } from './graph'
-import type { Diagram, Field, Group, Node as DNode, Template } from './model'
-
-// React Flow requires a parent node to appear before its children in the
-// nodes array. Groups can nest (Group.parentId -> another group), so emit
-// them outer-to-inner: a group whose parentId points at another group comes
-// after that parent. Stable: groups with no ordering constraint between them
-// keep their original relative order.
-function orderGroups(groups: Group[]): Group[] {
-  const byId = new Map(groups.map((g) => [g.id, g]))
-  const ordered: Group[] = []
-  const done = new Set<string>()
-  const visiting = new Set<string>()
-  function visit(g: Group) {
-    if (done.has(g.id) || visiting.has(g.id)) return // done, or a cycle — stop recursing
-    visiting.add(g.id)
-    const parent = g.parentId ? byId.get(g.parentId) : undefined
-    if (parent) visit(parent)
-    visiting.delete(g.id)
-    if (!done.has(g.id)) {
-      done.add(g.id)
-      ordered.push(g)
-    }
-  }
-  for (const g of groups) visit(g)
-  return ordered
-}
+import { makeEdge, restyleEdge, topoOrderByParent } from './graph'
+import type { Diagram, Field, Node as DNode, Template } from './model'
 
 // A field shows on the card if it says so itself, or — absent that — if its
 // template default says so and the node's own field didn't opt out.
@@ -41,7 +16,7 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
   const nodes: Node[] = []
 
   // groups first, outer-to-inner (parents before children)
-  for (const g of orderGroups(diagram.groups)) {
+  for (const g of topoOrderByParent(diagram.groups)) {
     nodes.push({
       id: g.id,
       type: 'group',
