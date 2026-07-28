@@ -26,10 +26,15 @@ export function CanvasAddMenu({ x, y, onCreateEntity, onAddGroup, onAddNote, onC
       if (ref.current && !ref.current.contains(e.target as Node)) onClose()
     }
     window.addEventListener('keydown', onKey)
-    window.addEventListener('mousedown', onDown)
+    // Capture phase: React Flow's pane runs d3-zoom, which calls
+    // stopImmediatePropagation() on the pane's mousedown — so a bubble-phase
+    // listener never sees clicks on the canvas. Capturing runs before d3 can
+    // stop the event, so clicking anywhere outside the menu (incl. the canvas)
+    // dismisses it.
+    window.addEventListener('mousedown', onDown, true)
     return () => {
       window.removeEventListener('keydown', onKey)
-      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('mousedown', onDown, true)
     }
   }, [onClose])
 
