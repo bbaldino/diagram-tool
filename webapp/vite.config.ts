@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFile, writeFile } from 'node:fs/promises'
+import { atomicWriteFile } from './server/persist'
 import { resolve } from 'node:path'
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js'
 import { createStore, type Snapshot, type Store } from './server/store'
@@ -65,9 +66,9 @@ function modelApi(): Plugin {
       const storeReady: Promise<Store> = createStore({
         file,
         load: async () => JSON.parse(await readFile(file, 'utf8')),
-        save: (model) => writeFile(file, JSON.stringify(model, null, 2)),
+        save: (model) => atomicWriteFile(file, JSON.stringify(model, null, 2)),
         loadHistory: async () => JSON.parse(await readFile(historyFile, 'utf8')),
-        saveHistory: (h) => writeFile(historyFile, JSON.stringify(h)),
+        saveHistory: (h) => atomicWriteFile(historyFile, JSON.stringify(h)),
       })
 
       // Registered before the plain '/api/model' route below: connect mounts

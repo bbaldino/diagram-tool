@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HISTORY_LIMIT, record, seed, dropDiagram, canUndo, canRedo,
+  HISTORY_LIMIT, record, seed, reconcile, dropDiagram, canUndo, canRedo,
   undoTarget, redoTarget, setPointer, undoStates, type HistoryMap,
 } from './history'
 import type { DiagramContent } from '../src/model'
@@ -72,6 +72,58 @@ describe('history', () => {
     expect(m.d.entries).toHaveLength(1)
     expect(m.d.pointer).toBe(0)
     expect(m.d.entries[0].placements[0].position.x).toBe(7)
+  })
+
+  describe('reconcile (startup drift handling — never discards a stack)', () => {
+    it('seeds when there is no prior history for the diagram', () => {
+      const m = reconcile({}, 'd', c(5))
+      expect(m.d.entries).toHaveLength(1)
+      expect(m.d.pointer).toBe(0)
+      expect(m.d.entries[0].placements[0].position.x).toBe(5)
+    })
+
+    it('is a no-op when content already equals the current head', () => {
+      let m = record({}, 'd', c(0))
+      m = record(m, 'd', c(1)) // head = c(1), pointer 1
+      const r = reconcile(m, 'd', c(1))
+      expect(r).toBe(m) // unchanged reference
+      expect(r.d.entries).toHaveLength(2)
+      expect(r.d.pointer).toBe(1)
+    })
+
+    it('moves the pointer (lossless) when content matches an earlier entry — model behind history', () => {
+      let m = record({}, 'd', c(0))
+      m = record(m, 'd', c(1))
+      m = record(m, 'd', c(2)) // entries [0,1,2], pointer 2
+      // model on disk reverted to c(1)'s content (e.g. history persisted ahead of model)
+      const r = reconcile(m, 'd', c(1))
+      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([0, 1, 2]) // stack intact
+      expect(r.d.pointer).toBe(1)
+      expect(canUndo(r, 'd')).toBe(true) // can still undo to 0
+      expect(canRedo(r, 'd')).toBe(true) // AND redo forward to 2
+    })
+
+    it('appends (preserving the whole stack) when the model is one edit ahead of history', () => {
+      let m = record({}, 'd', c(0))
+      m = record(m, 'd', c(1))
+      m = record(m, 'd', c(2)) // entries [0,1,2], pointer 2 — model advanced to c(3) but was never recorded
+      const r = reconcile(m, 'd', c(3))
+      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([0, 1, 2, 3]) // nothing lost
+      expect(r.d.pointer).toBe(3)
+      expect(canUndo(r, 'd')).toBe(true)
+      // the whole prior history remains reachable by undo
+      expect(undoTarget(r, 'd')).toEqual({ content: c(2), pointer: 2 })
+    })
+
+    it('preserves the prior state as an undo target even from a single drifted entry', () => {
+      // history has only one entry (c(999)); model drifted to c(0).
+      // c(999) was a real prior state, so it becomes a legitimate undo target (not discarded).
+      const m = record({}, 'd', c(999))
+      const r = reconcile(m, 'd', c(0))
+      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([999, 0])
+      expect(r.d.pointer).toBe(1)
+      expect(canUndo(r, 'd')).toBe(true)
+    })
   })
 
   it('dropDiagram removes a diagram history', () => {

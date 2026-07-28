@@ -23,6 +23,26 @@ export function record(map: HistoryMap, diagramId: string, content: DiagramConte
   return { ...map, [diagramId]: { entries, pointer: entries.length - 1 } }
 }
 
+// Reconcile a diagram's persisted history against its current model content at
+// startup. Unlike seed(), this NEVER discards an existing stack:
+//   - no history yet           -> seed a single entry
+//   - content == current head  -> unchanged (already aligned; the common case)
+//   - content == some entry    -> move the pointer there (undo AND redo preserved)
+//   - content matches no entry -> the model is ahead of history: an edit that was
+//                                 never recorded (e.g. a mistimed save killed by a
+//                                 restart). Append it as a new head, keeping the
+//                                 whole prior stack as undo history rather than
+//                                 throwing it away.
+export function reconcile(map: HistoryMap, diagramId: string, content: DiagramContent): HistoryMap {
+  const h = map[diagramId]
+  if (!h || h.entries.length === 0) return seed(map, diagramId, content)
+  const key = JSON.stringify(content)
+  if (JSON.stringify(h.entries[h.pointer]) === key) return map
+  const idx = h.entries.findIndex((e) => JSON.stringify(e) === key)
+  if (idx >= 0) return setPointer(map, diagramId, idx)
+  return record(map, diagramId, content)
+}
+
 export function dropDiagram(map: HistoryMap, diagramId: string): HistoryMap {
   if (!map[diagramId]) return map
   const next = { ...map }

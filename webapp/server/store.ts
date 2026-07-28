@@ -59,20 +59,18 @@ export async function createStore(opts: {
       if (loaded && typeof loaded === 'object') historyMap = loaded as history.HistoryMap
     } catch {}
   }
-  // Reconcile persisted history against the loaded model: every model diagram
-  // must have a history whose current entry equals its content, else reseed;
-  // drop histories for diagrams no longer in the model.
+  // Reconcile persisted history against the loaded model at startup. reconcile()
+  // never discards an existing stack: it aligns the pointer if the model matches
+  // a known entry, or appends the model as a new head if it is ahead — so a
+  // model/history desync (e.g. a save interrupted by a restart) can no longer
+  // wipe undo history. Also drop histories for diagrams no longer in the model.
   {
     const modelIds = new Set(model.diagrams.map((d) => d.id))
     for (const id of Object.keys(historyMap)) {
       if (!modelIds.has(id)) historyMap = history.dropDiagram(historyMap, id)
     }
     for (const d of model.diagrams) {
-      const h = historyMap[d.id]
-      const current = h?.entries[h.pointer]
-      if (!current || JSON.stringify(current) !== JSON.stringify(diagramContent(d))) {
-        historyMap = history.seed(historyMap, d.id, diagramContent(d))
-      }
+      historyMap = history.reconcile(historyMap, d.id, diagramContent(d))
     }
   }
 
@@ -84,8 +82,26 @@ export async function createStore(opts: {
     if (saveTimer !== undefined) clearTimeout(saveTimer)
     saveTimer = setTimeout(() => {
       saveTimer = undefined
-      save(model).catch((err) => console.error('model save failed', err))
-      saveHistory?.(historyMap).catch((err) => console.error('history save failed', err))
+      // Snapshot the consistent (history, model) pair at this instant, then
+      // persist history BEFORE the model. If a crash/restart lands between the
+      // two writes, history on disk is never staler than the model — the only
+      // possible skew is model-behind-history, which reconcile() resolves
+      // losslessly by moving the pointer, never the model-ahead skew that used
+      // to wipe the undo stack. (Each write is itself atomic; see persist.ts.)
+      const h = historyMap
+      const m = model
+      void (async () => {
+        try {
+          await saveHistory?.(h)
+        } catch (err) {
+          console.error('history save failed', err)
+        }
+        try {
+          await save(m)
+        } catch (err) {
+          console.error('model save failed', err)
+        }
+      })()
     }, SAVE_DEBOUNCE_MS)
   }
 

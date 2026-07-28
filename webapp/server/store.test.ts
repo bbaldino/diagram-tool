@@ -224,7 +224,9 @@ describe('store history persistence', () => {
     expect(s.model.diagrams[0].placements[0].position.x).toBe(0)
   })
 
-  it('reseeds a diagram history when persisted current entry disagrees with the model (drift)', async () => {
+  it('preserves history on drift instead of discarding it (model ahead of a single persisted entry)', async () => {
+    // The persisted entry (x=999) is a real prior state; the model drifted to x=0.
+    // Reconcile keeps x=999 as an undo target rather than wiping the stack.
     const drifted = {
       d: { pointer: 0, entries: [
         { placements: [{ entityId: 'e1', position: { x: 999, y: 0 } }], groups: [], edges: [], notes: [] },
@@ -237,9 +239,77 @@ describe('store history persistence', () => {
       loadHistory: async () => drifted,
       saveHistory: async () => {},
     })
-    // history reseeded from the model, so no undo available and no phantom x=999
-    expect(store.getState().undo.d).toEqual({ canUndo: false, canRedo: false })
+    expect(store.getState().undo.d).toEqual({ canUndo: true, canRedo: false })
+    // current view is the loaded model (x=0), and the prior state is undoable
+    expect(store.getState().model.diagrams[0].placements[0].position.x).toBe(0)
+    expect(store.undo('d').model.diagrams[0].placements[0].position.x).toBe(999)
+  })
+
+  it('regression: a model one edit ahead of a multi-entry history keeps the whole undo stack', async () => {
+    // The exact failure that wiped undo: history has [x0, x10, x20] but the model
+    // advanced to x30 without that edit being recorded (a save lost to a restart).
+    const persisted = {
+      d: { pointer: 2, entries: [
+        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [] },
+      ] },
+    }
+    const store = await createStore({
+      file: 'x',
+      load: async () => ({
+        version: 1, templates: [], entities: [{ id: 'e1', label: 'E', fields: [] }],
+        diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
+          placements: [{ entityId: 'e1', position: { x: 30, y: 0 } }], groups: [], edges: [], notes: [] }],
+      }),
+      save: async () => {},
+      loadHistory: async () => persisted,
+      saveHistory: async () => {},
+    })
+    // x30 appended as head; all prior states remain reachable by undo (not wiped)
+    expect(store.getState().undo.d).toEqual({ canUndo: true, canRedo: false })
+    expect(store.undo('d').model.diagrams[0].placements[0].position.x).toBe(20)
+    expect(store.undo('d').model.diagrams[0].placements[0].position.x).toBe(10)
     expect(store.undo('d').model.diagrams[0].placements[0].position.x).toBe(0)
+  })
+
+  it('model behind history is realigned losslessly (undo AND redo preserved)', async () => {
+    const persisted = {
+      d: { pointer: 2, entries: [
+        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [] },
+      ] },
+    }
+    const store = await createStore({
+      file: 'x',
+      // model on disk is x=10 (an earlier entry) — history persisted ahead of the model
+      load: async () => ({
+        version: 1, templates: [], entities: [{ id: 'e1', label: 'E', fields: [] }],
+        diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
+          placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] }],
+      }),
+      save: async () => {},
+      loadHistory: async () => persisted,
+      saveHistory: async () => {},
+    })
+    // pointer realigned to the x=10 entry: can undo to x0 and redo forward to x20
+    expect(store.getState().undo.d).toEqual({ canUndo: true, canRedo: true })
+    expect(store.redo('d').model.diagrams[0].placements[0].position.x).toBe(20)
+  })
+
+  it('persists history before the model (so history on disk is never staler)', async () => {
+    const order: string[] = []
+    const store = await createStore({
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => { order.push('model') },
+      loadHistory: async () => ({}),
+      saveHistory: async () => { order.push('history') },
+    })
+    store.apply([moveOp(10)])
+    await new Promise((r) => setTimeout(r, 300))
+    expect(order).toEqual(['history', 'model'])
   })
 
   it('persists history (debounced) on apply', async () => {
