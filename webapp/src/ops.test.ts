@@ -2,40 +2,61 @@ import { describe, it, expect } from 'vitest'
 import { applyOp, applyOps, type Op } from './ops'
 import { addDiagram, addTemplate, getDiagram, normalizeModel, type Model } from './model'
 
-const empty: Model = normalizeModel({ version: 1, entities: [], diagrams: [], templates: [] })
+const empty: Model = normalizeModel({ version: 2, diagrams: [], templates: [] })
 
-describe('entity ops', () => {
-  it('entity.add then entity.update', () => {
-    let m = applyOp(empty, { t: 'entity.add', entity: { id: 'e1', label: 'E', fields: [] } })
-    m = applyOp(m, { t: 'entity.update', id: 'e1', patch: { label: 'E2' } })
-    expect(m.entities[0].label).toBe('E2')
+describe('node ops', () => {
+  it('node.add then node.update', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    let m = applyOp(d.model, {
+      t: 'node.add',
+      diagramId: d.id,
+      node: { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } },
+    })
+    m = applyOp(m, { t: 'node.update', diagramId: d.id, id: 'n1', patch: { label: 'N2' } })
+    expect(getDiagram(m, d.id)!.nodes[0].label).toBe('N2')
   })
 
-  it('entity.delete removes the entity', () => {
-    let m = applyOp(empty, { t: 'entity.add', entity: { id: 'e1', label: 'E', fields: [] } })
-    m = applyOp(m, { t: 'entity.delete', id: 'e1' })
-    expect(m.entities).toHaveLength(0)
+  it('node.remove removes the node', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    let m = applyOp(d.model, {
+      t: 'node.add',
+      diagramId: d.id,
+      node: { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } },
+    })
+    m = applyOp(m, { t: 'node.remove', diagramId: d.id, id: 'n1' })
+    expect(getDiagram(m, d.id)!.nodes).toHaveLength(0)
   })
 
-  it('entity.setFields replaces fields', () => {
-    let m = applyOp(empty, { t: 'entity.add', entity: { id: 'e1', label: 'E', fields: [] } })
-    m = applyOp(m, { t: 'entity.setFields', id: 'e1', fields: [{ key: 'port', value: '80' }] })
-    expect(m.entities[0].fields).toEqual([{ key: 'port', value: '80' }])
+  it('node.setFields replaces fields', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    let m = applyOp(d.model, {
+      t: 'node.add',
+      diagramId: d.id,
+      node: { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } },
+    })
+    m = applyOp(m, { t: 'node.setFields', diagramId: d.id, id: 'n1', fields: [{ key: 'port', value: '80' }] })
+    expect(getDiagram(m, d.id)!.nodes[0].fields).toEqual([{ key: 'port', value: '80' }])
   })
 
-  it('entity.applyTemplate merges template fields onto the entity', () => {
-    let m = applyOp(empty, { t: 'entity.add', entity: { id: 'e1', label: 'E', fields: [] } })
+  it('node.applyTemplate merges template fields onto the node', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    let m = applyOp(d.model, {
+      t: 'node.add',
+      diagramId: d.id,
+      node: { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } },
+    })
     const t = addTemplate(m, 'Svc')
     m = t.model
     m = { ...m, templates: m.templates.map((tt) => (tt.id === t.id ? { ...tt, fields: [{ key: 'port', default: '8080' }] } : tt)) }
-    m = applyOp(m, { t: 'entity.applyTemplate', id: 'e1', templateId: t.id })
-    expect(m.entities[0].template).toBe(t.id)
-    expect(m.entities[0].fields).toEqual([{ key: 'port', value: '8080' }])
+    m = applyOp(m, { t: 'node.applyTemplate', diagramId: d.id, id: 'n1', templateId: t.id })
+    expect(getDiagram(m, d.id)!.nodes[0].template).toBe(t.id)
+    expect(getDiagram(m, d.id)!.nodes[0].fields).toEqual([{ key: 'port', value: '8080' }])
   })
 
-  it('entity.applyTemplate is a no-op when the entity or template is missing', () => {
-    const m = applyOp(empty, { t: 'entity.applyTemplate', id: 'missing', templateId: 'also-missing' })
-    expect(m).toEqual(empty)
+  it('node.applyTemplate is a no-op when the node or template is missing', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    const m = applyOp(d.model, { t: 'node.applyTemplate', diagramId: d.id, id: 'missing', templateId: 'also-missing' })
+    expect(m).toEqual(d.model)
   })
 })
 
@@ -77,32 +98,6 @@ describe('diagram ops', () => {
     const d = addDiagram(empty, 'D', 'canvas')
     const m = applyOp(d.model, { t: 'diagram.delete', id: d.id })
     expect(getDiagram(m, d.id)).toBeUndefined()
-  })
-})
-
-describe('placement ops', () => {
-  it('placement.add/remove', () => {
-    const d = addDiagram(empty, 'D', 'canvas')
-    let m = applyOp(d.model, { t: 'placement.add', diagramId: d.id, placement: { entityId: 'e1', position: { x: 0, y: 0 } } })
-    expect(getDiagram(m, d.id)!.placements).toHaveLength(1)
-    m = applyOp(m, { t: 'placement.remove', diagramId: d.id, entityId: 'e1' })
-    expect(getDiagram(m, d.id)!.placements).toHaveLength(0)
-  })
-
-  it('placement.set patches position', () => {
-    const d = addDiagram(empty, 'D', 'canvas')
-    let m = applyOp(d.model, { t: 'placement.add', diagramId: d.id, placement: { entityId: 'e1', position: { x: 0, y: 0 } } })
-    m = applyOp(m, { t: 'placement.set', diagramId: d.id, entityId: 'e1', patch: { position: { x: 5, y: 5 } } })
-    expect(getDiagram(m, d.id)!.placements[0].position).toEqual({ x: 5, y: 5 })
-  })
-
-  it('placement.fieldShow sets and clears an override', () => {
-    const d = addDiagram(empty, 'D', 'canvas')
-    let m = applyOp(d.model, { t: 'placement.add', diagramId: d.id, placement: { entityId: 'e1', position: { x: 0, y: 0 } } })
-    m = applyOp(m, { t: 'placement.fieldShow', diagramId: d.id, entityId: 'e1', key: 'port', value: true })
-    expect(getDiagram(m, d.id)!.placements[0].fieldShow).toEqual({ port: true })
-    m = applyOp(m, { t: 'placement.fieldShow', diagramId: d.id, entityId: 'e1', key: 'port', value: undefined })
-    expect(getDiagram(m, d.id)!.placements[0].fieldShow).toEqual({})
   })
 })
 

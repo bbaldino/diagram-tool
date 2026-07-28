@@ -1,22 +1,18 @@
 import * as M from './model'
-import type { Model, Entity, EntityField, Template, Placement, Group, Note, DEdge, DiagramType, Flow } from './model'
+import type { Model, Node, Field, Template, Group, Note, Edge, DiagramType, Flow } from './model'
 
 export type Op =
-  | { t: 'entity.add'; entity: Entity }
-  | { t: 'entity.update'; id: string; patch: Partial<Omit<Entity, 'id'>> }
-  | { t: 'entity.delete'; id: string }
-  | { t: 'entity.setFields'; id: string; fields: EntityField[] }
-  | { t: 'entity.applyTemplate'; id: string; templateId: string }
+  | { t: 'node.add'; diagramId: string; node: Node }
+  | { t: 'node.update'; diagramId: string; id: string; patch: Partial<Omit<Node, 'id'>> }
+  | { t: 'node.remove'; diagramId: string; id: string }
+  | { t: 'node.setFields'; diagramId: string; id: string; fields: Field[] }
+  | { t: 'node.applyTemplate'; diagramId: string; id: string; templateId: string }
   | { t: 'template.add'; name: string }
   | { t: 'template.update'; id: string; patch: Partial<Omit<Template, 'id'>> }
   | { t: 'template.delete'; id: string }
   | { t: 'diagram.add'; name: string; kind: DiagramType }
   | { t: 'diagram.rename'; id: string; name: string }
   | { t: 'diagram.delete'; id: string }
-  | { t: 'placement.add'; diagramId: string; placement: Placement }
-  | { t: 'placement.remove'; diagramId: string; entityId: string }
-  | { t: 'placement.set'; diagramId: string; entityId: string; patch: Partial<Pick<Placement, 'position' | 'parentId' | 'note'>> }
-  | { t: 'placement.fieldShow'; diagramId: string; entityId: string; key: string; value: boolean | undefined }
   | { t: 'group.add'; diagramId: string; group: Group }
   | { t: 'group.update'; diagramId: string; id: string; patch: Partial<Omit<Group, 'id'>> }
   | { t: 'group.remove'; diagramId: string; id: string }
@@ -26,25 +22,27 @@ export type Op =
   | { t: 'note.add'; diagramId: string; note: Note }
   | { t: 'note.update'; diagramId: string; id: string; patch: Partial<Omit<Note, 'id'>> }
   | { t: 'note.remove'; diagramId: string; id: string }
-  | { t: 'edge.add'; diagramId: string; edge: DEdge }
-  | { t: 'edge.update'; diagramId: string; id: string; patch: Partial<Omit<DEdge, 'id'>> }
+  | { t: 'edge.add'; diagramId: string; edge: Edge }
+  | { t: 'edge.update'; diagramId: string; id: string; patch: Partial<Omit<Edge, 'id'>> }
   | { t: 'edge.remove'; diagramId: string; id: string }
 
 export function applyOp(model: Model, op: Op): Model {
   switch (op.t) {
-    case 'entity.add':
-      return M.addEntity(model, op.entity)
-    case 'entity.update':
-      return M.updateEntity(model, op.id, op.patch)
-    case 'entity.delete':
-      return M.deleteEntity(model, op.id)
-    case 'entity.setFields':
-      return M.setEntityFields(model, op.id, op.fields)
-    case 'entity.applyTemplate': {
+    case 'node.add':
+      return M.addNode(model, op.diagramId, op.node)
+    case 'node.update':
+      return M.updateNode(model, op.diagramId, op.id, op.patch)
+    case 'node.remove':
+      return M.removeNode(model, op.diagramId, op.id)
+    case 'node.setFields':
+      return M.setNodeFields(model, op.diagramId, op.id, op.fields)
+    case 'node.applyTemplate': {
+      const d = M.getDiagram(model, op.diagramId)
       const t = model.templates.find((x) => x.id === op.templateId)
-      const e = model.entities.find((x) => x.id === op.id)
-      if (!t || !e) return model
-      return M.updateEntity(model, op.id, M.applyTemplate(e, t))
+      const n = d?.nodes.find((x) => x.id === op.id)
+      if (!d || !t || !n) return model
+      const { id, ...patch } = M.applyTemplate(n, t)
+      return M.updateNode(model, op.diagramId, op.id, patch)
     }
     case 'template.add':
       return M.addTemplate(model, op.name).model
@@ -58,14 +56,6 @@ export function applyOp(model: Model, op: Op): Model {
       return M.renameDiagram(model, op.id, op.name)
     case 'diagram.delete':
       return M.deleteDiagram(model, op.id)
-    case 'placement.add':
-      return M.addPlacement(model, op.diagramId, op.placement)
-    case 'placement.remove':
-      return M.removePlacement(model, op.diagramId, op.entityId)
-    case 'placement.set':
-      return M.setPlacement(model, op.diagramId, op.entityId, op.patch)
-    case 'placement.fieldShow':
-      return M.setFieldShow(model, op.diagramId, op.entityId, op.key, op.value)
     case 'group.add':
       return M.addGroup(model, op.diagramId, op.group)
     case 'group.update':

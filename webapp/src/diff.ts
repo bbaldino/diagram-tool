@@ -1,43 +1,11 @@
 import type { Op } from './ops'
-import type { Model, Diagram, Placement, Group, Note, DEdge, Flow, DiagramContent } from './model'
+import type { Model, Node, Group, Note, Edge, Flow, DiagramContent } from './model'
 import { diagramContent } from './model'
 
 const changed = (a: unknown, b: unknown): boolean => JSON.stringify(a) !== JSON.stringify(b)
 
 function byId<T extends { id: string }>(items: T[]): Map<string, T> {
   return new Map(items.map((item) => [item.id, item]))
-}
-
-function diffPlacements(diagramId: string, prev: Placement[], next: Placement[]): Op[] {
-  const ops: Op[] = []
-  const prevById = new Map(prev.map((p) => [p.entityId, p]))
-  const nextById = new Map(next.map((p) => [p.entityId, p]))
-
-  for (const p of prev) {
-    if (!nextById.has(p.entityId)) ops.push({ t: 'placement.remove', diagramId, entityId: p.entityId })
-  }
-  for (const p of next) {
-    const before = prevById.get(p.entityId)
-    if (!before) {
-      ops.push({ t: 'placement.add', diagramId, placement: p })
-      continue
-    }
-    const patch: Partial<Pick<Placement, 'position' | 'parentId' | 'note'>> = {}
-    if (changed(before.position, p.position)) patch.position = p.position
-    if (changed(before.parentId, p.parentId)) patch.parentId = p.parentId
-    if (changed(before.note, p.note)) patch.note = p.note
-    if (Object.keys(patch).length > 0) ops.push({ t: 'placement.set', diagramId, entityId: p.entityId, patch })
-
-    const beforeShow = before.fieldShow ?? {}
-    const afterShow = p.fieldShow ?? {}
-    const keys = new Set([...Object.keys(beforeShow), ...Object.keys(afterShow)])
-    for (const key of keys) {
-      const bv = beforeShow[key]
-      const av = afterShow[key]
-      if (bv !== av) ops.push({ t: 'placement.fieldShow', diagramId, entityId: p.entityId, key, value: av })
-    }
-  }
-  return ops
 }
 
 function diffById<T extends { id: string }>(
@@ -70,7 +38,15 @@ function diffById<T extends { id: string }>(
 
 export function diffDiagramContents(diagramId: string, prev: DiagramContent, next: DiagramContent): Op[] {
   const ops: Op[] = []
-  ops.push(...diffPlacements(diagramId, prev.placements, next.placements))
+  ops.push(
+    ...diffById<Node>(
+      prev.nodes,
+      next.nodes,
+      (n) => ({ t: 'node.add', diagramId, node: n }),
+      (id, patch) => ({ t: 'node.update', diagramId, id, patch }),
+      (id) => ({ t: 'node.remove', diagramId, id }),
+    ),
+  )
   ops.push(
     ...diffById<Group>(
       prev.groups,
@@ -90,7 +66,7 @@ export function diffDiagramContents(diagramId: string, prev: DiagramContent, nex
     ),
   )
   ops.push(
-    ...diffById<DEdge>(
+    ...diffById<Edge>(
       prev.edges,
       next.edges,
       (e) => ({ t: 'edge.add', diagramId, edge: e }),
@@ -113,23 +89,7 @@ export function diffDiagramContents(diagramId: string, prev: DiagramContent, nex
 export function diffToOps(prev: Model, next: Model): Op[] {
   const ops: Op[] = []
 
-  // 1. Entities
-  const prevEntities = byId(prev.entities)
-  const nextEntities = byId(next.entities)
-  for (const e of prev.entities) {
-    if (!nextEntities.has(e.id)) ops.push({ t: 'entity.delete', id: e.id })
-  }
-  for (const e of next.entities) {
-    const before = prevEntities.get(e.id)
-    if (!before) {
-      ops.push({ t: 'entity.add', entity: e })
-    } else if (changed(before, e)) {
-      const { id, ...patch } = e
-      ops.push({ t: 'entity.update', id, patch })
-    }
-  }
-
-  // 2. Templates
+  // 1. Templates
   const prevTemplates = byId(prev.templates)
   const nextTemplates = byId(next.templates)
   for (const t of prev.templates) {
@@ -151,7 +111,7 @@ export function diffToOps(prev: Model, next: Model): Op[] {
     }
   }
 
-  // 3. Diagrams: add/rename/delete
+  // 2. Diagrams: add/rename/delete
   const prevDiagrams = byId(prev.diagrams)
   const nextDiagrams = byId(next.diagrams)
   for (const d of prev.diagrams) {
@@ -166,11 +126,11 @@ export function diffToOps(prev: Model, next: Model): Op[] {
     }
   }
 
-  // 4. Per-diagram contents: diagrams present in both diff against prev; brand-new
-  // diagrams diff against an empty shell so their initial placements/groups/notes/edges
+  // 3. Per-diagram contents: diagrams present in both diff against prev; brand-new
+  // diagrams diff against an empty shell so their initial nodes/groups/notes/edges
   // still get emitted (diagram.add only creates an empty diagram).
   for (const d of next.diagrams) {
-    const before = prevDiagrams.get(d.id) ?? { ...d, placements: [], groups: [], edges: [], notes: [], flows: [] }
+    const before = prevDiagrams.get(d.id) ?? { ...d, nodes: [], groups: [], edges: [], notes: [], flows: [] }
     ops.push(...diffDiagramContents(d.id, diagramContent(before), diagramContent(d)))
   }
 

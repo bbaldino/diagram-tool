@@ -3,57 +3,65 @@ import { diffToOps, diffDiagramContents } from './diff'
 import { applyOps } from './ops'
 import {
   addDiagram,
-  addPlacement,
-  addEntity,
+  addNode,
   normalizeModel,
   getDiagram,
-  setPlacement,
+  updateNode,
   addTemplate,
   addGroup,
   addNote,
   addEdge,
   renameDiagram,
   deleteDiagram,
-  setFieldShow,
   diagramContent,
   type Model,
 } from './model'
 
-const empty: Model = normalizeModel({ version: 1, entities: [], diagrams: [], templates: [] })
+const empty: Model = normalizeModel({ version: 2, diagrams: [], templates: [] })
 
 describe('diffToOps', () => {
   it('round-trips: applyOps(prev, diffToOps(prev,next)) deep-equals next', () => {
-    const prev = addEntity(empty, { id: 'e1', label: 'E', fields: [] })
-    const d = addDiagram(prev, 'D', 'canvas')
-    let next = addPlacement(d.model, d.id, { entityId: 'e1', position: { x: 5, y: 5 } })
-    next = addEntity(next, { id: 'e2', label: 'E2', fields: [] })
+    const d = addDiagram(empty, 'D', 'canvas')
+    const prev = addNode(d.model, d.id, { id: 'n1', label: 'N', fields: [], position: { x: 5, y: 5 } })
+    const next = addNode(prev, d.id, { id: 'n2', label: 'N2', fields: [], position: { x: 1, y: 1 } })
     const ops = diffToOps(prev, next)
     expect(applyOps(prev, ops)).toEqual(next)
   })
 
-  it('a node move emits exactly one placement.set', () => {
+  it('a node move emits exactly one node.update', () => {
     const created = addDiagram(empty, 'D', 'canvas')
     const did = created.id
-    const prev = addPlacement(created.model, did, { entityId: 'e1', position: { x: 0, y: 0 } })
-    const next = setPlacement(prev, did, 'e1', { position: { x: 40, y: 10 } })
+    const prev = addNode(created.model, did, { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } })
+    const next = updateNode(prev, did, 'n1', { position: { x: 40, y: 10 } })
     const ops = diffToOps(prev, next)
-    expect(ops).toEqual([{ t: 'placement.set', diagramId: did, entityId: 'e1', patch: { position: { x: 40, y: 10 } } }])
+    expect(ops).toEqual([
+      { t: 'node.update', diagramId: did, id: 'n1', patch: { label: 'N', fields: [], position: { x: 40, y: 10 } } },
+    ])
   })
 
   it('empty diff for identical models', () => {
     expect(diffToOps(empty, empty)).toEqual([])
   })
 
-  it('entity add/update/delete', () => {
-    const prev = addEntity(addEntity(empty, { id: 'e1', label: 'E1', fields: [] }), { id: 'e2', label: 'E2', fields: [] })
-    // e1 updated, e2 deleted, e3 added
-    let next = { ...prev, entities: prev.entities.filter((e) => e.id !== 'e2').map((e) => (e.id === 'e1' ? { ...e, label: 'E1-changed' } : e)) }
-    next = addEntity(next, { id: 'e3', label: 'E3', fields: [] })
+  it('node add/update/remove', () => {
+    const d = addDiagram(empty, 'D', 'canvas')
+    let prev = addNode(d.model, d.id, { id: 'n1', label: 'N1', fields: [], position: { x: 0, y: 0 } })
+    prev = addNode(prev, d.id, { id: 'n2', label: 'N2', fields: [], position: { x: 0, y: 0 } })
+    // n1 updated, n2 removed, n3 added
+    let next = {
+      ...prev,
+      diagrams: prev.diagrams.map((dd) =>
+        dd.id !== d.id
+          ? dd
+          : { ...dd, nodes: dd.nodes.filter((n) => n.id !== 'n2').map((n) => (n.id === 'n1' ? { ...n, label: 'N1-changed' } : n)) },
+      ),
+    }
+    next = addNode(next, d.id, { id: 'n3', label: 'N3', fields: [], position: { x: 0, y: 0 } })
     const ops = diffToOps(prev, next)
     expect(applyOps(prev, ops)).toEqual(next)
-    expect(ops).toContainEqual({ t: 'entity.update', id: 'e1', patch: { label: 'E1-changed', fields: [] } })
-    expect(ops).toContainEqual({ t: 'entity.delete', id: 'e2' })
-    expect(ops).toContainEqual({ t: 'entity.add', entity: { id: 'e3', label: 'E3', fields: [] } })
+    expect(ops).toContainEqual({ t: 'node.update', diagramId: d.id, id: 'n1', patch: { label: 'N1-changed', fields: [], position: { x: 0, y: 0 } } })
+    expect(ops).toContainEqual({ t: 'node.remove', diagramId: d.id, id: 'n2' })
+    expect(ops).toContainEqual({ t: 'node.add', diagramId: d.id, node: { id: 'n3', label: 'N3', fields: [], position: { x: 0, y: 0 } } })
   })
 
   it('template add/update/delete', () => {
@@ -113,25 +121,14 @@ describe('diffToOps', () => {
     expect(applyOps(prev, ops)).toEqual(next)
   })
 
-  it('placement fieldShow diffs emit placement.fieldShow per changed key, undefined when removed', () => {
+  it('node add and remove within an existing diagram', () => {
     const created = addDiagram(empty, 'D', 'canvas')
     const did = created.id
-    const prev = addPlacement(created.model, did, { entityId: 'e1', position: { x: 0, y: 0 }, fieldShow: { a: true, b: false } })
-    const next = setFieldShow(setFieldShow(prev, did, 'e1', 'a', undefined), did, 'e1', 'c', true)
-    const ops = diffToOps(prev, next)
-    expect(applyOps(prev, ops)).toEqual(next)
-    expect(ops).toContainEqual({ t: 'placement.fieldShow', diagramId: did, entityId: 'e1', key: 'a', value: undefined })
-    expect(ops).toContainEqual({ t: 'placement.fieldShow', diagramId: did, entityId: 'e1', key: 'c', value: true })
-  })
-
-  it('placement add and remove within an existing diagram', () => {
-    const created = addDiagram(empty, 'D', 'canvas')
-    const did = created.id
-    const prev = addPlacement(created.model, did, { entityId: 'e1', position: { x: 0, y: 0 } })
-    let next = addPlacement(prev, did, { entityId: 'e2', position: { x: 1, y: 1 } })
+    const prev = addNode(created.model, did, { id: 'n1', label: 'N1', fields: [], position: { x: 0, y: 0 } })
+    let next = addNode(prev, did, { id: 'n2', label: 'N2', fields: [], position: { x: 1, y: 1 } })
     next = {
       ...next,
-      diagrams: next.diagrams.map((d) => (d.id !== did ? d : { ...d, placements: d.placements.filter((p) => p.entityId !== 'e1') })),
+      diagrams: next.diagrams.map((d) => (d.id !== did ? d : { ...d, nodes: d.nodes.filter((n) => n.id !== 'n1') })),
     }
     const ops = diffToOps(prev, next)
     expect(applyOps(prev, ops)).toEqual(next)
@@ -140,12 +137,12 @@ describe('diffToOps', () => {
 
 describe('edge labelPos round-trip', () => {
   const base = {
-    version: 1, templates: [], entities: [],
+    version: 2, templates: [],
     diagrams: [{
       id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
-      placements: [], groups: [],
+      nodes: [], groups: [],
       edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }],
-      notes: [],
+      notes: [], flows: [],
     }],
   }
   it('a labelPos change emits an edge.update patch and applyOps sets it', () => {
@@ -162,26 +159,40 @@ describe('edge labelPos round-trip', () => {
 })
 
 describe('diffDiagramContents (exported)', () => {
-  it('emits a single placement.set for a moved node', () => {
+  it('emits a single node.update for a moved node', () => {
     const prev = {
-      placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }],
+      nodes: [{ id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } }],
       groups: [], edges: [], notes: [], flows: [],
     }
     const next = {
-      placements: [{ entityId: 'e1', position: { x: 100, y: 40 } }],
+      nodes: [{ id: 'n1', label: 'N', fields: [], position: { x: 100, y: 40 } }],
       groups: [], edges: [], notes: [], flows: [],
     }
     expect(diffDiagramContents('d1', prev, next)).toEqual([
-      { t: 'placement.set', diagramId: 'd1', entityId: 'e1', patch: { position: { x: 100, y: 40 } } },
+      { t: 'node.update', diagramId: 'd1', id: 'n1', patch: { label: 'N', fields: [], position: { x: 100, y: 40 } } },
     ])
+  })
+
+  it('emits node.add and node.remove for node set changes', () => {
+    const prev = {
+      nodes: [{ id: 'n1', label: 'N1', fields: [], position: { x: 0, y: 0 } }],
+      groups: [], edges: [], notes: [], flows: [],
+    }
+    const next = {
+      nodes: [{ id: 'n2', label: 'N2', fields: [], position: { x: 0, y: 0 } }],
+      groups: [], edges: [], notes: [], flows: [],
+    }
+    const ops = diffDiagramContents('d1', prev, next)
+    expect(ops).toContainEqual({ t: 'node.remove', diagramId: 'd1', id: 'n1' })
+    expect(ops).toContainEqual({ t: 'node.add', diagramId: 'd1', node: next.nodes[0] })
   })
 })
 
 describe('flows data layer', () => {
   const base = {
-    version: 1, templates: [], entities: [],
+    version: 2, templates: [],
     diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
-      placements: [], groups: [], edges: [], notes: [] }],
+      nodes: [], groups: [], edges: [], notes: [], flows: [] }],
   }
   const flow = { id: 'f1', name: 'Doorbell', steps: [{ id: 's1', elementIds: ['a'], caption: 'press' }] }
 
