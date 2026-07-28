@@ -361,6 +361,23 @@ function Flow({
     [model, activeId, rf, nodes, edges],
   )
 
+  const createEntityFromLabel = useCallback(
+    (rawLabel: string, at?: { x: number; y: number }) => {
+      if (!model || !activeId) return
+      const label = rawLabel.trim()
+      if (!label) return
+      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'entity'
+      const existing = new Set(model.entities.map((e) => e.id))
+      let id = slug
+      for (let n = 2; existing.has(id); n++) id = `${slug}-${n}`
+      const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const base = flushCanvasInto(model, activeId, nodes, edges)
+      setModel(addPlacement(addEntity(base, { id, label, fields: [] }), activeId, { entityId: id, position: pos, parentId: null }))
+      pendingSelect.current = id
+    },
+    [model, activeId, rf, nodes, edges],
+  )
+
   const createEntity = useCallback(
     (entity: Entity) => {
       if (!model || !activeId) return
@@ -869,10 +886,7 @@ function Flow({
         <CanvasAddMenu
           x={addMenu.sx}
           y={addMenu.sy}
-          entities={model.entities
-            .filter((e) => !placedIds.has(e.id))
-            .sort((a, b) => a.label.localeCompare(b.label))}
-          onPlaceEntity={(id) => placeEntity(id, addMenu.flow)}
+          onCreateEntity={(label) => createEntityFromLabel(label, addMenu.flow)}
           onAddGroup={() => addGroup(addMenu.flow)}
           onAddNote={() => addNote(addMenu.flow)}
           onClose={() => setAddMenu(null)}

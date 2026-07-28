@@ -1,31 +1,21 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { ICON_BASE } from './graph'
-import type { Entity } from './model'
+import { useEffect, useRef, useState } from 'react'
 
 interface Props {
   x: number
   y: number
-  entities: Entity[] // already filtered to entities not yet placed in this diagram
-  onPlaceEntity: (id: string) => void
+  onCreateEntity: (label: string) => void
   onAddGroup: () => void
   onAddNote: () => void
   onClose: () => void
 }
 
 // A small "Add" menu shown where the user double-clicks empty canvas. Group and
-// Note create a fresh node; Entity opens a searchable list of catalog entities
-// to place (entities are created/managed only on the Entities page).
-export function CanvasAddMenu({
-  x,
-  y,
-  entities,
-  onPlaceEntity,
-  onAddGroup,
-  onAddNote,
-  onClose,
-}: Props) {
+// Note create a fresh node; Entity prompts for a label and creates a new ad-hoc
+// entity placed at the click point (entities are no longer browsed from a shared
+// catalog — creation is ad-hoc-first).
+export function CanvasAddMenu({ x, y, onCreateEntity, onAddGroup, onAddNote, onClose }: Props) {
   const [mode, setMode] = useState<'root' | 'entity'>('root')
-  const [q, setQ] = useState('')
+  const [label, setLabel] = useState('')
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -43,13 +33,12 @@ export function CanvasAddMenu({
     }
   }, [onClose])
 
-  const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase()
-    if (!s) return entities
-    return entities.filter(
-      (e) => e.label.toLowerCase().includes(s) || e.id.toLowerCase().includes(s),
-    )
-  }, [entities, q])
+  const submit = () => {
+    const l = label.trim()
+    if (!l) return
+    onCreateEntity(l)
+    onClose()
+  }
 
   return (
     <div ref={ref} className="addmenu" style={{ left: x, top: y }}>
@@ -87,36 +76,17 @@ export function CanvasAddMenu({
           <input
             autoFocus
             className="addmenu__search"
-            placeholder="Search entities…"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
+            placeholder="New entity label…"
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit()
+            }}
           />
-          <div className="addmenu__list">
-            {filtered.length === 0 && (
-              <div className="addmenu__empty">
-                {entities.length === 0 ? 'All entities already placed' : 'No matches'}
-              </div>
-            )}
-            {filtered.map((e) => (
-              <button
-                key={e.id}
-                className="addmenu__row"
-                onClick={() => {
-                  onPlaceEntity(e.id)
-                  onClose()
-                }}
-              >
-                {e.icon ? (
-                  <img className="addmenu__row-ico" src={`${ICON_BASE}/${e.icon}.svg`} alt="" />
-                ) : (
-                  <span className="addmenu__row-ico addmenu__row-ico--ph">
-                    {e.label.slice(0, 1).toUpperCase()}
-                  </span>
-                )}
-                <span className="addmenu__row-label">{e.label}</span>
-              </button>
-            ))}
-          </div>
+          <button className="addmenu__item" onClick={submit} disabled={!label.trim()}>
+            <span className="addmenu__ico">＋</span>
+            <span>Create “{label.trim() || '…'}”</span>
+          </button>
           <button className="addmenu__back" onClick={() => setMode('root')}>
             ‹ Back
           </button>
