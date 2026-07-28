@@ -204,6 +204,10 @@ function Flow({
   // NOT re-seed from it (that would clobber in-flight edits). This flag lets
   // the re-seed effect skip exactly those self-inflicted model updates.
   const skipReseed = useRef(false)
+  // Set by handlers (e.g. reconnect) that need the NEXT write-back to fire
+  // immediately instead of waiting out the 400ms debounce, so an undo taken
+  // right after the edit doesn't race the pending flush.
+  const flushImmediately = useRef(false)
   // The active diagram id at the last re-seed. Used to fitView only when the
   // diagram actually changed, so same-diagram re-seeds (place/remove/rename)
   // don't jump the viewport.
@@ -269,12 +273,14 @@ function Flow({
   // right level of the model. Entity fields go through updateEntity/addEntity.
   useEffect(() => {
     if (!loaded.current || !activeId) return
+    const delay = flushImmediately.current ? 0 : 400
+    flushImmediately.current = false
     const t = setTimeout(() => {
       setModel((m) => {
         skipReseed.current = true
         return flushCanvasInto(m, activeId, nodes, edges)
       })
-    }, 400)
+    }, delay)
     return () => clearTimeout(t)
   }, [nodes, edges, activeId])
 
@@ -376,6 +382,9 @@ function Flow({
   const onReconnect = useCallback(
     (oldEdge: Edge, newConnection: Connection) => {
       setEdges((els) => applyReconnect(oldEdge, newConnection, els))
+      // Flush this rewire into the model immediately (bypass the 400ms debounce)
+      // so an undo taken right after the drop doesn't race the pending write-back.
+      flushImmediately.current = true
     },
     [setEdges],
   )
