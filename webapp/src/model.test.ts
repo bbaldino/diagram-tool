@@ -136,11 +136,33 @@ describe('model mutations', () => {
     expect(d.placements).toHaveLength(0)
     expect(d.type).toBe('canvas')
   })
-  it('deleteDiagram never touches the catalog', () => {
+  it('deleteDiagram leaves the catalog intact when the removed diagram had no placements', () => {
     const { model, id } = addDiagram(base, 'Temp', 'canvas')
     const m = deleteDiagram(model, id)
     expect(m.diagrams.find((x) => x.id === id)).toBeUndefined()
-    expect(m.entities).toHaveLength(2)
+    expect(m.entities.map((e) => e.id)).toEqual(['plex', 'users']) // untouched
+  })
+  it('deleteDiagram sweeps entities that were only placed in the removed diagram', () => {
+    // add a second diagram that solely places a brand-new ad-hoc entity
+    const withEntity = addEntity(base, { id: 'adhoc1', label: 'Ad-hoc', fields: [] })
+    const { model: m2, id: d2 } = addDiagram(withEntity, 'Scratch', 'canvas')
+    const placed = addPlacement(m2, d2, { entityId: 'adhoc1', position: { x: 0, y: 0 }, parentId: null })
+    const after = deleteDiagram(placed, d2)
+    expect(after.entities.map((e) => e.id)).toEqual(['plex', 'users']) // adhoc1 swept
+  })
+  it('deleteDiagram keeps an entity still placed in another diagram', () => {
+    // 'plex' is placed in 'logical'; also place it in a second diagram, then delete that second one
+    const { model: m2, id: d2 } = addDiagram(base, 'Second', 'canvas')
+    const placed = addPlacement(m2, d2, { entityId: 'plex', position: { x: 0, y: 0 }, parentId: null })
+    const after = deleteDiagram(placed, d2)
+    expect(after.entities.map((e) => e.id)).toEqual(['plex', 'users']) // plex survives (still in 'logical')
+  })
+  it('deleteDiagram does not sweep pre-existing catalog-only entities', () => {
+    // 'orphanCatalog' is never placed anywhere; deleting an unrelated diagram must not remove it
+    const withOrphan = addEntity(base, { id: 'orphanCatalog', label: 'Never Placed', fields: [] })
+    const { model: m2, id: d2 } = addDiagram(withOrphan, 'Unrelated', 'canvas')
+    const after = deleteDiagram(m2, d2)
+    expect(after.entities.some((e) => e.id === 'orphanCatalog')).toBe(true)
   })
   it('addDiagram does not reuse an id after a delete (collision-safe)', () => {
     const first = addDiagram(base, 'Topology', 'canvas')

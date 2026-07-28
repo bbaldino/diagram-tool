@@ -310,7 +310,18 @@ export function renameDiagram(model: Model, id: string, name: string): Model {
 }
 
 export function deleteDiagram(model: Model, id: string): Model {
-  return { ...model, diagrams: model.diagrams.filter((d) => d.id !== id) }
+  const removed = model.diagrams.find((d) => d.id === id)
+  const diagrams = model.diagrams.filter((d) => d.id !== id)
+  if (!removed) return { ...model, diagrams }
+  // Sweep this diagram's ad-hoc entities: those placed in the removed diagram
+  // that now have no placement in any remaining diagram. Never touches entities
+  // that weren't placed in the removed diagram (e.g. pre-existing catalog-only).
+  const candidates = new Set(removed.placements.map((p) => p.entityId))
+  if (candidates.size === 0) return { ...model, diagrams }
+  const stillPlaced = new Set<string>()
+  for (const d of diagrams) for (const p of d.placements) stillPlaced.add(p.entityId)
+  const entities = model.entities.filter((e) => !candidates.has(e.id) || stillPlaced.has(e.id))
+  return { ...model, diagrams, entities }
 }
 
 export function fieldVisible(placement: Placement | undefined, entity: Entity, template: Template | undefined, key: string): boolean {
