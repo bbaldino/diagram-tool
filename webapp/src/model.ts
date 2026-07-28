@@ -69,6 +69,16 @@ export interface Note {
   size: { width: number; height: number }
   text: string
 }
+export interface FlowStep {
+  id: string
+  elementIds: string[]
+  caption?: string
+}
+export interface Flow {
+  id: string
+  name: string
+  steps: FlowStep[]
+}
 export interface Diagram {
   id: string
   name: string
@@ -78,6 +88,7 @@ export interface Diagram {
   groups: Group[]
   edges: DEdge[]
   notes: Note[]
+  flows?: Flow[]
 }
 
 // The undoable slice of a diagram (see undo/redo). Everything else on a
@@ -87,10 +98,11 @@ export interface DiagramContent {
   groups: Group[]
   edges: DEdge[]
   notes: Note[]
+  flows: Flow[]
 }
 
 export function diagramContent(d: Diagram): DiagramContent {
-  return { placements: d.placements, groups: d.groups, edges: d.edges, notes: d.notes }
+  return { placements: d.placements, groups: d.groups, edges: d.edges, notes: d.notes, flows: d.flows ?? [] }
 }
 
 export interface Model {
@@ -251,6 +263,23 @@ export function removeGroup(model: Model, diagramId: string, id: string): Model 
     groups: d.groups.filter((g) => g.id !== id),
     placements: d.placements.map((p) => (p.parentId === id ? { ...p, parentId: undefined } : p)),
   }))
+}
+
+export function addFlow(model: Model, diagramId: string, flow: Flow): Model {
+  return mapDiagram(model, diagramId, (d) =>
+    (d.flows ?? []).some((f) => f.id === flow.id) ? d : { ...d, flows: [...(d.flows ?? []), flow] },
+  )
+}
+
+export function updateFlow(model: Model, diagramId: string, id: string, patch: Partial<Omit<Flow, 'id'>>): Model {
+  return mapDiagram(model, diagramId, (d) => ({
+    ...d,
+    flows: (d.flows ?? []).map((f) => (f.id === id ? { ...f, ...patch, id: f.id } : f)),
+  }))
+}
+
+export function removeFlow(model: Model, diagramId: string, id: string): Model {
+  return mapDiagram(model, diagramId, (d) => ({ ...d, flows: (d.flows ?? []).filter((f) => f.id !== id) }))
 }
 
 export function addNote(model: Model, diagramId: string, note: Note): Model {

@@ -297,6 +297,121 @@ describe('createMcpServer', () => {
   })
 })
 
+describe('author_flow', () => {
+  const mkFlowStore = (): Promise<Store> =>
+    createStore({
+      file: 'x',
+      load: async () => ({
+        version: 1,
+        entities: [
+          { id: 'a', label: 'A', fields: [] },
+          { id: 'b', label: 'B', fields: [] },
+        ],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            placements: [
+              { entityId: 'a', position: { x: 0, y: 0 } },
+              { entityId: 'b', position: { x: 100, y: 0 } },
+            ],
+            groups: [],
+            edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }],
+            notes: [],
+          },
+        ],
+        templates: [],
+      }),
+      save: async () => {},
+    })
+
+  it('creates a flow, resolving ids and {from,to} edge refs', async () => {
+    const store = await mkFlowStore()
+    handlers.authorFlow(store, {
+      diagramId: 'd',
+      name: 'F',
+      steps: [
+        { elements: ['a'], caption: 'press' },
+        { elements: [{ from: 'a', to: 'b' }, 'b'], caption: 'to b' },
+      ],
+    })
+    const d = getDiagram(store.getState().model, 'd')!
+    const flows = d.flows!
+    const f = flows[flows.length - 1]
+    expect(f.name).toBe('F')
+    expect(f.steps[0].elementIds).toEqual(['a'])
+    expect(f.steps[1].elementIds).toEqual(['e1', 'b']) // {from:a,to:b} resolved to e1
+  })
+
+  it('rejects an unknown element ref', async () => {
+    const store = await mkFlowStore()
+    const res = handlers.authorFlow(store, { diagramId: 'd', name: 'X', steps: [{ elements: ['nope'] }] })
+    expect('error' in res).toBe(true)
+  })
+
+  it('rejects an unresolvable edge ref', async () => {
+    const store = await mkFlowStore()
+    const res = handlers.authorFlow(store, { diagramId: 'd', name: 'X', steps: [{ elements: [{ from: 'a', to: 'zzz' }] }] })
+    expect('error' in res).toBe(true)
+  })
+})
+
+describe('flow granular tools', () => {
+  const mkFlowStore = (): Promise<Store> =>
+    createStore({
+      file: 'x',
+      load: async () => ({
+        version: 1,
+        entities: [
+          { id: 'a', label: 'A', fields: [] },
+          { id: 'b', label: 'B', fields: [] },
+        ],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            placements: [
+              { entityId: 'a', position: { x: 0, y: 0 } },
+              { entityId: 'b', position: { x: 100, y: 0 } },
+            ],
+            groups: [],
+            edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }],
+            notes: [],
+          },
+        ],
+        templates: [],
+      }),
+      save: async () => {},
+    })
+
+  it('add/set/remove step, rename, delete a flow', async () => {
+    const store = await mkFlowStore()
+    const { flowId } = handlers.authorFlow(store, { diagramId: 'd', name: 'F', steps: [{ elements: ['a'] }] }) as { flowId: string }
+    handlers.addFlowStep(store, { diagramId: 'd', flowId, elements: ['b'], caption: 'two' })
+    let f = getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)!
+    expect(f.steps).toHaveLength(2)
+    const stepId = f.steps[1].id
+    handlers.setFlowStep(store, { diagramId: 'd', flowId, stepId, patch: { caption: 'edited' } })
+    handlers.removeFlowStep(store, { diagramId: 'd', flowId, stepId })
+    handlers.renameFlow(store, { diagramId: 'd', flowId, name: 'F2' })
+    f = getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)!
+    expect(f.name).toBe('F2'); expect(f.steps).toHaveLength(1)
+    handlers.deleteFlow(store, { diagramId: 'd', flowId })
+    expect(getDiagram(store.getState().model, 'd')!.flows!.find((x) => x.id === flowId)).toBeUndefined()
+  })
+  it('get_diagram surfaces flows and edge ids', async () => {
+    const store = await mkFlowStore()
+    const { flowId } = handlers.authorFlow(store, { diagramId: 'd', name: 'G', steps: [{ elements: [{ from: 'a', to: 'b' }] }] }) as { flowId: string }
+    const d = handlers.getDiagram(store, 'd') as any
+    expect(d.flows.find((f: any) => f.id === flowId)).toBeTruthy()
+    expect(d.edges[0].id).toBeTruthy()
+  })
+})
+
 describe('wrap', () => {
   it('marks a handler error result with isError: true', () => {
     const res = wrap({ error: 'unknown diagram "nope"' })

@@ -202,8 +202,8 @@ describe('store history persistence', () => {
       d: {
         pointer: 1,
         entries: [
-          { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
-          { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
+          { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+          { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
         ],
       },
     }
@@ -229,7 +229,7 @@ describe('store history persistence', () => {
     // Reconcile keeps x=999 as an undo target rather than wiping the stack.
     const drifted = {
       d: { pointer: 0, entries: [
-        { placements: [{ entityId: 'e1', position: { x: 999, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 999, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
       ] },
     }
     const store = await createStore({
@@ -250,9 +250,9 @@ describe('store history persistence', () => {
     // advanced to x30 without that edit being recorded (a save lost to a restart).
     const persisted = {
       d: { pointer: 2, entries: [
-        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
-        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
-        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
       ] },
     }
     const store = await createStore({
@@ -276,9 +276,9 @@ describe('store history persistence', () => {
   it('model behind history is realigned losslessly (undo AND redo preserved)', async () => {
     const persisted = {
       d: { pointer: 2, entries: [
-        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [] },
-        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [] },
-        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [] },
+        { placements: [{ entityId: 'e1', position: { x: 0, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+        { placements: [{ entityId: 'e1', position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
+        { placements: [{ entityId: 'e1', position: { x: 20, y: 0 } }], groups: [], edges: [], notes: [], flows: [] },
       ] },
     }
     const store = await createStore({

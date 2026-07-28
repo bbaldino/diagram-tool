@@ -7,7 +7,7 @@ import type { DiagramContent } from '../src/model'
 
 const c = (n: number): DiagramContent => ({
   placements: [{ entityId: 'e', position: { x: n, y: 0 } }],
-  groups: [], edges: [], notes: [],
+  groups: [], edges: [], notes: [], flows: [],
 })
 
 describe('history', () => {

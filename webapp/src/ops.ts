@@ -1,5 +1,5 @@
 import * as M from './model'
-import type { Model, Entity, EntityField, Template, Placement, Group, Note, DEdge, DiagramType } from './model'
+import type { Model, Entity, EntityField, Template, Placement, Group, Note, DEdge, DiagramType, Flow } from './model'
 
 export type Op =
   | { t: 'entity.add'; entity: Entity }
@@ -20,6 +20,9 @@ export type Op =
   | { t: 'group.add'; diagramId: string; group: Group }
   | { t: 'group.update'; diagramId: string; id: string; patch: Partial<Omit<Group, 'id'>> }
   | { t: 'group.remove'; diagramId: string; id: string }
+  | { t: 'flow.add'; diagramId: string; flow: Flow }
+  | { t: 'flow.update'; diagramId: string; id: string; patch: Partial<Omit<Flow, 'id'>> }
+  | { t: 'flow.remove'; diagramId: string; id: string }
   | { t: 'note.add'; diagramId: string; note: Note }
   | { t: 'note.update'; diagramId: string; id: string; patch: Partial<Omit<Note, 'id'>> }
   | { t: 'note.remove'; diagramId: string; id: string }
@@ -69,6 +72,12 @@ export function applyOp(model: Model, op: Op): Model {
       return M.updateGroup(model, op.diagramId, op.id, op.patch)
     case 'group.remove':
       return M.removeGroup(model, op.diagramId, op.id)
+    case 'flow.add':
+      return M.addFlow(model, op.diagramId, op.flow)
+    case 'flow.update':
+      return M.updateFlow(model, op.diagramId, op.id, op.patch)
+    case 'flow.remove':
+      return M.removeFlow(model, op.diagramId, op.id)
     case 'note.add':
       return M.addNote(model, op.diagramId, op.note)
     case 'note.update':

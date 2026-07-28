@@ -32,11 +32,13 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
+import { FlowPanel } from './FlowPanel'
 import { DiagramBar } from './DiagramBar'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { useDialogs } from './Dialog'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
+import { flowStates } from './flowState'
 import {
   entitiesById,
   getDiagram,
@@ -51,6 +53,9 @@ import {
   deleteDiagram,
   fieldVisible,
   setFieldShow,
+  addFlow,
+  updateFlow,
+  removeFlow,
   type Model,
   type DEdge,
 } from './model'
@@ -172,7 +177,7 @@ function Flow({
   setActiveId: (id: string) => void
   undoFlags: { canUndo: boolean; canRedo: boolean }
 }) {
-  const { showConfirm } = useDialogs()
+  const { showConfirm, showPrompt } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -185,6 +190,11 @@ function Flow({
     setLayoutEngine(e)
     localStorage.setItem('homelab-layout-engine', e)
   }, [])
+  // Flow (walkthrough) UI state — client-only, never persisted in the model.
+  const [flowMode, setFlowMode] = useState<'none' | 'edit' | 'play'>('none')
+  const [currentFlowId, setCurrentFlowId] = useState<string | null>(null)
+  const [currentStep, setCurrentStep] = useState(0)
+  const [selStep, setSelStep] = useState(0)
   // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
   // for popup placement, flow = flow coords for the new node.
   const [addMenu, setAddMenu] = useState<{
@@ -218,6 +228,40 @@ function Flow({
     () => (model && activeId ? getDiagram(model, activeId) : undefined),
     [model, activeId],
   )
+  const currentFlow = useMemo(
+    () => active?.flows?.find((f) => f.id === currentFlowId) ?? null,
+    [active, currentFlowId],
+  )
+
+  // Maps an element id to its flow-walkthrough class for the current flow/step,
+  // or undefined when no flow is active (normal rendering). Shared by the
+  // re-seed (so freshly built nodes/edges are classed from creation) and the
+  // re-tag effect (so step-only changes re-class without a re-seed).
+  const flowClassOf = useCallback(
+    (id: string): string | undefined => {
+      if (flowMode === 'none' || !currentFlow) return undefined
+      const activeStep = flowMode === 'edit' ? selStep : currentStep
+      const s = flowStates(currentFlow, activeStep)[id]
+      return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
+    },
+    [flowMode, currentFlow, currentStep, selStep],
+  )
+
+  // Tag every live node/edge with a flow-walkthrough class (flow-active /
+  // flow-lit / flow-ghost) when a flow is selected and mode isn't 'none';
+  // clears the class (normal rendering) otherwise. Maps the existing
+  // nodes/edges in place — no re-seed from the model.
+  useEffect(() => {
+    setNodes((ns) => ns.map((n) => ({ ...n, className: flowClassOf(n.id) })))
+    setEdges((es) =>
+      es.map((e) => {
+        const fc = flowClassOf(e.id)
+        // Also stash the state in data: the label renders in a portal outside
+        // the edge <g>, so the className alone can't reach it (see WaypointEdge).
+        return { ...e, className: fc, data: { ...e.data, flowState: fc } }
+      }),
+    )
+  }, [flowClassOf, setNodes, setEdges])
 
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came
@@ -243,14 +287,24 @@ function Flow({
       // would otherwise pop the Inspector open for a node the user never
       // picked in this diagram.
       const keepId = sel ?? (changed ? null : (ns.find((n) => n.selected)?.id ?? null))
-      const base = groupsFirst(built.nodes)
+      const base = groupsFirst(built.nodes).map((n) => ({ ...n, className: flowClassOf(n.id) }))
       return keepId ? base.map((n) => ({ ...n, selected: n.id === keepId })) : base
     })
-    setEdges(built.edges)
+    setEdges(
+      built.edges.map((e) => {
+        const fc = flowClassOf(e.id)
+        return { ...e, className: fc, data: { ...e.data, flowState: fc } }
+      }),
+    )
     setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
     loaded.current = true
     lastSeededId.current = activeId
-    if (changed) setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+    if (changed) {
+      setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
+      setFlowMode('none')
+      setCurrentFlowId(null)
+      setCurrentStep(0)
+    }
     // Newly placed/created entity: select it + center so it's obvious it landed.
     if (sel) {
       setSelNode(sel)
@@ -259,6 +313,9 @@ function Flow({
       if (p) setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
     // byId is derived from model; excluded to avoid a redundant re-seed.
+    // flowClassOf (and its flowMode/currentFlow/currentStep deps) is also
+    // excluded for the same reason: a re-seed must stay keyed on
+    // [model, activeId] only, and the closure already reads current values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, activeId])
 
@@ -347,6 +404,66 @@ function Flow({
       }
     },
     [model, activeId, nodes, edges],
+  )
+
+  // ---- flow handlers ----
+  const selectFlow = useCallback((id: string | null) => {
+    setCurrentFlowId(id)
+    setCurrentStep(0)
+    setSelStep(0)
+  }, [])
+
+  const createFlow = useCallback(async () => {
+    if (!model || !activeId) return
+    const name = await showPrompt({ title: 'New flow', label: 'Name', defaultValue: 'Flow' })
+    if (!name) return
+    const id = `flow-${Date.now().toString(36)}`
+    setModel((m) => addFlow(m, activeId, { id, name, steps: [] }))
+    setCurrentFlowId(id)
+    setFlowMode('edit')
+    setSelStep(0)
+    setCurrentStep(0)
+  }, [model, activeId, setModel, showPrompt])
+
+  const renameFlowById = useCallback(
+    async (id: string) => {
+      const f = active?.flows?.find((x) => x.id === id)
+      if (!f || !activeId) return
+      const name = await showPrompt({ title: 'Rename flow', label: 'Name', defaultValue: f.name })
+      if (name) setModel((m) => updateFlow(m, activeId, id, { name }))
+    },
+    [active, activeId, setModel, showPrompt],
+  )
+
+  const deleteFlowById = useCallback(
+    (id: string) => {
+      if (!activeId) return
+      setModel((m) => removeFlow(m, activeId, id))
+      if (currentFlowId === id) {
+        setCurrentFlowId(null)
+        setFlowMode('none')
+      }
+    },
+    [activeId, currentFlowId, setModel],
+  )
+
+  const toggleInStep = useCallback(
+    (elementId: string) => {
+      if (flowMode !== 'edit' || !currentFlow || !activeId) return
+      if (!currentFlow.steps[selStep]) return
+      const steps = currentFlow.steps.map((s, i) =>
+        i !== selStep
+          ? s
+          : {
+              ...s,
+              elementIds: s.elementIds.includes(elementId)
+                ? s.elementIds.filter((x) => x !== elementId)
+                : [...s.elementIds, elementId],
+            },
+      )
+      setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))
+    },
+    [flowMode, currentFlow, activeId, selStep, setModel],
   )
 
   const createEntityFromLabel = useCallback(
@@ -681,6 +798,34 @@ function Flow({
     return () => window.removeEventListener('keydown', onKey)
   }, [doUndo, doRedo])
 
+  // Keyboard: arrow-key stepping through the active flow in Play mode.
+  // Right/Down advance, Left/Up go back; both preventDefault so React Flow
+  // doesn't nudge a selected node and the page doesn't scroll. Inert while a
+  // text input/textarea/contentEditable is focused (same guard as undo above).
+  useEffect(() => {
+    if (flowMode !== 'play') return
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        e.preventDefault()
+        setCurrentStep((s) => Math.min(s + 1, (currentFlow?.steps.length ?? 1) - 1))
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault()
+        setCurrentStep((s) => Math.max(0, s - 1))
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [flowMode, currentFlow])
+
+  // Clamp currentStep into range whenever the active flow (or mode) changes,
+  // e.g. switching to a flow with fewer steps than the previous currentStep.
+  useEffect(() => {
+    const len = currentFlow?.steps.length ?? 0
+    setCurrentStep((s) => Math.min(Math.max(0, s), Math.max(0, len - 1)))
+  }, [currentFlow, flowMode])
+
   const selectedNode = useMemo(
     () => nodes.find((n) => n.id === selNode) ?? null,
     [nodes, selNode],
@@ -772,6 +917,8 @@ function Flow({
         edgesReconnectable={false}
         elevateEdgesOnSelect
         onSelectionChange={onSelectionChange}
+        onNodeClick={(_, n) => toggleInStep(n.id)}
+        onEdgeClick={(_, e) => toggleInStep(e.id)}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         fitView
@@ -801,6 +948,41 @@ function Flow({
               </select>
             </label>
             <label className="edgestyle">
+              Flow:
+              <select
+                value={currentFlowId ?? ''}
+                onChange={(e) => selectFlow(e.target.value || null)}
+              >
+                <option value="">(none)</option>
+                {(active?.flows ?? []).map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button onClick={createFlow}>+ Flow</button>
+            <button
+              onClick={() => setFlowMode(flowMode === 'edit' ? 'none' : 'edit')}
+              disabled={!currentFlow}
+              className={flowMode === 'edit' ? 'active' : ''}
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => setFlowMode(flowMode === 'play' ? 'none' : 'play')}
+              disabled={!currentFlow}
+              className={flowMode === 'play' ? 'active' : ''}
+            >
+              Play
+            </button>
+            <button onClick={() => currentFlowId && renameFlowById(currentFlowId)} disabled={!currentFlow}>
+              Rename
+            </button>
+            <button onClick={() => currentFlowId && deleteFlowById(currentFlowId)} disabled={!currentFlow}>
+              Delete
+            </button>
+            <label className="edgestyle">
               Edges:
               <select value={edgeStyle} onChange={(e) => applyEdgeStyle(e.target.value as any)}>
                 <option value="default">Curved</option>
@@ -819,23 +1001,34 @@ function Flow({
               onChange={onImport}
             />
           </div>
-          <Inspector
-            node={selectedNode}
-            edge={selectedEdge}
-            groups={groupList}
-            onNodeData={updateNodeData}
-            onNodeParent={reparent}
-            onEdge={updateEdge}
-            onDistribute={distributeGroup}
-            onShrink={shrinkGroup}
-            onGroupSize={setGroupSize}
-            onDelete={deleteSelected}
-            onRemoveFromDiagram={removeFromDiagram}
-            onDeleteEntity={removeEntityEverywhere}
-            fields={inspectorFields}
-            onFieldShow={onFieldShow}
-            diagramColors={diagramColors}
-          />
+          {flowMode !== 'none' && currentFlow ? (
+            <FlowPanel
+              flow={currentFlow}
+              mode={flowMode === 'edit' ? 'edit' : 'play'}
+              selStep={flowMode === 'edit' ? selStep : currentStep}
+              onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
+              onChange={(steps) => activeId && setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))}
+              onExit={() => setFlowMode('none')}
+            />
+          ) : (
+            <Inspector
+              node={selectedNode}
+              edge={selectedEdge}
+              groups={groupList}
+              onNodeData={updateNodeData}
+              onNodeParent={reparent}
+              onEdge={updateEdge}
+              onDistribute={distributeGroup}
+              onShrink={shrinkGroup}
+              onGroupSize={setGroupSize}
+              onDelete={deleteSelected}
+              onRemoveFromDiagram={removeFromDiagram}
+              onDeleteEntity={removeEntityEverywhere}
+              fields={inspectorFields}
+              onFieldShow={onFieldShow}
+              diagramColors={diagramColors}
+            />
+          )}
         </Panel>
 
         <Panel position="top-left" className="stack-tl">
