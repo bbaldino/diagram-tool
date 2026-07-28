@@ -49,13 +49,15 @@ is closed by an **orphan sweep** (below), not by a storage migration.
 - **No `adhoc`/`library` flag yet.** With the library hidden, every entity is ad-hoc by
   definition, so a flag would be dead weight. Re-introducing the flag is the first step of
   the library's return (see Reversibility).
-- **Orphan sweep (the one new rule):** when a diagram is deleted, remove any entity that is
-  left with **zero placements across all diagrams**. While the library is hidden nothing is
-  allowed to sit un-placed, so an unplaced entity is always garbage. This keeps the hidden
-  store from silently accumulating dead entities.
+- **Orphan sweep (the one new rule):** when a diagram is deleted, remove exactly those
+  entities **that were placed in the deleted diagram** and have **no placement in any
+  remaining diagram**. This targets the deleted diagram's ad-hoc entities and nothing else.
+  - Scoping to "entities placed in the deleted diagram" is deliberate: it must **not** sweep
+    pre-existing catalog-only entities that were never placed anywhere (deleting one diagram
+    shouldn't nuke unrelated unplaced entities).
   - A shared entity still placed in another diagram is **not** swept (it still has a
     placement elsewhere).
-  - `removeDiagram` in `webapp/src/model.ts` gains this sweep. `deleteEntity` already
+  - `deleteDiagram` in `webapp/src/model.ts` gains this sweep. `deleteEntity` already
     cascades placement removal and is unaffected.
 
 ### 2. Creation UX
