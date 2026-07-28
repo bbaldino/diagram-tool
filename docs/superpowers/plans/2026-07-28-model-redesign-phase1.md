@@ -13,7 +13,8 @@
 ## Global Constraints
 
 - Commands run from `webapp/`. Types: `npx tsc --noEmit`. Tests: `npx vitest run`.
-- **Intermediate tasks won't whole-project-compile** — a pervasive type change breaks the client until the final client task. So Tasks 1-5 verify with **scoped vitest** (the named test files only), NOT `tsc --noEmit` or the full suite. Task 7 restores whole-project `tsc` clean + full `vitest run`.
+- **Intermediate tasks won't whole-project-compile, and vitest can't boot via `vite.config.ts`** mid-sequence — `vite.config.ts` eagerly imports the whole server chain (`store`/`mcp`/`authoring`/`layout`), so a half-migrated chain is a hard rolldown module-load error that stops vitest from starting *any* test. Therefore Tasks 2-5 verify their named test files with a **scratch node config that bypasses `vite.config.ts`**:
+  `npx vitest run --config /home/bbaldino/work/homelab-diagram/.superpowers/sdd/2026-07-28-model-redesign-phase1/vitest.node.mjs <test files>` (run from `webapp/`). Do NOT run `npx tsc --noEmit` or the plain `npx vitest run` in Tasks 2-5. **Task 5** additionally confirms the whole server chain module-loads by running the plain `npx vitest run server/ src/model.test.ts src/ops.test.ts src/diff.test.ts src/ids.test.ts` (node/server files) once it's consistent. **Task 7** restores whole-project `tsc --noEmit` clean + the full plain `npx vitest run`.
 - Ids: **bare uuid v4** via `newId()` (Task 1), everywhere (nodes/groups/notes/edges/diagrams/flows/steps/templates). Never `crypto.randomUUID()` (secure-context-only; the app is plain-HTTP LAN).
 - No native `window.alert/prompt/confirm` — use `useDialogs()` (`Dialog.tsx`).
 - Capitalize only the first letter of multi-letter acronyms.
@@ -29,6 +30,8 @@
 - `webapp/src/diff.ts` — `diffPlacements` → generic `diffById<Node>`; retype.
 - `webapp/server/store.ts`, `webapp/server/history.ts` — `DiagramContent` shape; mechanism unchanged.
 - `webapp/server/mcp.ts` — tools on the new model; `entity`→`node`; creation returns uuids.
+- `webapp/server/authoring.ts` — retype to the new model (`addEntity`+`addPlacement`→`addNode`; `Placement`→`Node`; edges via `newId()`); it's `author_diagram`'s builder, imported by `mcp.ts`.
+- `webapp/server/layout.ts` — retype to the new model (`Placement`→`Node`, `entityId`→node `id`, `DEdge`→`Edge`); it lays out a diagram's nodes; imported by `authoring.ts` and `App.tsx`'s tidy path.
 - `webapp/src/buildGraph.ts` — build RF nodes/edges from new arrays; parents-before-children topological order.
 - `webapp/src/App.tsx`, `Inspector.tsx`, `nodes.tsx`, `WaypointEdge.tsx` — new model; uuid creation; reparent cycle guard.
 - **Delete:** `webapp/src/EntitiesPage.tsx`, `webapp/src/Palette.tsx`.
@@ -239,17 +242,19 @@ Keep the groups/notes/edges/flows `diffById` calls (retyped). `diffToOps` drops 
 
 ---
 
-### Task 5: MCP tools on the new model (`mcp.ts`)
+### Task 5: Finish the server chain — layout + authoring + MCP (`layout.ts`, `authoring.ts`, `mcp.ts`)
 
-**Files:** Modify `webapp/server/mcp.ts`; update `webapp/server/mcp.test.ts`.
+**Files:** Modify `webapp/server/layout.ts`, `webapp/server/authoring.ts`, `webapp/server/mcp.ts`; update `webapp/server/mcp.test.ts` (+ any `authoring`/`layout` tests present).
 
-**Consumes:** Tasks 2-4. **Produces:** MCP tools operating on the new model.
+**Consumes:** Tasks 2-4. **Produces:** the whole server chain consistent with the new model — after this, `vite.config.ts` module-loads and plain vitest boots again.
 
-- [ ] **Step 1:** Retype handlers to the new model: node creation/placement collapses to a single "add node" (mint `newId()`, push to `diagram.nodes`); `set_edge`/`connect`/`remove`/flow tools operate on uuids; `resolveElementRef` resolves `{from,to}`→edge uuid and validates ids against `diagram.nodes/groups/notes/edges`. Rename `entity`→`node` in tool names/args/descriptions (e.g. `place_entity`→`add_node`, `list_entities`→`list_nodes`). **Creation/authoring tools return the created uuid(s)** in their result. `get_diagram` returns the new model (uuids + labels).
+- [ ] **Step 0 — layout.ts + authoring.ts (unblock vitest boot):** Retype `layout.ts` (`Placement`→`Node` with inline `position`; `entityId`→ node `id`; `DEdge`→`Edge`; return `{ nodes, groups, edges }`) and `authoring.ts` (`addEntity`+`addPlacement`→`addNode` building a `Node` with `position`; mint ids via `newId()`; `Placement`→`Node`). These are what break `vite.config.ts` today — they must compile-load for the plain suite to run.
+
+- [ ] **Step 1:** Retype MCP handlers to the new model: node creation/placement collapses to a single "add node" (mint `newId()`, push to `diagram.nodes`); `set_edge`/`connect`/`remove`/flow tools operate on uuids; `resolveElementRef` resolves `{from,to}`→edge uuid and validates ids against `diagram.nodes/groups/notes/edges`. Rename `entity`→`node` in tool names/args/descriptions (e.g. `place_entity`→`add_node`, `list_entities`→`list_nodes`). **Creation/authoring tools return the created uuid(s)** in their result. `get_diagram` returns the new model (uuids + labels).
 
 - [ ] **Step 2: Update `mcp.test.ts`** to the new tool shapes/names, asserting created uuids are returned and referenced.
 
-- [ ] **Step 3: Run scoped tests + commit** — `npx vitest run server/mcp.test.ts` → PASS. Commit (`feat: MCP tools on the node model (return uuids)`).
+- [ ] **Step 3: Verify the server chain module-loads (plain vitest boots again).** With layout/authoring/mcp all retyped, run the node/server suite with the NORMAL config: `npx vitest run server/ src/model.test.ts src/ops.test.ts src/diff.test.ts src/ids.test.ts` → all boot + PASS (this proves `vite.config.ts` loads again). Commit (`feat: server chain (layout/authoring/mcp) on the node model`).
 
 - [ ] **Step 4 (note for the executor):** Tool renames change the agent-facing surface. That's acceptable (data + interface are disposable pre-Phase-2). The full resolution/search layer is Phase 2.
 
