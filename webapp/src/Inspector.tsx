@@ -14,8 +14,6 @@ interface Props {
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
   onDelete: () => void
-  onRemoveFromDiagram: () => void
-  onDeleteEntity: () => void
   fields: { key: string; value: string; effective: boolean; overridden: boolean }[]
   onFieldShow: (key: string, value: boolean | undefined) => void
 }
@@ -40,8 +38,6 @@ export function Inspector({
   onShrink,
   onGroupSize,
   onDelete,
-  onRemoveFromDiagram,
-  onDeleteEntity,
   fields,
   onFieldShow,
   diagramColors,
@@ -156,6 +152,16 @@ export function Inspector({
             />
           </Field>
         </div>
+        <Field label="Parent group">
+          <select value={node.parentId ?? ''} onChange={(e) => onNodeParent(e.target.value)}>
+            <option value="">(none)</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </Field>
         <button className="insp__action" onClick={onDistribute}>
           Space to fit
         </button>
@@ -163,7 +169,7 @@ export function Inspector({
           Shrink to fit
         </button>
         <button className="insp__delete" onClick={onDelete}>
-          Delete group (+ its nodes)
+          Delete group (+ its contents)
         </button>
       </div>
     )
@@ -174,8 +180,17 @@ export function Inspector({
     return (
       <div className="panel insp">
         <h4>Edit note</h4>
-        <div className="insp__sub">standalone note — this diagram</div>
         <div className="insp__hint">Edit the text directly on the note.</div>
+        <Field label="Group">
+          <select value={node.parentId ?? ''} onChange={(e) => onNodeParent(e.target.value)}>
+            <option value="">(none)</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.label}
+              </option>
+            ))}
+          </select>
+        </Field>
         <button className="insp__delete" onClick={onDelete}>
           Delete note
         </button>
@@ -189,7 +204,6 @@ export function Inspector({
     return (
       <div className="panel insp">
         <h4>Edit node</h4>
-        <div className="insp__sub">shared across diagrams</div>
         <Field label="Label">
           <input value={d.label ?? ''} onChange={(e) => onNodeData({ label: e.target.value })} />
         </Field>
@@ -225,11 +239,11 @@ export function Inspector({
             ))}
           </select>
         </Field>
-        <Field label="Note (this diagram)">
+        <Field label="Note">
           <textarea
             className="insp__note"
             value={d.note ?? ''}
-            placeholder="shown inside this box, on this diagram only"
+            placeholder="shown inside this box"
             onChange={(e) => onNodeData({ note: e.target.value || undefined })}
           />
         </Field>
@@ -259,11 +273,8 @@ export function Inspector({
             ))}
           </div>
         )}
-        <button className="insp__action" onClick={onRemoveFromDiagram}>
-          Remove from this diagram
-        </button>
-        <button className="insp__delete" onClick={onDeleteEntity}>
-          Delete entity (all diagrams)
+        <button className="insp__delete" onClick={onDelete}>
+          Delete node
         </button>
       </div>
     )

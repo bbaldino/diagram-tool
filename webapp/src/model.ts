@@ -35,6 +35,7 @@ export interface Node extends Entity {
   actor?: boolean // was Entity.kind === 'actor'
   template?: string // Template id
   fields: Field[]
+  note?: string
   position: { x: number; y: number }
   parentId?: string // containing Group id
 }

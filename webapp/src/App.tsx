@@ -39,25 +39,14 @@ import { useDialogs } from './Dialog'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
 import { flowStates } from './flowState'
-import {
-  entitiesById,
-  getDiagram,
-  patchDiagram,
-  updateEntity,
-  addEntity,
-  addPlacement,
-  removePlacement,
-  deleteEntity,
-  addDiagram,
-  renameDiagram,
-  deleteDiagram,
-  fieldVisible,
-  setFieldShow,
-  addFlow,
-  updateFlow,
-  removeFlow,
-  type Model,
-  type DEdge,
+import { newId } from './ids'
+import * as M from './model'
+import type {
+  Model,
+  Node as MNode,
+  Group as MGroup,
+  Note as MNote,
+  Edge as MEdge,
 } from './model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
@@ -70,44 +59,67 @@ const groupsFirst = (ns: Node[]): Node[] => [
 ]
 
 // Map the live React Flow nodes back into the model's per-diagram arrays.
-// Entity fields (label/sub/icon/status) are intentionally NOT written here —
-// those live on the shared entity catalog and are handled via updateEntity.
-function nodesToDiagramParts(nodes: Node[]) {
-  const groups = nodes
-    .filter((n) => n.type === 'group')
-    .map((n) => ({
-      id: n.id,
-      label: (n.data as any).label,
-      color: (n.data as any).color,
-      position: n.position,
-      size: {
-        width: Number((n.style as any)?.width) || 320,
-        height: Number((n.style as any)?.height) || 200,
-      },
-    }))
-  const placements = nodes
-    .filter((n) => n.type === 'service')
-    .map((n) => ({
-      entityId: n.id,
-      position: n.position,
-      parentId: n.parentId ?? undefined,
-      note: ((n.data as any).note as string) || undefined,
-    }))
-  const notes = nodes
-    .filter((n) => n.type === 'note')
-    .map((n) => ({
-      id: n.id,
-      position: n.position,
-      size: {
-        width: Number((n.style as any)?.width) || 190,
-        height: Number((n.style as any)?.height) || 110,
-      },
-      text: (n.data as any).text ?? '',
-    }))
-  return { groups, placements, notes }
+// Nodes are diagram-local now, so every field lives directly on the Node —
+// EXCEPT `fields` and `template`, which the canvas never carries (there's no
+// on-canvas UI for them); those are merged back in from the diagram's
+// previous nodes (keyed by id) so a geometry-only write-back can't wipe them.
+function nodesToDiagramParts(
+  nodes: Node[],
+  prevNodesById: Map<string, MNode>,
+): { nodes: MNode[]; groups: MGroup[]; notes: MNote[] } {
+  const dNodes: MNode[] = []
+  const groups: MGroup[] = []
+  const notes: MNote[] = []
+  for (const n of nodes) {
+    if (n.type === 'group') {
+      const d = n.data as any
+      groups.push({
+        id: n.id,
+        label: d.label,
+        color: d.color,
+        position: n.position,
+        parentId: n.parentId ?? undefined,
+        size: {
+          width: Number((n.style as any)?.width) || 320,
+          height: Number((n.style as any)?.height) || 200,
+        },
+      })
+    } else if (n.type === 'note') {
+      const d = n.data as any
+      notes.push({
+        id: n.id,
+        text: d.text ?? '',
+        position: n.position,
+        parentId: n.parentId ?? undefined,
+        size: {
+          width: Number((n.style as any)?.width) || 190,
+          height: Number((n.style as any)?.height) || 110,
+        },
+      })
+    } else if (n.type === 'service') {
+      const d = n.data as any
+      const prev = prevNodesById.get(n.id)
+      dNodes.push({
+        id: n.id,
+        label: d.label,
+        sub: d.sub || undefined,
+        icon: d.icon || undefined,
+        status: d.status || undefined,
+        actor: d.kind === 'actor' ? true : undefined,
+        note: (d.note as string) || undefined,
+        template: prev?.template,
+        fields: prev?.fields ?? [],
+        position: n.position,
+        parentId: n.parentId ?? undefined,
+      })
+    }
+  }
+  return { nodes: dNodes, groups, notes }
 }
 
-function edgesToDEdges(edges: Edge[]): DEdge[] {
+// `orientation` has no on-canvas UI either (server-side layout hint only) —
+// preserve it from the diagram's previous edge, same reasoning as fields/template above.
+function edgesToDiagramEdges(edges: Edge[], prevEdgesById: Map<string, MEdge>): MEdge[] {
   return edges.map((e) => ({
     id: e.id,
     from: e.source,
@@ -122,46 +134,49 @@ function edgesToDEdges(edges: Edge[]): DEdge[] {
     dir: (e.data as any)?.dir ?? 'forward',
     color: (e.data as any)?.color ?? undefined,
     labelPos: (e.data as any)?.labelPos,
+    orientation: prevEdgesById.get(e.id)?.orientation,
   }))
 }
 
 // Flush the live canvas (nodes/edges) into the model for the given diagram:
-// map node/edge geometry into the diagram's arrays, and push every service
-// node's entity fields onto the shared entity catalog. This is the pure form
-// of the debounced write-back; call it before any model mutation so pending
-// canvas edits aren't lost when the canvas is rebuilt from `model`.
+// map node/group/note/edge geometry (and inline node fields) into the
+// diagram's arrays. This is the pure form of the debounced write-back; call
+// it before any model mutation so pending canvas edits aren't lost when the
+// canvas is rebuilt from `model`.
 function flushCanvasInto(m: Model, diagramId: string, nodes: Node[], edges: Edge[]): Model {
-  // The canvas carries only geometry, so nodesToDiagramParts can't know about
-  // per-diagram field overrides. Re-attach each existing placement's fieldShow
-  // by entityId so the write-back doesn't wipe them.
-  const prevFieldShow = new Map(
-    (getDiagram(m, diagramId)?.placements ?? []).map((p) => [p.entityId, p.fieldShow]),
-  )
-  const parts = nodesToDiagramParts(nodes)
-  const placements = parts.placements.map((p) => {
-    const fs = prevFieldShow.get(p.entityId)
-    return fs ? { ...p, fieldShow: fs } : p
-  })
-  let next = patchDiagram(m, diagramId, {
+  const d = M.getDiagram(m, diagramId)
+  const prevNodesById = new Map((d?.nodes ?? []).map((n) => [n.id, n]))
+  const prevEdgesById = new Map((d?.edges ?? []).map((e) => [e.id, e]))
+  const parts = nodesToDiagramParts(nodes, prevNodesById)
+  return M.patchDiagram(m, diagramId, {
+    nodes: parts.nodes,
     groups: parts.groups,
     notes: parts.notes,
-    placements,
-    edges: edgesToDEdges(edges),
+    edges: edgesToDiagramEdges(edges, prevEdgesById),
   })
-  const known = new Set(m.entities.map((e) => e.id))
+}
+
+// All ids reachable by following parentId edges out of `id` (its children,
+// grandchildren, ...) among the live canvas nodes. Used both to guard against
+// reparenting cycles and to cascade-delete a group's contents.
+function descendantsOf(id: string, nodes: Node[]): Set<string> {
+  const children = new Map<string, string[]>()
   for (const n of nodes) {
-    if (n.type !== 'service') continue
-    const data = n.data as any
-    const patch = {
-      label: data.label,
-      sub: data.sub,
-      icon: data.icon,
-      status: data.status,
-      kind: data.kind,
+    if (n.parentId) {
+      const arr = children.get(n.parentId) ?? []
+      arr.push(n.id)
+      children.set(n.parentId, arr)
     }
-    next = known.has(n.id) ? updateEntity(next, n.id, patch) : addEntity(next, { id: n.id, ...patch, fields: [] })
   }
-  return next
+  const out = new Set<string>()
+  const stack = [...(children.get(id) ?? [])]
+  while (stack.length) {
+    const cur = stack.pop()!
+    if (out.has(cur)) continue
+    out.add(cur)
+    stack.push(...(children.get(cur) ?? []))
+  }
+  return out
 }
 
 function Flow({
@@ -177,7 +192,7 @@ function Flow({
   setActiveId: (id: string) => void
   undoFlags: { canUndo: boolean; canRedo: boolean }
 }) {
-  const { showConfirm, showPrompt } = useDialogs()
+  const { showPrompt } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -223,9 +238,8 @@ function Flow({
   // don't jump the viewport.
   const lastSeededId = useRef<string | null>(null)
 
-  const byId = useMemo(() => (model ? entitiesById(model) : {}), [model])
   const active = useMemo(
-    () => (model && activeId ? getDiagram(model, activeId) : undefined),
+    () => (model && activeId ? M.getDiagram(model, activeId) : undefined),
     [model, activeId],
   )
   const currentFlow = useMemo(
@@ -272,9 +286,9 @@ function Flow({
       skipReseed.current = false
       return
     }
-    const d = getDiagram(model, activeId)
+    const d = M.getDiagram(model, activeId)
     if (!d) return
-    const built = buildDiagramGraph(d, byId, model.templates)
+    const built = buildDiagramGraph(d, model.templates)
     const changed = lastSeededId.current !== activeId
     const sel = pendingSelect.current
     pendingSelect.current = null
@@ -312,10 +326,9 @@ function Flow({
       const p = built.nodes.find((n) => n.id === sel)?.position
       if (p) setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
-    // byId is derived from model; excluded to avoid a redundant re-seed.
-    // flowClassOf (and its flowMode/currentFlow/currentStep deps) is also
-    // excluded for the same reason: a re-seed must stay keyed on
-    // [model, activeId] only, and the closure already reads current values.
+    // flowClassOf (and its flowMode/currentFlow/currentStep deps) is
+    // excluded: a re-seed must stay keyed on [model, activeId] only, and the
+    // closure already reads current values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, activeId])
 
@@ -324,10 +337,10 @@ function Flow({
     if (activeId) localStorage.setItem(ACTIVE_KEY, activeId)
   }, [activeId])
 
-  // Write canvas edits back into the active diagram (and shared entities),
-  // debounced on the settle of nodes/edges. This maps every edit — drag,
-  // group/note changes, edges, reparenting, tidy/distribute/shrink — to the
-  // right level of the model. Entity fields go through updateEntity/addEntity.
+  // Write canvas edits back into the active diagram, debounced on the settle
+  // of nodes/edges. This maps every edit — drag, group/note changes, edges,
+  // reparenting, tidy/distribute/shrink — into the diagram's node/group/
+  // note/edge arrays (see flushCanvasInto).
   useEffect(() => {
     if (!loaded.current || !activeId) return
     const delay = flushImmediately.current ? 0 : 400
@@ -376,7 +389,7 @@ function Flow({
     (name: string) => {
       if (!model || !activeId) return
       const base = flushCanvasInto(model, activeId, nodes, edges)
-      const { model: m2, id } = addDiagram(base, name, 'canvas')
+      const { model: m2, id } = M.addDiagram(base, name, 'canvas')
       setModel(m2)
       setActiveId(id)
     },
@@ -387,7 +400,7 @@ function Flow({
     (id: string, name: string) => {
       if (!model || !activeId) return
       const base = flushCanvasInto(model, activeId, nodes, edges)
-      setModel(renameDiagram(base, id, name))
+      setModel(M.renameDiagram(base, id, name))
     },
     [model, activeId, nodes, edges],
   )
@@ -396,7 +409,7 @@ function Flow({
     (id: string) => {
       if (!model || !activeId) return
       const base = flushCanvasInto(model, activeId, nodes, edges)
-      const m = deleteDiagram(base, id)
+      const m = M.deleteDiagram(base, id)
       setModel(m)
       if (id === activeId) {
         const nextId = m.diagrams[0]?.id
@@ -417,8 +430,8 @@ function Flow({
     if (!model || !activeId) return
     const name = await showPrompt({ title: 'New flow', label: 'Name', defaultValue: 'Flow' })
     if (!name) return
-    const id = `flow-${Date.now().toString(36)}`
-    setModel((m) => addFlow(m, activeId, { id, name, steps: [] }))
+    const id = newId()
+    setModel((m) => M.addFlow(m, activeId, { id, name, steps: [] }))
     setCurrentFlowId(id)
     setFlowMode('edit')
     setSelStep(0)
@@ -430,7 +443,7 @@ function Flow({
       const f = active?.flows?.find((x) => x.id === id)
       if (!f || !activeId) return
       const name = await showPrompt({ title: 'Rename flow', label: 'Name', defaultValue: f.name })
-      if (name) setModel((m) => updateFlow(m, activeId, id, { name }))
+      if (name) setModel((m) => M.updateFlow(m, activeId, id, { name }))
     },
     [active, activeId, setModel, showPrompt],
   )
@@ -438,7 +451,7 @@ function Flow({
   const deleteFlowById = useCallback(
     (id: string) => {
       if (!activeId) return
-      setModel((m) => removeFlow(m, activeId, id))
+      setModel((m) => M.removeFlow(m, activeId, id))
       if (currentFlowId === id) {
         setCurrentFlowId(null)
         setFlowMode('none')
@@ -461,23 +474,22 @@ function Flow({
                 : [...s.elementIds, elementId],
             },
       )
-      setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))
+      setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
     },
     [flowMode, currentFlow, activeId, selStep, setModel],
   )
 
-  const createEntityFromLabel = useCallback(
+  // Ad-hoc-first: creation always mints a fresh diagram-local node (no shared
+  // catalog to browse/reuse — see CanvasAddMenu).
+  const createNode = useCallback(
     (rawLabel: string, at?: { x: number; y: number }) => {
       if (!model || !activeId) return
       const label = rawLabel.trim()
       if (!label) return
-      const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'entity'
-      const existing = new Set(model.entities.map((e) => e.id))
-      let id = slug
-      for (let n = 2; existing.has(id); n++) id = `${slug}-${n}`
       const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const id = newId()
       const base = flushCanvasInto(model, activeId, nodes, edges)
-      setModel(addPlacement(addEntity(base, { id, label, fields: [] }), activeId, { entityId: id, position: pos, parentId: null }))
+      setModel(M.addNode(base, activeId, { id, label, fields: [], position: pos }))
       pendingSelect.current = id
     },
     [model, activeId, rf, nodes, edges],
@@ -490,6 +502,7 @@ function Flow({
         sourceHandle: c.sourceHandle ?? undefined,
         targetHandle: c.targetHandle ?? undefined,
       })
+      e.id = newId()
       e.data = { ...e.data, shape: edgeStyle }
       setEdges((eds) => addEdge(e, eds))
     },
@@ -520,6 +533,13 @@ function Flow({
   const reparent = useCallback(
     (parentId: string) => {
       if (!selNode) return
+      // Cycle guard: a node/group can't be parented to itself or to one of
+      // its own descendants (only relevant for group-in-group nesting — leaf
+      // nodes/notes have no descendants, so this is always a no-op for them).
+      if (parentId) {
+        if (parentId === selNode) return
+        if (descendantsOf(selNode, nodes).has(parentId)) return
+      }
       setNodes((ns) =>
         groupsFirst(
           ns.map((n) => {
@@ -533,7 +553,7 @@ function Flow({
         ),
       )
     },
-    [selNode, setNodes],
+    [selNode, nodes, setNodes],
   )
 
   const updateEdge = useCallback(
@@ -559,41 +579,25 @@ function Flow({
     [selEdge, setEdges],
   )
 
+  // Deleting a group cascades to its full descendant subtree (nested groups,
+  // nodes, notes) — not just direct children — so nesting a group inside a
+  // group can't leave orphaned-but-invisible leftovers.
   const deleteSelected = useCallback(() => {
     if (selNode) {
       const id = selNode
-      setNodes((ns) => ns.filter((n) => n.id !== id && n.parentId !== id))
-      setEdges((es) => es.filter((e) => e.source !== id && e.target !== id))
+      const gone = new Set([id, ...descendantsOf(id, nodes)])
+      setNodes((ns) => ns.filter((n) => !gone.has(n.id)))
+      setEdges((es) => es.filter((e) => !gone.has(e.source) && !gone.has(e.target)))
       setSelNode(null)
     } else if (selEdge) {
       const id = selEdge
       setEdges((es) => es.filter((e) => e.id !== id))
       setSelEdge(null)
     }
-  }, [selNode, selEdge, setNodes, setEdges])
-
-  const removeFromDiagram = useCallback(() => {
-    if (!model || !activeId || !selNode) return
-    const base = flushCanvasInto(model, activeId, nodes, edges)
-    setModel(removePlacement(base, activeId, selNode))
-    setSelNode(null)
-  }, [model, activeId, selNode, nodes, edges])
-
-  const removeEntityEverywhere = useCallback(async () => {
-    if (!model || !activeId || !selNode) return
-    const ok = await showConfirm({
-      title: 'Delete entity from all diagrams?',
-      message: 'The entity is removed from the catalog and every diagram that places it.',
-      danger: true,
-    })
-    if (!ok) return
-    const base = flushCanvasInto(model, activeId, nodes, edges)
-    setModel(deleteEntity(base, selNode))
-    setSelNode(null)
-  }, [model, activeId, selNode, nodes, edges, showConfirm])
+  }, [selNode, selEdge, nodes, setNodes, setEdges])
 
   const addGroup = useCallback((at?: { x: number; y: number }) => {
-    const id = `grp-${Date.now()}`
+    const id = newId()
     const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
     const newNode = {
       id,
@@ -610,7 +614,7 @@ function Flow({
   }, [rf, setNodes])
 
   const addNote = useCallback((at?: { x: number; y: number }) => {
-    const id = `note-${Date.now()}`
+    const id = newId()
     setNodes((ns) =>
       ns.concat({
         id,
@@ -658,11 +662,12 @@ function Flow({
       f.text().then((t) => {
         try {
           const parsed = JSON.parse(t)
-          if (Array.isArray(parsed?.entities) && Array.isArray(parsed?.diagrams)) {
-            setModel(parsed as Model)
-            const nextId = parsed.diagrams[0]?.id
-            if (nextId) setActiveId(nextId)
-          }
+          // normalizeModel resets old catalog-shaped (pre-migration) files to
+          // an empty model instead of importing incompatible data.
+          const next = M.normalizeModel(parsed)
+          setModel(next)
+          const nextId = next.diagrams[0]?.id
+          if (nextId) setActiveId(nextId)
         } catch {
           /* ignore bad file */
         }
@@ -841,6 +846,15 @@ function Flow({
         .map((n) => ({ id: n.id, label: (n.data as any).label as string })),
     [nodes],
   )
+  // Valid reparent targets for whatever's selected: every group, minus (when
+  // a group itself is selected) itself and its own descendants — picking one
+  // of those would need the cycle guard in `reparent` to reject it anyway,
+  // so just don't offer it.
+  const groupParentOptions = useMemo(() => {
+    if (selectedNode?.type !== 'group') return groupList
+    const excluded = new Set([selectedNode.id, ...descendantsOf(selectedNode.id, nodes)])
+    return groupList.filter((g) => !excluded.has(g.id))
+  }, [groupList, selectedNode, nodes])
   // Distinct colors already used in this diagram (edge stroke + group color), for
   // the "In this diagram" quick-pick section of the edge color picker.
   const diagramColors = useMemo(() => {
@@ -856,26 +870,37 @@ function Flow({
     return [...set]
   }, [edges, nodes])
 
-  const selEntity = selNode ? byId[selNode] : undefined
-  const selPlacement = active?.placements.find((p) => p.entityId === selNode)
-  const selTemplate = selEntity?.template
-    ? model.templates.find((t) => t.id === selEntity.template)
-    : undefined
-  const inspectorFields = useMemo(
-    () =>
-      selEntity
-        ? selEntity.fields.map((f) => ({
-            key: f.key,
-            value: f.value,
-            effective: fieldVisible(selPlacement, selEntity, selTemplate, f.key),
-            overridden: selPlacement?.fieldShow?.[f.key] !== undefined,
-          }))
-        : [],
-    [selEntity, selPlacement, selTemplate],
+  // The selected service node's model-side record (fields/template) — these
+  // don't live on the canvas, so look them up straight from the diagram.
+  const selModelNode = useMemo(
+    () => (selNode ? active?.nodes.find((n) => n.id === selNode) : undefined),
+    [active, selNode],
   )
+  const selTemplate = selModelNode?.template
+    ? model.templates.find((t) => t.id === selModelNode.template)
+    : undefined
+  const inspectorFields = useMemo(() => {
+    if (!selModelNode) return []
+    const tmplShow = new Map((selTemplate?.fields ?? []).map((tf) => [tf.key, tf.showOnNode === true]))
+    return selModelNode.fields.map((f) => ({
+      key: f.key,
+      value: f.value,
+      effective: f.showOnNode === true || (tmplShow.get(f.key) === true && f.showOnNode !== false),
+      overridden: f.showOnNode !== undefined,
+    }))
+  }, [selModelNode, selTemplate])
+  // Field show/hide is model-only (no on-canvas UI for it), so it writes
+  // straight to the model instead of going through the canvas write-back.
   const onFieldShow = useCallback(
     (key: string, value: boolean | undefined) => {
-      if (activeId && selNode) setModel((m) => setFieldShow(m, activeId, selNode, key, value))
+      if (!activeId || !selNode) return
+      setModel((m) => {
+        const d = M.getDiagram(m, activeId)
+        const n = d?.nodes.find((x) => x.id === selNode)
+        if (!n) return m
+        const fields = n.fields.map((f) => (f.key === key ? { ...f, showOnNode: value } : f))
+        return M.updateNode(m, activeId, selNode, { fields })
+      })
     },
     [activeId, selNode, setModel],
   )
@@ -1007,14 +1032,14 @@ function Flow({
               mode={flowMode === 'edit' ? 'edit' : 'play'}
               selStep={flowMode === 'edit' ? selStep : currentStep}
               onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
-              onChange={(steps) => activeId && setModel((m) => updateFlow(m, activeId, currentFlow.id, { steps }))}
+              onChange={(steps) => activeId && setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))}
               onExit={() => setFlowMode('none')}
             />
           ) : (
             <Inspector
               node={selectedNode}
               edge={selectedEdge}
-              groups={groupList}
+              groups={groupParentOptions}
               onNodeData={updateNodeData}
               onNodeParent={reparent}
               onEdge={updateEdge}
@@ -1022,8 +1047,6 @@ function Flow({
               onShrink={shrinkGroup}
               onGroupSize={setGroupSize}
               onDelete={deleteSelected}
-              onRemoveFromDiagram={removeFromDiagram}
-              onDeleteEntity={removeEntityEverywhere}
               fields={inspectorFields}
               onFieldShow={onFieldShow}
               diagramColors={diagramColors}
@@ -1067,7 +1090,7 @@ function Flow({
         <CanvasAddMenu
           x={addMenu.sx}
           y={addMenu.sy}
-          onCreateEntity={(label) => createEntityFromLabel(label, addMenu.flow)}
+          onCreateEntity={(label) => createNode(label, addMenu.flow)}
           onAddGroup={() => addGroup(addMenu.flow)}
           onAddNote={() => addNote(addMenu.flow)}
           onClose={() => setAddMenu(null)}

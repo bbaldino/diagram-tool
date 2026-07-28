@@ -1,6 +1,5 @@
 import { Graphviz } from '@hpcc-js/wasm/graphviz'
-import type { Diagram } from '../src/model'
-import { W, type EngineAdapter, type EngineResult } from './layout'
+import { W, type EngineAdapter, type EngineDiagram, type EngineResult } from './layout'
 
 // Graphviz coords are points (72/inch), Y-UP, origin bottom-left; we flip every
 // box against the graph bb height to top-left / Y-down. Fixed node size is given
@@ -9,7 +8,7 @@ let graphvizPromise: ReturnType<typeof Graphviz.load> | null = null
 const getGraphviz = () => (graphvizPromise ??= Graphviz.load())
 const dotId = (id: string): string => `"${id.replace(/"/g, '\\"')}"`
 
-function toDot(diagram: Diagram, heightById: Record<string, number>): string {
+function toDot(diagram: EngineDiagram, heightById: Record<string, number>): string {
   const placedIds = new Set(diagram.placements.map((p) => p.entityId))
   const byGroup: Record<string, string[]> = {}
   const ungrouped: string[] = []

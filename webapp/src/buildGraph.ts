@@ -68,6 +68,7 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
         status: n.status,
         kind: n.actor ? 'actor' : undefined,
         shownFields: shownFields(n, tmpl),
+        note: n.note,
       },
       zIndex: 2, // node cards sit ABOVE edges/labels
     })
