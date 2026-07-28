@@ -43,7 +43,7 @@ export function DiagramBar({ diagrams, activeId, onSelect, onNew, onRename, onDe
           if (diagrams.length < 2) return
           const ok = await showConfirm({
             title: 'Delete this diagram?',
-            message: 'The diagram is removed. Entities are kept in the catalog.',
+            message: 'The diagram is removed. Entities used only here are deleted; entities also placed in other diagrams are kept.',
             danger: true,
           })
           if (ok) onDelete(activeId)

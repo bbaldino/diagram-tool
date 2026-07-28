@@ -274,8 +274,8 @@ export function Inspector({
     <div className="panel insp insp--empty">
       <h4>Inspector</h4>
       <div className="insp__hint">
-        Select a node, group, or edge to edit its fields. Add entities from the <b>palette</b>{' '}
-        (bottom-left); use <b>+ Group</b> / <b>+ Note</b> for diagram structure.
+        Select a node, group, or edge to edit its fields. Double-click the canvas and choose{' '}
+        <b>Add → Entity</b> to create one; use <b>+ Group</b> / <b>+ Note</b> for diagram structure.
       </div>
     </div>
   )
