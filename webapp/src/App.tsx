@@ -32,8 +32,6 @@ import {
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
 import { DiagramBar } from './DiagramBar'
-import { Palette } from './Palette'
-import { EntitiesPage } from './EntitiesPage'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { useDialogs } from './Dialog'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
@@ -54,7 +52,6 @@ import {
   setFieldShow,
   type Model,
   type DEdge,
-  type Entity,
 } from './model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
@@ -199,7 +196,7 @@ function Flow({
   const loaded = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const pointer = useRef({ x: 0, y: 0 })
-  // entity id to select + center after the next re-seed (palette place/create)
+  // entity id to select + center after the next re-seed (canvas create)
   const pendingSelect = useRef<string | null>(null)
   // When the write-back effect pushes canvas edits into the model, model
   // identity changes — but the canvas already reflects that state, so we must
@@ -215,10 +212,6 @@ function Flow({
   const active = useMemo(
     () => (model && activeId ? getDiagram(model, activeId) : undefined),
     [model, activeId],
-  )
-  const placedIds = useMemo(
-    () => new Set(active?.placements.map((p) => p.entityId) ?? []),
-    [active],
   )
 
   // Re-seed the live canvas from the model whenever the active diagram changes
@@ -349,18 +342,6 @@ function Flow({
     [model, activeId, nodes, edges],
   )
 
-  // ---- palette handlers ----
-  const placeEntity = useCallback(
-    (entityId: string, at?: { x: number; y: number }) => {
-      if (!model || !activeId) return
-      const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
-      const base = flushCanvasInto(model, activeId, nodes, edges)
-      setModel(addPlacement(base, activeId, { entityId, position: pos, parentId: null }))
-      pendingSelect.current = entityId
-    },
-    [model, activeId, rf, nodes, edges],
-  )
-
   const createEntityFromLabel = useCallback(
     (rawLabel: string, at?: { x: number; y: number }) => {
       if (!model || !activeId) return
@@ -374,23 +355,6 @@ function Flow({
       const base = flushCanvasInto(model, activeId, nodes, edges)
       setModel(addPlacement(addEntity(base, { id, label, fields: [] }), activeId, { entityId: id, position: pos, parentId: null }))
       pendingSelect.current = id
-    },
-    [model, activeId, rf, nodes, edges],
-  )
-
-  const createEntity = useCallback(
-    (entity: Entity) => {
-      if (!model || !activeId) return
-      const pos = rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
-      const base = flushCanvasInto(model, activeId, nodes, edges)
-      setModel(
-        addPlacement(addEntity(base, entity), activeId, {
-          entityId: entity.id,
-          position: pos,
-          parentId: null,
-        }),
-      )
-      pendingSelect.current = entity.id
     },
     [model, activeId, rf, nodes, edges],
   )
@@ -869,17 +833,6 @@ function Flow({
             </div>
           </div>
         </Panel>
-
-        <Panel position="bottom-left">
-          {model && (
-            <Palette
-              entities={model.entities}
-              placedIds={placedIds}
-              onPlace={placeEntity}
-              onCreate={createEntity}
-            />
-          )}
-        </Panel>
       </ReactFlow>
 
       {addMenu && (
@@ -899,7 +852,6 @@ function Flow({
 export default function App() {
   const [model, setModel] = useState<Model | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [view, setView] = useState<'diagrams' | 'entities'>('entities')
   const [saveState, setSaveState] = useState<SaveState>('idle')
   const [undoMap, setUndoMap] = useState<Record<string, { canUndo: boolean; canRedo: boolean }>>({})
   // Becomes true once the initial model load has completed, so the autosave
@@ -1003,7 +955,7 @@ export default function App() {
 
   const handleSetActive = useCallback((id: string) => setActiveId(id), [])
   // App owns the model, so setModel here is typed against a non-null Model;
-  // Flow/EntitiesPage receive it once model has loaded (never null below).
+  // Flow receives it once model has loaded (never null below).
   const setModelNonNull = setModel as React.Dispatch<React.SetStateAction<Model>>
 
   const saveLabel =
@@ -1020,23 +972,11 @@ export default function App() {
   return (
     <>
       <div className="tabbar">
-        <button
-          className={view === 'entities' ? 'active' : ''}
-          onClick={() => setView('entities')}
-        >
-          Entities
-        </button>
-        <button
-          className={view === 'diagrams' ? 'active' : ''}
-          onClick={() => setView('diagrams')}
-        >
-          Diagrams
-        </button>
         <span className="tabbar__save" style={{ color: saveColor }}>
           {saveLabel}
         </span>
       </div>
-      {!model ? null : view === 'diagrams' ? (
+      {!model ? null : (
         <ReactFlowProvider>
           <Flow
             model={model}
@@ -1046,16 +986,6 @@ export default function App() {
             undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
           />
         </ReactFlowProvider>
-      ) : (
-        <EntitiesPage
-          model={model}
-          setModel={setModelNonNull}
-          onJump={(id) => {
-            setActiveId(id)
-            localStorage.setItem(ACTIVE_KEY, id)
-            setView('diagrams')
-          }}
-        />
       )}
     </>
   )
