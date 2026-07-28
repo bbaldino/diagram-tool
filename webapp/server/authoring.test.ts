@@ -1,98 +1,89 @@
 import { describe, it, expect } from 'vitest'
 import { authorDiagramOps } from './authoring'
 import { applyOps } from '../src/ops'
-import { addEntity, normalizeModel, getDiagram } from '../src/model'
+import { normalizeModel, getDiagram } from '../src/model'
 
-const base = () =>
-  addEntity(normalizeModel({ version: 1, entities: [], diagrams: [], templates: [] }), {
-    id: 'plex',
-    label: 'Plex',
-    fields: [],
-  })
+const base = () => normalizeModel({ version: 2, diagrams: [], templates: [] })
 
 describe('authorDiagramOps', () => {
-  it('creates a laid-out diagram with existing + new nodes, an edge, and a note', async () => {
+  it('creates a laid-out diagram with nodes and an edge, returning the minted node uuids', async () => {
     const m = base()
-    const { ops, diagramId } = await authorDiagramOps(m, {
+    const { ops, diagramId, nodeIds } = await authorDiagramOps(m, {
       name: 'Flow',
-      nodes: ['plex', { new: 'Grafana' }],
+      nodes: ['Plex', { label: 'Grafana' }],
       edges: [['plex', 'grafana', { label: 'metrics' }]],
-      notes: { plex: '4k' },
     })
+    expect(nodeIds).toHaveLength(2)
+    expect(nodeIds.every((id) => typeof id === 'string' && id.length > 0)).toBe(true)
     const next = applyOps(m, ops)
     const d = getDiagram(next, diagramId)!
-    expect(d.placements.map((p) => p.entityId).sort()).toEqual(['grafana', 'plex'])
-    expect(next.entities.some((e) => e.id === 'grafana')).toBe(true) // new entity created
+    expect(d.nodes.map((n) => n.label).sort()).toEqual(['Grafana', 'Plex'])
+    expect(d.nodes.map((n) => n.id).sort()).toEqual([...nodeIds].sort())
     expect(d.edges).toHaveLength(1)
-    expect(d.placements.find((p) => p.entityId === 'plex')!.note).toBe('4k')
-    const px = d.placements.find((p) => p.entityId === 'plex')!.position.x
-    const gx = d.placements.find((p) => p.entityId === 'grafana')!.position.x
+    const [plexId, grafanaId] = nodeIds
+    expect(d.edges[0]).toMatchObject({ from: plexId, to: grafanaId, label: 'metrics' })
+    const px = d.nodes.find((n) => n.id === plexId)!.position.x
+    const gx = d.nodes.find((n) => n.id === grafanaId)!.position.x
     expect(px).toBeLessThan(gx) // laid out (source left of target)
   })
 
-  it('throws on an unknown existing entity id', async () => {
-    await expect(authorDiagramOps(base(), { name: 'X', nodes: ['nope'] })).rejects.toThrow()
+  it('throws when an edge references a node ref not in nodes', async () => {
+    await expect(
+      authorDiagramOps(base(), {
+        name: 'X',
+        nodes: ['Plex'],
+        edges: [['plex', 'ghost', {}]],
+      })
+    ).rejects.toThrow(/unknown node ref "ghost"/)
   })
 
-  it('honors an agent-supplied position override', async () => {
+  it('throws when a group member references a node ref not in nodes', async () => {
+    await expect(
+      authorDiagramOps(base(), {
+        name: 'X',
+        nodes: ['Plex'],
+        groups: [{ label: 'Media', members: ['plex', 'ghost'] }],
+      })
+    ).rejects.toThrow(/group "Media" references unknown node ref "ghost"/)
+  })
+
+  it('honors an agent-supplied position override (keyed by the label-derived ref)', async () => {
     const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'X',
-      nodes: ['plex'],
+      nodes: ['Plex'],
       positions: { plex: { x: 999, y: 5 } },
     })
     const d = getDiagram(applyOps(base(), ops), diagramId)!
-    expect(d.placements[0].position).toEqual({ x: 999, y: 5 })
+    expect(d.nodes[0].position).toEqual({ x: 999, y: 5 })
   })
 
-  it('throws when an edge references a node id not in nodes', async () => {
-    await expect(
-      authorDiagramOps(base(), {
-        name: 'X',
-        nodes: ['plex'],
-        edges: [['plex', 'ghost', {}]],
-      })
-    ).rejects.toThrow(/unknown node id "ghost"/)
-  })
-
-  it('throws when a group member references a node id not in nodes', async () => {
-    await expect(
-      authorDiagramOps(base(), {
-        name: 'X',
-        nodes: ['plex'],
-        groups: [{ label: 'Media', members: ['plex', 'ghost'] }],
-      })
-    ).rejects.toThrow(/group "Media" references unknown node id "ghost"/)
-  })
-
-  it('slugifies a whitespace/symbol-only {new} label to a valid non-empty entity id + placement', async () => {
-    const { ops, diagramId } = await authorDiagramOps(base(), {
+  it('slugifies a whitespace/symbol-only label to a valid non-empty ref', async () => {
+    const { ops, diagramId, nodeIds } = await authorDiagramOps(base(), {
       name: 'X',
-      nodes: [{ new: '   ' }],
+      nodes: [{ label: '   ' }],
     })
     const next = applyOps(base(), ops)
     const d = getDiagram(next, diagramId)!
-    expect(d.placements).toHaveLength(1)
-    const id = d.placements[0].entityId
-    expect(id.length).toBeGreaterThan(0)
-    expect(id).not.toBe('-')
-    expect(/[a-z0-9]/.test(id)).toBe(true)
-    expect(next.entities.some((e) => e.id === id)).toBe(true)
+    expect(d.nodes).toHaveLength(1)
+    expect(d.nodes[0].id).toBe(nodeIds[0])
   })
 
-  it('dedupes duplicate node ids to exactly one placement', async () => {
-    const { ops, diagramId } = await authorDiagramOps(base(), {
+  it('mints a distinct node for each entry, even with a duplicate label', async () => {
+    const { ops, diagramId, nodeIds } = await authorDiagramOps(base(), {
       name: 'X',
-      nodes: ['plex', 'plex'],
+      nodes: ['Plex', 'Plex'],
     })
+    expect(nodeIds).toHaveLength(2)
+    expect(nodeIds[0]).not.toBe(nodeIds[1])
     const d = getDiagram(applyOps(base(), ops), diagramId)!
-    expect(d.placements).toHaveLength(1)
-    expect(d.placements[0].entityId).toBe('plex')
+    expect(d.nodes).toHaveLength(2)
+    expect(d.nodes.every((n) => n.label === 'Plex')).toBe(true)
   })
 
   it('bakes geometry-derived handles onto authored edges', async () => {
     const { ops, diagramId } = await authorDiagramOps(base(), {
       name: 'Flow',
-      nodes: ['plex', { new: 'Grafana' }],
+      nodes: ['Plex', { label: 'Grafana' }],
       edges: [['plex', 'grafana']],
     })
     const model = applyOps(base(), ops)

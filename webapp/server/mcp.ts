@@ -1,8 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { EdgeDir } from '../src/graph'
-import type { DEdge, Diagram, EdgeOrientation, Placement } from '../src/model'
+import type { Diagram, Edge, EdgeOrientation, Node, Note, Status } from '../src/model'
 import { getDiagram } from '../src/model'
+import { newId } from '../src/ids'
 import type { Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
 import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
@@ -13,12 +14,13 @@ import type { Store } from './store'
 // Argument shapes for the write handlers.
 // ---------------------------------------------------------------------------
 
-export interface PlaceEntityArgs {
+export interface AddNodeArgs {
   diagramId: string
-  entityId: string
+  label: string
+  icon?: string
+  status?: Status
   position?: { x: number; y: number }
   parentId?: string | null
-  note?: string
 }
 
 export interface ConnectArgs {
@@ -34,20 +36,24 @@ export interface ConnectArgs {
 export interface SetEdgeArgs {
   diagramId: string
   edgeId: string
-  patch: Partial<Pick<DEdge, 'label' | 'dir' | 'color' | 'orientation'>>
+  patch: Partial<Pick<Edge, 'label' | 'dir' | 'color' | 'orientation'>>
 }
 
 export interface SetNoteArgs {
   diagramId: string
-  entityId: string
-  note: string
+  id?: string // update an existing note when given; otherwise create one
+  text: string
+  position?: { x: number; y: number }
+  size?: { width: number; height: number }
+  parentId?: string | null
 }
 
 export interface RemoveArgs {
   diagramId: string
-  entityId?: string
+  nodeId?: string
   edgeId?: string
   groupId?: string
+  noteId?: string
 }
 
 type ErrorResult = { error: string }
@@ -55,8 +61,8 @@ type OkResult = { ok: true }
 
 const err = (message: string): ErrorResult => ({ error: message })
 
-// A flow step's element reference: either an existing element id (entity
-// placement / edge / group / note) or an edge specified by its endpoints.
+// A flow step's element reference: either an existing element id (node,
+// edge, group, or note) or an edge specified by its endpoints.
 export type ElementRef = string | { from: string; to: string }
 
 // Resolve an ElementRef to a concrete element id within `diagram`. Throws if
@@ -69,7 +75,7 @@ export function resolveElementRef(diagram: Diagram, ref: ElementRef): string {
     return edge.id
   }
   const exists =
-    diagram.placements.some((p) => p.entityId === ref) ||
+    diagram.nodes.some((n) => n.id === ref) ||
     diagram.edges.some((e) => e.id === ref) ||
     diagram.groups.some((g) => g.id === ref) ||
     diagram.notes.some((n) => n.id === ref)
@@ -84,13 +90,10 @@ export function resolveElementRef(diagram: Diagram, ref: ElementRef): string {
 // ---------------------------------------------------------------------------
 
 export const handlers = {
-  listEntities(store: Store): { id: string; label: string; icon?: string; status?: string }[] {
-    return store.getState().model.entities.map((e) => ({
-      id: e.id,
-      label: e.label,
-      icon: e.icon,
-      status: e.status,
-    }))
+  listNodes(store: Store, diagramId: string): { id: string; label: string; icon?: string; status?: string }[] | ErrorResult {
+    const diagram = getDiagram(store.getState().model, diagramId)
+    if (!diagram) return err(`unknown diagram "${diagramId}"`)
+    return diagram.nodes.map((n) => ({ id: n.id, label: n.label, icon: n.icon, status: n.status }))
   },
 
   listDiagrams(store: Store): { id: string; name: string; type: string }[] {
@@ -102,61 +105,50 @@ export const handlers = {
     return d ?? err(`unknown diagram "${id}"`)
   },
 
-  async authorDiagram(store: Store, spec: AuthorSpec): Promise<{ diagramId: string } | ErrorResult> {
+  async authorDiagram(store: Store, spec: AuthorSpec): Promise<{ diagramId: string; nodeIds: string[] } | ErrorResult> {
     const model = store.getState().model
-    let built: { ops: Op[]; diagramId: string }
+    let built: { ops: Op[]; diagramId: string; nodeIds: string[] }
     try {
       built = await authorDiagramOps(model, spec)
     } catch (e) {
       return err(e instanceof Error ? e.message : String(e))
     }
     store.apply(built.ops, 'mcp')
-    return { diagramId: built.diagramId }
+    return { diagramId: built.diagramId, nodeIds: built.nodeIds }
   },
 
-  placeEntity(store: Store, a: PlaceEntityArgs): OkResult | ErrorResult {
+  addNode(store: Store, a: AddNodeArgs): { id: string } | ErrorResult {
     const model = store.getState().model
     const diagram = getDiagram(model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!model.entities.some((e) => e.id === a.entityId)) return err(`unknown entity "${a.entityId}"`)
-    if (diagram.placements.some((p) => p.entityId === a.entityId)) {
-      return err(`entity "${a.entityId}" already placed in diagram "${a.diagramId}"`)
-    }
     if (typeof a.parentId === 'string' && !diagram.groups.some((grp) => grp.id === a.parentId)) {
       return err(`unknown group id "${a.parentId}"`)
     }
-    const placement: Placement = {
-      entityId: a.entityId,
-      position: a.position ?? { x: 0, y: 0 },
-    }
-    if (a.parentId !== undefined) placement.parentId = a.parentId
-    if (a.note !== undefined) placement.note = a.note
-    store.apply([{ t: 'placement.add', diagramId: a.diagramId, placement }], 'mcp')
-    return { ok: true }
+    const node: Node = { id: newId(), label: a.label, fields: [], position: a.position ?? { x: 0, y: 0 } }
+    if (a.icon !== undefined) node.icon = a.icon
+    if (a.status !== undefined) node.status = a.status
+    if (a.parentId) node.parentId = a.parentId
+    store.apply([{ t: 'node.add', diagramId: a.diagramId, node }], 'mcp')
+    return { id: node.id }
   },
 
-  connect(store: Store, a: ConnectArgs): OkResult | ErrorResult {
+  connect(store: Store, a: ConnectArgs): { id: string } | ErrorResult {
     const model = store.getState().model
     const diagram = getDiagram(model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!diagram.placements.some((p) => p.entityId === a.from)) {
-      return err(`node "${a.from}" is not placed in diagram "${a.diagramId}"`)
+    if (!diagram.nodes.some((n) => n.id === a.from)) {
+      return err(`node "${a.from}" not found in diagram "${a.diagramId}"`)
     }
-    if (!diagram.placements.some((p) => p.entityId === a.to)) {
-      return err(`node "${a.to}" is not placed in diagram "${a.diagramId}"`)
+    if (!diagram.nodes.some((n) => n.id === a.to)) {
+      return err(`node "${a.to}" not found in diagram "${a.diagramId}"`)
     }
-    const edge: DEdge = {
-      id: `e-${a.from}-${a.to}-${Date.now().toString(36)}`,
-      from: a.from,
-      to: a.to,
-      type: 'talks-to',
-    }
+    const edge: Edge = { id: newId(), from: a.from, to: a.to, type: 'talks-to' }
     if (a.label !== undefined) edge.label = a.label
     if (a.dir !== undefined) edge.dir = a.dir
     if (a.color !== undefined) edge.color = a.color
     if (a.orientation !== undefined) edge.orientation = a.orientation
     store.apply([{ t: 'edge.add', diagramId: a.diagramId, edge }], 'mcp')
-    return { ok: true }
+    return { id: edge.id }
   },
 
   setEdge(store: Store, a: SetEdgeArgs): OkResult | ErrorResult {
@@ -170,18 +162,33 @@ export const handlers = {
     return { ok: true }
   },
 
-  setNote(store: Store, a: SetNoteArgs): OkResult | ErrorResult {
+  // Creates a new sticky note (Note entity) on the diagram, or — when `a.id`
+  // is given — updates an existing one. There is no more per-node inline
+  // note; notes are their own top-level element now.
+  setNote(store: Store, a: SetNoteArgs): { id: string } | OkResult | ErrorResult {
     const model = store.getState().model
     const diagram = getDiagram(model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!diagram.placements.some((p) => p.entityId === a.entityId)) {
-      return err(`node "${a.entityId}" is not placed in diagram "${a.diagramId}"`)
+    if (a.id !== undefined) {
+      if (!diagram.notes.some((n) => n.id === a.id)) {
+        return err(`unknown note "${a.id}" in diagram "${a.diagramId}"`)
+      }
+      const patch: Partial<Omit<Note, 'id'>> = { text: a.text }
+      if (a.position !== undefined) patch.position = a.position
+      if (a.size !== undefined) patch.size = a.size
+      if (a.parentId !== undefined) patch.parentId = a.parentId ?? undefined
+      store.apply([{ t: 'note.update', diagramId: a.diagramId, id: a.id, patch }], 'mcp')
+      return { ok: true }
     }
-    store.apply(
-      [{ t: 'placement.set', diagramId: a.diagramId, entityId: a.entityId, patch: { note: a.note } }],
-      'mcp',
-    )
-    return { ok: true }
+    const note: Note = {
+      id: newId(),
+      text: a.text,
+      position: a.position ?? { x: 0, y: 0 },
+      size: a.size ?? { width: 160, height: 90 },
+    }
+    if (a.parentId) note.parentId = a.parentId
+    store.apply([{ t: 'note.add', diagramId: a.diagramId, note }], 'mcp')
+    return { id: note.id }
   },
 
   remove(store: Store, a: RemoveArgs): OkResult | ErrorResult {
@@ -198,13 +205,17 @@ export const handlers = {
       if (!diagram.groups.some((g) => g.id === a.groupId)) return err(`unknown group "${a.groupId}"`)
       ops.push({ t: 'group.remove', diagramId: a.diagramId, id: a.groupId })
     }
-    if (a.entityId !== undefined) {
-      if (!diagram.placements.some((p) => p.entityId === a.entityId)) {
-        return err(`node "${a.entityId}" is not placed in diagram "${a.diagramId}"`)
-      }
-      ops.push({ t: 'placement.remove', diagramId: a.diagramId, entityId: a.entityId })
+    if (a.noteId !== undefined) {
+      if (!diagram.notes.some((n) => n.id === a.noteId)) return err(`unknown note "${a.noteId}"`)
+      ops.push({ t: 'note.remove', diagramId: a.diagramId, id: a.noteId })
     }
-    if (ops.length === 0) return err('remove: specify one of entityId, edgeId, or groupId')
+    if (a.nodeId !== undefined) {
+      if (!diagram.nodes.some((n) => n.id === a.nodeId)) {
+        return err(`unknown node "${a.nodeId}" in diagram "${a.diagramId}"`)
+      }
+      ops.push({ t: 'node.remove', diagramId: a.diagramId, id: a.nodeId })
+    }
+    if (ops.length === 0) return err('remove: specify one of nodeId, edgeId, groupId, or noteId')
     store.apply(ops, 'mcp')
     return { ok: true }
   },
@@ -214,7 +225,7 @@ export const handlers = {
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
     const laid = await layoutDiagram(diagram, engine)
-    const nextDiagram: Diagram = { ...diagram, placements: laid.placements, groups: laid.groups, edges: laid.edges }
+    const nextDiagram: Diagram = { ...diagram, nodes: laid.nodes, groups: laid.groups, edges: laid.edges }
     const nextModel = {
       ...model,
       diagrams: model.diagrams.map((d) => (d.id === diagramId ? nextDiagram : d)),
@@ -339,7 +350,7 @@ const positionShape = z.object({ x: z.number(), y: z.number() })
 // Shared shape for the fields an agent may set on an edge. Relationship
 // `type` is intentionally excluded: it's vestigial (edges are distinguished
 // by color/label; new edges default to 'talks-to') and an unconstrained
-// string here would let a bad value flow into DEdge.type and throw in the
+// string here would let a bad value flow into Edge.type and throw in the
 // renderer (REL[type].color). Exported so it's independently testable.
 export const edgeAttrsShape = {
   label: z.string().optional(),
@@ -348,10 +359,14 @@ export const edgeAttrsShape = {
   orientation: z.enum(['auto', 'horizontal', 'vertical']).optional(),
 }
 
+// spec.nodes entries mint brand-new nodes (uuid ids) — there is no catalog to
+// resolve an "existing" node against. spec.edges/groups/positions refer back
+// to a node minted earlier in the SAME call via a spec-local ref derived from
+// its label (see authoring.ts); they are never the node's real id.
 const authorSpecShape = {
   name: z.string(),
   type: z.enum(['canvas', 'topology', 'call-flow']).optional(),
-  nodes: z.array(z.union([z.string(), z.object({ new: z.string(), icon: z.string().optional() })])),
+  nodes: z.array(z.union([z.string(), z.object({ label: z.string(), icon: z.string().optional() })])),
   edges: z
     .array(
       z.tuple([
@@ -362,7 +377,6 @@ const authorSpecShape = {
     )
     .optional(),
   groups: z.array(z.object({ label: z.string(), members: z.array(z.string()) })).optional(),
-  notes: z.record(z.string(), z.string()).optional(),
   positions: z.record(z.string(), positionShape).optional(),
 }
 
@@ -370,9 +384,9 @@ export function createMcpServer(store: Store): McpServer {
   const server = new McpServer({ name: 'homelab-diagram', version: '0.1.0' })
 
   server.registerTool(
-    'list_entities',
-    { description: 'List all entities (services/actors) in the catalog.', inputSchema: {} },
-    () => wrap(handlers.listEntities(store)),
+    'list_nodes',
+    { description: 'List all nodes in a diagram.', inputSchema: { diagramId: z.string() } },
+    (args) => wrap(handlers.listNodes(store, args.diagramId)),
   )
 
   server.registerTool(
@@ -391,32 +405,33 @@ export function createMcpServer(store: Store): McpServer {
     'author_diagram',
     {
       description:
-        'Create a new, automatically laid-out diagram from a high-level spec. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
+        'Create a new, automatically laid-out diagram from a high-level spec. Every entry in `nodes` mints a brand-new node; `edges`/`groups`/`positions` refer back to those nodes by a spec-local ref (the label, slugified — e.g. "Plex" -> "plex"), not by the node\'s real id. The result includes the diagram id and the created node uuids, in `nodes` order, for use in follow-up tool calls. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: authorSpecShape,
     },
     async (args) => wrap(await handlers.authorDiagram(store, args as AuthorSpec)),
   )
 
   server.registerTool(
-    'place_entity',
+    'add_node',
     {
-      description: 'Place an existing entity into a diagram.',
+      description: 'Add a new node to a diagram. Returns the created node id.',
       inputSchema: {
         diagramId: z.string(),
-        entityId: z.string(),
+        label: z.string(),
+        icon: z.string().optional(),
+        status: z.enum(['up', 'down', 'idle']).optional(),
         position: positionShape.optional(),
         parentId: z.string().nullable().optional(),
-        note: z.string().optional(),
       },
     },
-    (args) => wrap(handlers.placeEntity(store, args as PlaceEntityArgs)),
+    (args) => wrap(handlers.addNode(store, args as AddNodeArgs)),
   )
 
   server.registerTool(
     'connect',
     {
       description:
-        'Add an edge between two placed nodes in a diagram. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
+        'Add an edge between two nodes in a diagram. Returns the created edge id. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: {
         diagramId: z.string(),
         from: z.string(),
@@ -444,8 +459,16 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'set_note',
     {
-      description: "Set the inline note shown inside an entity's box in a diagram.",
-      inputSchema: { diagramId: z.string(), entityId: z.string(), note: z.string() },
+      description:
+        'Create a new sticky note on a diagram, or update an existing one when `id` is given. Returns the created note id when creating.',
+      inputSchema: {
+        diagramId: z.string(),
+        id: z.string().optional(),
+        text: z.string(),
+        position: positionShape.optional(),
+        size: z.object({ width: z.number(), height: z.number() }).optional(),
+        parentId: z.string().nullable().optional(),
+      },
     },
     (args) => wrap(handlers.setNote(store, args as SetNoteArgs)),
   )
@@ -453,12 +476,13 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'remove',
     {
-      description: 'Remove a placement, edge, or group from a diagram.',
+      description: 'Remove a node, edge, group, or note from a diagram.',
       inputSchema: {
         diagramId: z.string(),
-        entityId: z.string().optional(),
+        nodeId: z.string().optional(),
         edgeId: z.string().optional(),
         groupId: z.string().optional(),
+        noteId: z.string().optional(),
       },
     },
     (args) => wrap(handlers.remove(store, args as RemoveArgs)),

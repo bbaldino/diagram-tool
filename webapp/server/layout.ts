@@ -1,4 +1,4 @@
-import type { Diagram, Placement, Group, DEdge, EdgeOrientation } from '../src/model'
+import type { Diagram, Node, Group, Edge, EdgeOrientation } from '../src/model'
 import { runElk } from './layout-elk'
 import { runGraphviz } from './layout-graphviz'
 
@@ -12,47 +12,41 @@ export const DEFAULT_ENGINE: LayoutEngine = 'elk'
 export interface EngineNode { id: string; x: number; y: number; parentId?: string | null }
 export interface EngineGroup { id: string; x: number; y: number; width: number; height: number }
 export interface EngineResult { nodes: EngineNode[]; groups: EngineGroup[] }
-export type EngineAdapter = (diagram: Diagram, heightById: Record<string, number>) => Promise<EngineResult>
+
+// The engine adapters (layout-elk.ts / layout-graphviz.ts) are untouched by
+// the node-model migration — they still speak the old placement-shaped
+// diagram (`placements: { entityId, position, parentId }[]`). layoutDiagram
+// adapts the new node-shaped Diagram to that shape at the boundary and back,
+// so the engines don't need to change.
+export interface EngineDiagram {
+  id: string
+  groups: Group[]
+  edges: Edge[]
+  placements: { entityId: string; position: { x: number; y: number }; parentId?: string | null }[]
+}
+export type EngineAdapter = (diagram: EngineDiagram, heightById: Record<string, number>) => Promise<EngineResult>
 
 // Base node height (icon row + label/sub) — the box before any inline note.
 const H = 64
 
-// Inline-note sizing (matches .node__note in index.css): the note wraps inside
-// the 180px box (~160px content at 11px/line-height 1.35 ≈ 15px per line, plus
-// ~11px of top border + vertical padding). Estimated so each engine reserves
-// real vertical room for boxes that carry a note instead of assuming a flat
-// 64px.
-const NOTE_CHARS_PER_LINE = 25
-const NOTE_LINE_H = 15
-const NOTE_CHROME = 12
-
-function noteHeight(note: string | undefined | null): number {
-  const text = (note ?? '').trim()
-  if (!text) return 0
-  const lines = text
-    .split('\n')
-    .reduce((n, ln) => n + Math.max(1, Math.ceil(ln.length / NOTE_CHARS_PER_LINE)), 0)
-  return NOTE_CHROME + lines * NOTE_LINE_H
+function nodeHeight(_n: Node): number {
+  return H
 }
 
-function nodeHeight(p: Placement): number {
-  return H + noteHeight(p.note)
-}
-
-// Absolute center of a placement's node: child coords are parent-relative, so
-// add the parent group's absolute position back before adding half the node
+// Absolute center of a node's box: child coords are parent-relative, so add
+// the parent group's absolute position back before adding half the node
 // size. Pure function of its inputs — no closure over layout state — so it
 // can be exercised directly with exact numeric assertions.
 export function absoluteCenter(
-  p: Placement,
+  n: { position: { x: number; y: number }; parentId?: string },
   groupById: Record<string, Group>,
   height: number,
 ): { x: number; y: number } {
-  let x = p.position.x
-  let y = p.position.y
-  if (p.parentId && groupById[p.parentId]) {
-    x += groupById[p.parentId].position.x
-    y += groupById[p.parentId].position.y
+  let x = n.position.x
+  let y = n.position.y
+  if (n.parentId && groupById[n.parentId]) {
+    x += groupById[n.parentId].position.x
+    y += groupById[n.parentId].position.y
   }
   return { x: x + W / 2, y: y + height / 2 }
 }
@@ -90,17 +84,17 @@ export function handlesFor(
 // `orientation` fixes the axis; the side follows the node centers. Missing
 // endpoints leave the edge unchanged. Shared by every layout engine.
 export function assignEdgeHandles(
-  placements: Placement[],
+  nodes: Node[],
   groups: Group[],
-  edges: DEdge[],
+  edges: Edge[],
   heightById: Record<string, number>,
-): DEdge[] {
+): Edge[] {
   const groupById: Record<string, Group> = Object.fromEntries(groups.map((g) => [g.id, g]))
-  const placementByEntity: Record<string, Placement> = Object.fromEntries(placements.map((p) => [p.entityId, p]))
-  const centerOf = (entityId: string): { x: number; y: number } | null => {
-    const p = placementByEntity[entityId]
-    if (!p) return null
-    return absoluteCenter(p, groupById, heightById[entityId] ?? H)
+  const nodeById: Record<string, Node> = Object.fromEntries(nodes.map((n) => [n.id, n]))
+  const centerOf = (id: string): { x: number; y: number } | null => {
+    const n = nodeById[id]
+    if (!n) return null
+    return absoluteCenter(n, groupById, heightById[id] ?? H)
   }
   return edges.map((e) => {
     const s = centerOf(e.from)
@@ -117,14 +111,21 @@ export function assignEdgeHandles(
 export async function layoutDiagram(
   diagram: Diagram,
   engine: LayoutEngine = DEFAULT_ENGINE,
-): Promise<{ placements: Placement[]; groups: Group[]; edges: DEdge[] }> {
+): Promise<{ nodes: Node[]; groups: Group[]; edges: Edge[] }> {
   const heightById: Record<string, number> = {}
-  for (const p of diagram.placements) heightById[p.entityId] = nodeHeight(p)
+  for (const n of diagram.nodes) heightById[n.id] = nodeHeight(n)
 
-  const result = await (engine === 'graphviz' ? runGraphviz : runElk)(diagram, heightById)
+  const engineDiagram: EngineDiagram = {
+    id: diagram.id,
+    groups: diagram.groups,
+    edges: diagram.edges,
+    placements: diagram.nodes.map((n) => ({ entityId: n.id, position: n.position, parentId: n.parentId ?? null })),
+  }
+
+  const result = await (engine === 'graphviz' ? runGraphviz : runElk)(engineDiagram, heightById)
 
   const groupAbsById: Record<string, EngineGroup> = Object.fromEntries(result.groups.map((g) => [g.id, g]))
-  const nodeById: Record<string, EngineNode> = Object.fromEntries(result.nodes.map((n) => [n.id, n]))
+  const nodeAbsById: Record<string, EngineNode> = Object.fromEntries(result.nodes.map((n) => [n.id, n]))
 
   const groups: Group[] = diagram.groups.map((g) => {
     const eg = groupAbsById[g.id]
@@ -133,18 +134,18 @@ export async function layoutDiagram(
   })
   const groupById: Record<string, Group> = Object.fromEntries(groups.map((g) => [g.id, g]))
 
-  const placements: Placement[] = diagram.placements.map((p) => {
-    const n = nodeById[p.entityId]
-    if (!n) return p
-    let x = n.x
-    let y = n.y
-    if (p.parentId && groupById[p.parentId]) {
-      x -= groupById[p.parentId].position.x
-      y -= groupById[p.parentId].position.y
+  const nodes: Node[] = diagram.nodes.map((n) => {
+    const en = nodeAbsById[n.id]
+    if (!en) return n
+    let x = en.x
+    let y = en.y
+    if (n.parentId && groupById[n.parentId]) {
+      x -= groupById[n.parentId].position.x
+      y -= groupById[n.parentId].position.y
     }
-    return { ...p, position: { x: Math.round(x), y: Math.round(y) } }
+    return { ...n, position: { x: Math.round(x), y: Math.round(y) } }
   })
 
-  const edges = assignEdgeHandles(placements, groups, diagram.edges, heightById)
-  return { placements, groups, edges }
+  const edges = assignEdgeHandles(nodes, groups, diagram.edges, heightById)
+  return { nodes, groups, edges }
 }
