@@ -6,7 +6,7 @@ import {
 import type { DiagramContent } from '../src/model'
 
 const c = (n: number): DiagramContent => ({
-  placements: [{ entityId: 'e', position: { x: n, y: 0 } }],
+  nodes: [{ id: 'e', label: 'E', fields: [], position: { x: n, y: 0 } }],
   groups: [], edges: [], notes: [], flows: [],
 })
 
@@ -36,7 +36,7 @@ describe('history', () => {
     m = record(m, 'd', c(2))
     m = setPointer(m, 'd', 0) // as if two undos happened
     m = record(m, 'd', c(9)) // new edit from the past state
-    expect(m.d.entries.map((e) => e.placements[0].position.x)).toEqual([0, 9])
+    expect(m.d.entries.map((e) => e.nodes[0].position.x)).toEqual([0, 9])
     expect(m.d.pointer).toBe(1)
     expect(canRedo(m, 'd')).toBe(false)
   })
@@ -47,14 +47,14 @@ describe('history', () => {
     expect(m.d.entries).toHaveLength(HISTORY_LIMIT)
     expect(m.d.pointer).toBe(HISTORY_LIMIT - 1)
     // oldest surviving entry is i=5 (0..4 dropped)
-    expect(m.d.entries[0].placements[0].position.x).toBe(5)
+    expect(m.d.entries[0].nodes[0].position.x).toBe(5)
   })
 
   it('record deep-clones so later mutation of the source does not corrupt history', () => {
     const src = c(0)
     const m = record({}, 'd', src)
-    src.placements[0].position.x = 999
-    expect(m.d.entries[0].placements[0].position.x).toBe(0)
+    src.nodes[0].position.x = 999
+    expect(m.d.entries[0].nodes[0].position.x).toBe(0)
   })
 
   it('redoTarget returns the next entry when redo is possible', () => {
@@ -71,7 +71,7 @@ describe('history', () => {
     m = seed(m, 'd', c(7))
     expect(m.d.entries).toHaveLength(1)
     expect(m.d.pointer).toBe(0)
-    expect(m.d.entries[0].placements[0].position.x).toBe(7)
+    expect(m.d.entries[0].nodes[0].position.x).toBe(7)
   })
 
   describe('reconcile (startup drift handling — never discards a stack)', () => {
@@ -79,7 +79,7 @@ describe('history', () => {
       const m = reconcile({}, 'd', c(5))
       expect(m.d.entries).toHaveLength(1)
       expect(m.d.pointer).toBe(0)
-      expect(m.d.entries[0].placements[0].position.x).toBe(5)
+      expect(m.d.entries[0].nodes[0].position.x).toBe(5)
     })
 
     it('is a no-op when content already equals the current head', () => {
@@ -97,7 +97,7 @@ describe('history', () => {
       m = record(m, 'd', c(2)) // entries [0,1,2], pointer 2
       // model on disk reverted to c(1)'s content (e.g. history persisted ahead of model)
       const r = reconcile(m, 'd', c(1))
-      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([0, 1, 2]) // stack intact
+      expect(r.d.entries.map((e) => e.nodes[0].position.x)).toEqual([0, 1, 2]) // stack intact
       expect(r.d.pointer).toBe(1)
       expect(canUndo(r, 'd')).toBe(true) // can still undo to 0
       expect(canRedo(r, 'd')).toBe(true) // AND redo forward to 2
@@ -108,7 +108,7 @@ describe('history', () => {
       m = record(m, 'd', c(1))
       m = record(m, 'd', c(2)) // entries [0,1,2], pointer 2 — model advanced to c(3) but was never recorded
       const r = reconcile(m, 'd', c(3))
-      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([0, 1, 2, 3]) // nothing lost
+      expect(r.d.entries.map((e) => e.nodes[0].position.x)).toEqual([0, 1, 2, 3]) // nothing lost
       expect(r.d.pointer).toBe(3)
       expect(canUndo(r, 'd')).toBe(true)
       // the whole prior history remains reachable by undo
@@ -120,7 +120,7 @@ describe('history', () => {
       // c(999) was a real prior state, so it becomes a legitimate undo target (not discarded).
       const m = record({}, 'd', c(999))
       const r = reconcile(m, 'd', c(0))
-      expect(r.d.entries.map((e) => e.placements[0].position.x)).toEqual([999, 0])
+      expect(r.d.entries.map((e) => e.nodes[0].position.x)).toEqual([999, 0])
       expect(r.d.pointer).toBe(1)
       expect(canUndo(r, 'd')).toBe(true)
     })
