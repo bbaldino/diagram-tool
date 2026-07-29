@@ -270,6 +270,14 @@ export const GROUP_MIN = { width: 220, height: 130 }
 // up to the top of its clamped range.
 export const GROUP_NEST_TOP_PAD = 32
 
+// Extra room left on the far side when a group is grown to fit its children
+// (see growGroupsToFitChildren). Without this, a group grown to EXACTLY fit
+// its (largest) child leaves that child's paddedExtent collapsed to a single
+// point — [pad,pad] on both ends — so it can be placed but never dragged.
+// Must be bigger than (GROUP_NEST_TOP_PAD - GROUP_PAD) so the top-pad's
+// extra clearance doesn't eat the whole slack on the y axis too.
+export const GROUP_SLACK = 40
+
 // The smallest size that contains every child with GROUP_PAD clearance on
 // the right/bottom (children are kept >=pad from the top/left by the
 // position clamp, so only the far edge needs accounting for here), floored
@@ -324,13 +332,38 @@ export function paddedExtent(
   ]
 }
 
+// Starting position for a child newly nested INTO a group, chosen so it
+// doesn't land on top of a sibling already there. Every previously-nested
+// child used to start at the same fixed (GROUP_PAD, GROUP_NEST_TOP_PAD), so
+// nesting a second thing (e.g. a note and a group) into the same parent
+// stacked them exactly on top of each other. No siblings → same padded
+// top-left as before. Otherwise a simple row layout: place the child just
+// right of every existing sibling's bounding box, at the same top
+// clearance — good enough for the common few-children case without full
+// bin-packing (see task notes; deliberately not over-engineered).
+// `childSize` isn't needed by this row-layout strategy (only the far edge of
+// the existing siblings matters) but stays in the signature so a denser
+// future packing strategy — e.g. wrapping to a new row once a row fills up —
+// can use it without changing callers.
+export function placeInGroup(
+  _childSize: { width: number; height: number },
+  existingSiblings: { position: { x: number; y: number }; size: { width: number; height: number } }[],
+  padX = GROUP_PAD,
+  padTop = GROUP_NEST_TOP_PAD,
+  gap = 16,
+): { x: number; y: number } {
+  if (!existingSiblings.length) return { x: padX, y: padTop }
+  const rightEdge = Math.max(...existingSiblings.map((s) => s.position.x + s.size.width))
+  return { x: rightEdge + gap, y: padTop }
+}
+
 // Best-known on-canvas footprint of a live RF node, for sizing/clamping
 // groups around their children. Groups and notes carry an explicit size
 // (style.width/height, falling back to RF's measured size once rendered);
 // service nodes are sized by CSS with no model dimension, so they're treated
 // as zero-footprint — GROUP_PAD/GROUP_MIN keep them comfortably inside their
 // parent regardless.
-function liveFootprint(n: Node): { width: number; height: number } {
+export function liveFootprint(n: Node): { width: number; height: number } {
   if (n.type === 'group' || n.type === 'note') {
     const style = n.style as { width?: number; height?: number } | undefined
     const measured = (n as { measured?: { width?: number; height?: number } }).measured
@@ -349,6 +382,12 @@ function liveFootprint(n: Node): { width: number; height: number } {
 // needs to contain its existing kids. Because GROUP_PAD > 0 and a nested
 // group's own position is clamped to >=GROUP_PAD, a parent grown this way is
 // always strictly bigger than any group it directly contains.
+//
+// A group WITH children also gets GROUP_SLACK added past what's strictly
+// required: growing exactly to fit (esp. a lone child) leaves that child's
+// paddedExtent collapsed to a single point — placed, but never draggable.
+// An empty group has nothing to leave room for, so it stays at GROUP_MIN
+// (no slack) rather than growing for no reason.
 export function growGroupsToFitChildren(nodes: Node[]): Node[] {
   const groups = nodes.filter((n) => n.type === 'group')
   if (!groups.length) return nodes
@@ -358,10 +397,11 @@ export function growGroupsToFitChildren(nodes: Node[]): Node[] {
       .filter((n) => n.parentId === g.id)
       .map((n) => ({ position: n.position, size: sizeById.get(n.id)! }))
     const required = requiredGroupSize(kids)
+    const slack = kids.length ? GROUP_SLACK : 0
     const current = sizeById.get(g.id)!
     sizeById.set(g.id, {
-      width: Math.max(current.width, required.width),
-      height: Math.max(current.height, required.height),
+      width: Math.max(current.width, required.width + slack),
+      height: Math.max(current.height, required.height + slack),
     })
   }
   return nodes.map((n) => {

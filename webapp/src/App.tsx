@@ -26,8 +26,8 @@ import {
   shrinkGroupToChildren,
   topoOrderByParent,
   reflowGroups,
-  GROUP_PAD,
-  GROUP_NEST_TOP_PAD,
+  placeInGroup,
+  liveFootprint,
   REL,
   GROUP_COLOR,
   parentGroup,
@@ -549,6 +549,25 @@ function Flow({
         if (descendantsOf(selNode, nodes).has(parentId)) return
       }
       setNodes((ns) => {
+        // Non-overlapping starting position: every previously-nested child
+        // landed at the same fixed (GROUP_PAD, GROUP_NEST_TOP_PAD), so
+        // nesting a second thing (e.g. a note and a group) into the same
+        // parent stacked them exactly on top of each other. Instead, place
+        // the incoming child relative to whatever's already in the target
+        // group. Final extent/parent-size are still set below by
+        // reflowGroups, which also grows this (and every ancestor) group to
+        // actually contain it, so a nested child can never coincide with its
+        // parent's box (the group-title-overlap bug) — placeInGroup's own
+        // top clearance (GROUP_NEST_TOP_PAD, not GROUP_PAD) keeps the
+        // child's OWN .group__label from colliding with the parent's, which
+        // sits in that same strip just above the parent.
+        const child = ns.find((n) => n.id === selNode)
+        const siblings = parentId
+          ? ns
+              .filter((n) => n.parentId === parentId && n.id !== selNode)
+              .map((n) => ({ position: n.position, size: liveFootprint(n) }))
+          : []
+        const pos = placeInGroup(child ? liveFootprint(child) : { width: 0, height: 0 }, siblings)
         const reparented = groupsFirst(
           ns.map((n) => {
             if (n.id !== selNode) return n
@@ -556,15 +575,7 @@ function Flow({
               const { parentId: _p, extent: _e, ...rest } = n as any
               return { ...rest }
             }
-            // Padded starting position — final extent/parent-size are set below
-            // by reflowGroups, which also grows this (and every ancestor) group
-            // to actually contain it, so a nested child can never coincide with
-            // its parent's box (the group-title-overlap bug). Extra clearance on
-            // y (not x) so the child's OWN .group__label — rendered just above
-            // its box — doesn't collide with the parent's label sitting in that
-            // same strip just above the parent (GROUP_PAD alone is narrower than
-            // a rendered label).
-            return { ...n, parentId, position: { x: GROUP_PAD, y: GROUP_NEST_TOP_PAD } }
+            return { ...n, parentId, position: pos }
           }),
         )
         return parentId ? reflowGroups(reparented) : reparented

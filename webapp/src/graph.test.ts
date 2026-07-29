@@ -5,11 +5,13 @@ import {
   topoOrderByParent,
   requiredGroupSize,
   paddedExtent,
+  placeInGroup,
   growGroupsToFitChildren,
   reflowGroups,
   GROUP_PAD,
   GROUP_MIN,
   GROUP_NEST_TOP_PAD,
+  GROUP_SLACK,
 } from './graph'
 
 const edge = (over: Partial<Edge> = {}): Edge => ({
@@ -180,6 +182,38 @@ describe('paddedExtent', () => {
   })
 })
 
+describe('placeInGroup', () => {
+  it('returns the padded top-left when the group has no existing children', () => {
+    expect(placeInGroup({ width: 100, height: 60 }, [])).toEqual({
+      x: GROUP_PAD,
+      y: GROUP_NEST_TOP_PAD,
+    })
+  })
+
+  it('places the child to the right of a single existing sibling, with a gap, non-overlapping', () => {
+    const sibling = { position: { x: 16, y: 32 }, size: { width: 150, height: 80 } }
+    const pos = placeInGroup({ width: 100, height: 60 }, [sibling])
+    expect(pos).toEqual({ x: 16 + 150 + 16, y: GROUP_NEST_TOP_PAD })
+    // non-overlapping: the new child's left edge is at/after the sibling's right edge
+    expect(pos.x).toBeGreaterThanOrEqual(sibling.position.x + sibling.size.width)
+  })
+
+  it('places the child to the right of the widest reach across multiple siblings', () => {
+    const siblings = [
+      { position: { x: 16, y: 32 }, size: { width: 100, height: 60 } }, // right edge 116
+      { position: { x: 200, y: 32 }, size: { width: 50, height: 60 } }, // right edge 250 (wins)
+    ]
+    const pos = placeInGroup({ width: 80, height: 40 }, siblings)
+    expect(pos).toEqual({ x: 250 + 16, y: GROUP_NEST_TOP_PAD })
+  })
+
+  it('honors custom pad/gap overrides', () => {
+    expect(placeInGroup({ width: 10, height: 10 }, [], 5, 40, 8)).toEqual({ x: 5, y: 40 })
+    const sibling = { position: { x: 5, y: 40 }, size: { width: 20, height: 20 } }
+    expect(placeInGroup({ width: 10, height: 10 }, [sibling], 5, 40, 8)).toEqual({ x: 5 + 20 + 8, y: 40 })
+  })
+})
+
 describe('growGroupsToFitChildren', () => {
   const group = (over: Partial<Node> = {}): Node => ({
     id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 }, ...over,
@@ -193,7 +227,7 @@ describe('growGroupsToFitChildren', () => {
     expect(out[0].style).toMatchObject(GROUP_MIN)
   })
 
-  it('grows a group to contain a child that overflows it', () => {
+  it('grows a group to contain a child that overflows it, plus movability slack', () => {
     const nodes = [
       group({ id: 'g1', style: { width: 220, height: 130 } }),
       service({ id: 's1', parentId: 'g1', position: { x: 16, y: 16 } }),
@@ -201,9 +235,33 @@ describe('growGroupsToFitChildren', () => {
     ]
     const out = growGroupsToFitChildren(nodes)
     const g1 = out.find((n) => n.id === 'g1')!
-    // must contain the nested group g2 (300x200 at 16,16) with GROUP_PAD clearance
-    expect((g1.style as any).width).toBe(16 + 300 + GROUP_PAD)
-    expect((g1.style as any).height).toBe(16 + 200 + GROUP_PAD)
+    // must contain the nested group g2 (300x200 at 16,16) with GROUP_PAD
+    // clearance, plus GROUP_SLACK so g2 isn't grown skin-tight around it
+    expect((g1.style as any).width).toBe(16 + 300 + GROUP_PAD + GROUP_SLACK)
+    expect((g1.style as any).height).toBe(16 + 200 + GROUP_PAD + GROUP_SLACK)
+  })
+
+  it('adds no slack to an empty group — it stays at GROUP_MIN', () => {
+    const out = growGroupsToFitChildren([group({ id: 'g1', style: { width: 220, height: 130 } })])
+    expect(out[0].style).toMatchObject(GROUP_MIN)
+  })
+
+  it('leaves a lone nested child room to move: paddedExtent has a non-degenerate range on both axes', () => {
+    // The pinned-child regression: a parent grown to EXACTLY fit its child
+    // collapses that child's paddedExtent to a single point. After growth
+    // with GROUP_SLACK, there must be actual room between the extent's min
+    // and max beyond the child's own footprint.
+    const child = { width: 240, height: 146 }
+    const nodes = [
+      group({ id: 'outer', style: { width: 240, height: 146 } }),
+      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 16 }, style: child }),
+    ]
+    const out = growGroupsToFitChildren(nodes)
+    const outer = out.find((n) => n.id === 'outer')!
+    const outerStyle = outer.style as any
+    const extent = paddedExtent({ width: outerStyle.width, height: outerStyle.height }, child)
+    expect(extent[1][0] - extent[0][0] - child.width).toBeGreaterThan(0)
+    expect(extent[1][1] - extent[0][1] - child.height).toBeGreaterThan(0)
   })
 
   it('a nested group always ends up strictly smaller than its (grown) parent', () => {
