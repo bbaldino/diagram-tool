@@ -1,6 +1,6 @@
 import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../src/model'
-import { runElk, runElkFlat } from './layout-elk'
-import { runGraphviz, runGraphvizFlat } from './layout-graphviz'
+import { runElk } from './layout-elk'
+import { runGraphviz } from './layout-graphviz'
 import { contractEdges } from './layout-tree'
 import { requiredGroupSize, reflowContainment, GROUP_PAD, GROUP_NEST_TOP_PAD } from '../src/containment'
 
@@ -11,29 +11,12 @@ export const W = 180
 export type LayoutEngine = 'elk' | 'graphviz'
 export const DEFAULT_ENGINE: LayoutEngine = 'elk'
 
-export interface EngineNode { id: string; x: number; y: number; parentId?: string | null }
-export interface EngineGroup { id: string; x: number; y: number; width: number; height: number }
-export interface EngineResult { nodes: EngineNode[]; groups: EngineGroup[] }
-
 export interface FlatBox { id: string; width: number; height: number }
 export interface FlatEdge { from: string; to: string }
 // Lay out a flat set of sized boxes; return each box's top-left position in
 // engine coordinates (arbitrary origin — the orchestrator normalizes). No
 // groups, no clusters, no hierarchy.
 export type FlatEngine = (boxes: FlatBox[], edges: FlatEdge[]) => Promise<Record<string, { x: number; y: number }>>
-
-// The engine adapters (layout-elk.ts / layout-graphviz.ts) are untouched by
-// the node-model migration — they still speak the old placement-shaped
-// diagram (`placements: { entityId, position, parentId }[]`). layoutDiagram
-// adapts the new node-shaped Diagram to that shape at the boundary and back,
-// so the engines don't need to change.
-export interface EngineDiagram {
-  id: string
-  groups: Group[]
-  edges: Edge[]
-  placements: { entityId: string; position: { x: number; y: number }; parentId?: string | null }[]
-}
-export type EngineAdapter = (diagram: EngineDiagram, heightById: Record<string, number>) => Promise<EngineResult>
 
 // Base node height (icon row + label/sub) — the box before any inline note.
 const H = 64
@@ -132,7 +115,7 @@ export async function layoutDiagram(
   diagram: Diagram,
   engine: LayoutEngine = DEFAULT_ENGINE,
 ): Promise<{ nodes: Node[]; groups: Group[]; notes: Note[]; edges: Edge[] }> {
-  const flat = engine === 'graphviz' ? runGraphvizFlat : runElkFlat
+  const flat = engine === 'graphviz' ? runGraphviz : runElk
   const heightById: Record<string, number> = {}
   for (const n of diagram.nodes) heightById[n.id] = nodeHeight(n)
 
