@@ -254,11 +254,15 @@ export const GROUP_COLOR: Record<string, string> = Object.fromEntries(
 // parent regardless.
 export function liveFootprint(n: Node): { width: number; height: number } {
   if (n.type === 'group' || n.type === 'note') {
-    const style = n.style as { width?: number; height?: number } | undefined
-    const measured = (n as { measured?: { width?: number; height?: number } }).measured
+    const g = n as { width?: number; height?: number; measured?: { width?: number; height?: number }; style?: { width?: number; height?: number } }
+    // Prefer the LIVE size. A NodeResizer resize writes top-level width/height
+    // + measured but NOT style; the inspector size control writes width + style
+    // but not measured; a fresh load from the model sets only style. Reading
+    // width → measured → style yields the current size across all three, where
+    // reading style first would go stale right after a corner-resize.
     return {
-      width: Number(style?.width) || Number(measured?.width) || 0,
-      height: Number(style?.height) || Number(measured?.height) || 0,
+      width: Number(g.width) || Number(g.measured?.width) || Number(g.style?.width) || 0,
+      height: Number(g.height) || Number(g.measured?.height) || Number(g.style?.height) || 0,
     }
   }
   return { width: 0, height: 0 }

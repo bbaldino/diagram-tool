@@ -332,6 +332,23 @@ describe('reflowGroups', () => {
     expect(out[0].extent).toBeUndefined()
   })
 
+  it('recomputes a child extent from a group resized via NodeResizer (measured/width live, style stale)', () => {
+    // A NodeResizer resize sets element.measured + top-level width/height but
+    // NOT style (see @xyflow applyNodeChanges) — so a group grown from 240x146
+    // to 600x500 carries the new size on measured/width while style is stale.
+    // The child's drag extent must follow the LIVE (600x500) size, otherwise it
+    // stays clamped to the old boundary.
+    const nodes = [
+      { id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, width: 600, height: 500, measured: { width: 600, height: 500 }, style: { width: 240, height: 146 } },
+      { id: 's', type: 'service', parentId: 'g', position: { x: 16, y: 32 }, data: {} },
+    ] as unknown as Node[]
+    const out = reflowGroups(nodes)
+    const child = out.find((n) => n.id === 's')!
+    // right/bottom extent bound derives from the new 600x500, not stale 240x146.
+    expect((child.extent as any)[1][0]).toBe(600 - GROUP_PAD)
+    expect((child.extent as any)[1][1]).toBe(500 - GROUP_PAD)
+  })
+
   it('leaves a node with a dangling parentId (no matching parent node) untouched', () => {
     const service: Node = { id: 's1', type: 'service', parentId: 'ghost', position: { x: 0, y: 0 }, data: {} }
     const out = reflowGroups([service])

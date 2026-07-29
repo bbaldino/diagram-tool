@@ -14,6 +14,7 @@ import {
   type Node,
   type Edge,
   type Connection,
+  type NodeChange,
 } from '@xyflow/react'
 import { nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
@@ -754,8 +755,25 @@ function Flow({
           return { ...n, width, height, style: { ...n.style, width, height } }
         }),
       )
+      // Resizing a group changes its children's allowed drag region — recompute
+      // their extents from the new size (same reason as the NodeResizer path).
+      setNodes((ns) => reflowGroups(ns))
     },
     [selNode, setNodes],
+  )
+
+  // Wrap RF's node-change applier: after a NodeResizer resize ends, recompute
+  // every child's drag `extent` from its (now resized) parent. The extent is
+  // otherwise set only on nest/load, so without this a child stays clamped to
+  // the group's pre-resize boundary.
+  const handleNodesChange = useCallback(
+    (changes: NodeChange<Node>[]) => {
+      onNodesChange(changes)
+      if (changes.some((c) => c.type === 'dimensions' && c.resizing === false)) {
+        setNodes((ns) => reflowGroups(ns))
+      }
+    },
+    [onNodesChange, setNodes],
   )
 
   const applyEdgeStyle = useCallback(
@@ -967,7 +985,7 @@ function Flow({
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
-        onNodesChange={onNodesChange}
+        onNodesChange={handleNodesChange}
         onNodeDragStop={flushNow}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
