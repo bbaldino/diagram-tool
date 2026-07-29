@@ -9,6 +9,7 @@ import {
   reflowGroups,
   GROUP_PAD,
   GROUP_MIN,
+  GROUP_NEST_TOP_PAD,
 } from './graph'
 
 const edge = (over: Partial<Edge> = {}): Edge => ({
@@ -135,18 +136,18 @@ describe('paddedExtent', () => {
   // subtraction happens twice — see the "never inverts" case below for why
   // that matters (it's the exact bug this fix targets).
 
-  it('keeps top-left at [pad, pad] and sets bottom-right to the padded region edge (parentSize - pad)', () => {
+  it('keeps top-left at [GROUP_PAD, GROUP_NEST_TOP_PAD] and sets bottom-right to the padded region edge (parentSize - GROUP_PAD)', () => {
     const extent = paddedExtent({ width: 400, height: 300 }, { width: 100, height: 50 })
     expect(extent).toEqual([
-      [GROUP_PAD, GROUP_PAD],
+      [GROUP_PAD, GROUP_NEST_TOP_PAD],
       [400 - GROUP_PAD, 300 - GROUP_PAD],
     ])
   })
 
-  it('treats an unknown (zero) child size as a top-left padded clamp', () => {
+  it('treats an unknown (zero) child size as a top-left padded clamp using the taller top pad', () => {
     const extent = paddedExtent({ width: 220, height: 130 }, { width: 0, height: 0 })
     expect(extent).toEqual([
-      [GROUP_PAD, GROUP_PAD],
+      [GROUP_PAD, GROUP_NEST_TOP_PAD],
       [220 - GROUP_PAD, 130 - GROUP_PAD],
     ])
   })
@@ -159,12 +160,23 @@ describe('paddedExtent', () => {
     // since Math.min(Math.max(v,min),max) returns max when max < min, the
     // node would snap far off to the negative side instead of holding at
     // [pad,pad]. The pad+childSize floor below keeps RF's own subtraction
-    // (extent[1] - childSize) landing at exactly `pad`, never less.
+    // (extent[1] - childSize) landing at exactly `pad`/`topPad`, never less.
     const extent = paddedExtent({ width: 240, height: 146 }, { width: 240, height: 146 })
     expect(extent).toEqual([
-      [GROUP_PAD, GROUP_PAD],
-      [GROUP_PAD + 240, GROUP_PAD + 146], // RF's (extent[1] - childSize) lands at exactly `pad`
+      [GROUP_PAD, GROUP_NEST_TOP_PAD],
+      [GROUP_PAD + 240, GROUP_NEST_TOP_PAD + 146], // RF's (extent[1] - childSize) lands at exactly `pad`/`topPad`
     ])
+  })
+
+  it('clamps a child dragged to the very top of its extent clear of the parent title strip (GROUP_NEST_TOP_PAD, not GROUP_PAD)', () => {
+    // The title-overlap regression this fix targets: dragging a nested
+    // group's title straight up must stop it at the SAME top clearance a
+    // freshly-nested child starts at, not fall back to the narrower
+    // horizontal GROUP_PAD.
+    const extent = paddedExtent({ width: 400, height: 300 }, { width: 220, height: 130 })
+    const [[, minY]] = extent
+    expect(minY).toBe(GROUP_NEST_TOP_PAD)
+    expect(minY).toBeGreaterThan(GROUP_PAD)
   })
 })
 

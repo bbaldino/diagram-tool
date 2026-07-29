@@ -255,16 +255,19 @@ export const GROUP_PAD = 16
 // agree).
 export const GROUP_MIN = { width: 220, height: 130 }
 
-// Extra top clearance for a freshly-nested child's STARTING position only —
-// requiredGroupSize/paddedExtent stay GROUP_PAD-uniform on every side, this
-// is purely where App.tsx's reparent drops a child the instant it's nested.
+// Extra top clearance — used both for a freshly-nested child's STARTING
+// position (App.tsx's reparent) AND as paddedExtent's top drag-clamp bound,
+// so the clearance holds uniformly whether a child lands there on nest or
+// gets dragged there afterwards. requiredGroupSize stays GROUP_PAD-uniform
+// (it derives its floor from the child's actual position, which is itself
+// clamped by paddedExtent, so it never needs its own top-pad notion).
 // A group's `.group__label` (index.css) renders in the strip just above its
 // OWN box, so a child placed flush at GROUP_PAD from its parent's top edge
 // has its title collide with the parent's title, which sits in that same
 // strip just above the parent. This is comfortably bigger than the label's
 // rendered footprint (~19px line box + 5px margin ≈ 24px) so the two titles
-// never touch right after a nest. (Dragging the child back up to y=GROUP_PAD
-// afterwards can still bring the titles close — see the reparent scope note.)
+// never touch, whether right after a nest or after dragging the child back
+// up to the top of its clamped range.
 export const GROUP_NEST_TOP_PAD = 32
 
 // The smallest size that contains every child with GROUP_PAD clearance on
@@ -287,7 +290,13 @@ export function requiredGroupSize(
 
 // The React Flow `extent` box that keeps a child within its parent's padded
 // region — i.e. the drag-clamp equivalent of `requiredGroupSize`. Top-left
-// is always [pad, pad]. Bottom-right is the padded region's far edge
+// is [padX, padTop] — padTop uses GROUP_NEST_TOP_PAD (not GROUP_PAD) so the
+// clamp holds the SAME title clearance whether a child lands there on nest
+// or gets dragged there afterwards; without this, a child dragged straight
+// up could still park at y=GROUP_PAD and re-crowd its title against the
+// parent's (both render in the same strip just above each box — see
+// GROUP_NEST_TOP_PAD). Left stays GROUP_PAD since there's no horizontal
+// label-collision risk. Bottom-right is the padded region's far edge
 // (parentSize - pad) — NOT pre-backed-off by the child's own size: RF's own
 // clampPosition (@xyflow/system) already subtracts the dragged/rendered
 // node's `measured` width/height from extent[1] before clamping
@@ -303,13 +312,14 @@ export function requiredGroupSize(
 export function paddedExtent(
   parentSize: { width: number; height: number },
   childSize: { width: number; height: number },
-  pad = GROUP_PAD,
+  padX = GROUP_PAD,
+  padTop = GROUP_NEST_TOP_PAD,
 ): [[number, number], [number, number]] {
   return [
-    [pad, pad],
+    [padX, padTop],
     [
-      Math.max(pad + childSize.width, parentSize.width - pad),
-      Math.max(pad + childSize.height, parentSize.height - pad),
+      Math.max(padX + childSize.width, parentSize.width - padX),
+      Math.max(padTop + childSize.height, parentSize.height - padX),
     ],
   ]
 }
