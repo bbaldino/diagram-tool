@@ -1,6 +1,7 @@
 import { type Node, type Edge } from '@xyflow/react'
 import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
+import { IconInput } from './IconInput'
 
 interface Props {
   node: Node | null
@@ -210,10 +211,10 @@ export function Inspector({
           />
         </Field>
         <Field label="Icon slug">
-          <input
-            value={d.icon ?? ''}
+          <IconInput
+            value={d.icon}
+            onChange={(v) => onNodeData({ icon: v })}
             placeholder="plex, sonarr, … (dashboard-icons)"
-            onChange={(e) => onNodeData({ icon: e.target.value || undefined })}
           />
         </Field>
         <Field label="Status">
