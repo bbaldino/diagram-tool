@@ -108,6 +108,30 @@ describe('handlers', () => {
       expect(store.getState().rev).toBe(rev0)
     })
 
+    it('addNode with parentId places the child non-overlapping and grows the group via reflow — same as editNode reparent', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as {
+        diagramId: string
+      }
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
+      const before = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+
+      // first child: no explicit position → landed at the group's padded top-left, not (0,0) over the title.
+      const { id: nodeA } = handlers.addNode(store, { diagramId, label: 'Plex', parentId: groupId }) as { id: string }
+      const a = getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeA)!
+      expect(a.parentId).toBe(groupId)
+      expect(a.position).toEqual({ x: 16, y: 32 })
+
+      // second child: placed beside its sibling (not stacked on top), and the group grows to fit both.
+      const { id: nodeB } = handlers.addNode(store, { diagramId, label: 'Sonarr', parentId: groupId }) as { id: string }
+      const d = getDiagram(store.getState().model, diagramId)!
+      const b = d.nodes.find((n) => n.id === nodeB)!
+      expect(b.parentId).toBe(groupId)
+      expect(b.position.x).toBeGreaterThan(a.position.x)
+      const group = d.groups.find((g) => g.id === groupId)!
+      expect(group.size.width).toBeGreaterThan(before.size.width)
+    })
+
     it('connect adds an edge and returns its uuid', async () => {
       const store = await mkStore()
       const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {

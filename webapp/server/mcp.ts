@@ -254,7 +254,12 @@ export const handlers = {
     const node: Node = { id: newId(), label: a.label, fields: [], position: a.position ?? { x: 0, y: 0 } }
     if (a.icon !== undefined) node.icon = a.icon
     if (a.status !== undefined) node.status = a.status
-    if (a.parentId) node.parentId = a.parentId
+    if (a.parentId) {
+      node.parentId = a.parentId
+      if (a.position === undefined) node.position = positionInGroup(diagram, a.parentId, node.id, NODE_EST_SIZE)
+      applyWithReflow(store, a.diagramId, [{ t: 'node.add', diagramId: a.diagramId, node }])
+      return { id: node.id }
+    }
     store.apply([{ t: 'node.add', diagramId: a.diagramId, node }], 'mcp')
     return { id: node.id }
   },
