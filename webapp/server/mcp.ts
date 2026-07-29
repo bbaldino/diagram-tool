@@ -34,19 +34,29 @@ export interface ConnectArgs {
   orientation?: EdgeOrientation
 }
 
-export interface SetEdgeArgs {
+export interface EditEdgeArgs {
   diagramId: string
   edgeId: string
   patch: Partial<Pick<Edge, 'label' | 'dir' | 'color' | 'orientation'>>
 }
 
-export interface SetNoteArgs {
+export interface AddNoteArgs {
   diagramId: string
-  id?: string // update an existing note when given; otherwise create one
   text: string
   position?: { x: number; y: number }
   size?: { width: number; height: number }
   parentId?: string | null
+}
+
+export interface EditNoteArgs {
+  diagramId: string
+  id: string
+  patch: Partial<{
+    text: string
+    position: { x: number; y: number }
+    size: { width: number; height: number }
+    parentId: string | null
+  }>
 }
 
 export interface RemoveArgs {
@@ -244,7 +254,7 @@ export const handlers = {
     return { id: edge.id }
   },
 
-  setEdge(store: Store, a: SetEdgeArgs): OkResult | ErrorResult {
+  editEdge(store: Store, a: EditEdgeArgs): OkResult | ErrorResult {
     const model = store.getState().model
     const diagram = getDiagram(model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
@@ -255,23 +265,13 @@ export const handlers = {
     return { ok: true }
   },
 
-  // Creates a new sticky note (Note entity) on the diagram, or — when `a.id`
-  // is given — updates an existing one. There is no more per-node inline
-  // note; notes are their own top-level element now.
-  setNote(store: Store, a: SetNoteArgs): { id: string } | OkResult | ErrorResult {
-    const model = store.getState().model
-    const diagram = getDiagram(model, a.diagramId)
+  // Creates a new sticky note (Note entity) on the diagram. There is no more
+  // per-node inline note; notes are their own top-level element now.
+  addNote(store: Store, a: AddNoteArgs): { id: string } | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (a.id !== undefined) {
-      if (!diagram.notes.some((n) => n.id === a.id)) {
-        return err(`unknown note "${a.id}" in diagram "${a.diagramId}"`)
-      }
-      const patch: Partial<Omit<Note, 'id'>> = { text: a.text }
-      if (a.position !== undefined) patch.position = a.position
-      if (a.size !== undefined) patch.size = a.size
-      if (a.parentId !== undefined) patch.parentId = a.parentId ?? undefined
-      store.apply([{ t: 'note.update', diagramId: a.diagramId, id: a.id, patch }], 'mcp')
-      return { ok: true }
+    if (a.parentId != null && !diagram.groups.some((g) => g.id === a.parentId)) {
+      return err(`unknown group "${a.parentId}"`)
     }
     const note: Note = {
       id: newId(),
@@ -279,9 +279,38 @@ export const handlers = {
       position: a.position ?? { x: 0, y: 0 },
       size: a.size ?? { width: 160, height: 90 },
     }
-    if (a.parentId) note.parentId = a.parentId
+    if (a.parentId) {
+      note.parentId = a.parentId
+      if (a.position === undefined) note.position = positionInGroup(diagram, a.parentId, note.id, note.size)
+      applyWithReflow(store, a.diagramId, [{ t: 'note.add', diagramId: a.diagramId, note }])
+      return { id: note.id }
+    }
     store.apply([{ t: 'note.add', diagramId: a.diagramId, note }], 'mcp')
     return { id: note.id }
+  },
+
+  // Updates an existing note by id. Reparenting (patch.parentId set to a
+  // group) positions the note via positionInGroup and reflows containment,
+  // same as editNode/editGroup.
+  editNote(store: Store, a: EditNoteArgs): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    const note = diagram.notes.find((n) => n.id === a.id)
+    if (!note) return err(`unknown note "${a.id}" in diagram "${a.diagramId}"`)
+    if (a.patch.parentId != null && !diagram.groups.some((g) => g.id === a.patch.parentId)) {
+      return err(`unknown group "${a.patch.parentId}"`)
+    }
+    const touchesContainment = 'parentId' in a.patch
+    const { parentId, ...rest } = a.patch
+    const patch: Partial<Omit<Note, 'id'>> = { ...rest }
+    if (touchesContainment) {
+      patch.parentId = parentId ?? undefined
+      if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? note.size)
+    }
+    const op: Op = { t: 'note.update', diagramId: a.diagramId, id: a.id, patch }
+    if (touchesContainment) applyWithReflow(store, a.diagramId, [op])
+    else store.apply([op], 'mcp')
+    return { ok: true }
   },
 
   remove(store: Store, a: RemoveArgs): OkResult | ErrorResult {
@@ -599,7 +628,7 @@ export function createMcpServer(store: Store): McpServer {
   )
 
   server.registerTool(
-    'set_edge',
+    'edit_edge',
     {
       description:
         'Update an existing edge in a diagram. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
@@ -609,24 +638,45 @@ export function createMcpServer(store: Store): McpServer {
         patch: z.object(edgeAttrsShape),
       },
     },
-    (args) => wrap(handlers.setEdge(store, args as SetEdgeArgs)),
+    (args) => wrap(handlers.editEdge(store, args as EditEdgeArgs)),
   )
 
   server.registerTool(
-    'set_note',
+    'add_note',
     {
-      description:
-        'Create a new sticky note on a diagram, or update an existing one when `id` is given. Returns the created note id when creating.',
+      description: 'Add a new sticky note to a diagram. Returns the created note id.',
       inputSchema: {
         diagramId: z.string(),
-        id: z.string().optional(),
         text: z.string(),
         position: positionShape.optional(),
         size: z.object({ width: z.number(), height: z.number() }).optional(),
         parentId: z.string().nullable().optional(),
       },
     },
-    (args) => wrap(handlers.setNote(store, args as SetNoteArgs)),
+    (args) => wrap(handlers.addNote(store, args as AddNoteArgs)),
+  )
+
+  server.registerTool(
+    'edit_note',
+    {
+      description:
+        "Update an existing note's text/position/size, and/or move it into or out of a group via parentId. Reparenting also reflows the target group's size/padding so the change lands like a human edit.",
+      inputSchema: {
+        diagramId: z.string(),
+        id: z.string(),
+        patch: z.object({
+          text: z.string().optional(),
+          position: positionShape.optional(),
+          size: z.object({ width: z.number(), height: z.number() }).optional(),
+          parentId: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Set to a group id to move the note into that group, or null to un-parent.'),
+        }),
+      },
+    },
+    (args) => wrap(handlers.editNote(store, args as EditNoteArgs)),
   )
 
   server.registerTool(
