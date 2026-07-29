@@ -116,7 +116,7 @@ body {
 /* App chrome must not capture text selection: a Shift+drag box-select that
    crosses a panel should draw the marquee, not highlight the panel's text.
    Real inputs stay selectable so field/note editing works normally. */
-.diagrambar, .panel, .palette, .addmenu, .colorpick, .dialog {
+.panel, .palette, .addmenu, .colorpick, .dialog {
   -webkit-user-select: none;
   user-select: none;
 }
@@ -150,9 +150,6 @@ input, textarea, [contenteditable="true"] {
    transparent to the pointer and re-enable it on the real panels only. */
 .stack-tr, .stack-tl { pointer-events: none; }
 .stack-tr > *, .stack-tl > * { pointer-events: auto; }
-
-.diagrambar { display: flex; align-items: center; gap: 6px; }
-.diagrambar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937; }
 
 /* Group resize handles: push them OUTSIDE the group edge so child nodes (which
    stack above the parent) can't cover them, and give a fat side grab-strip. */
@@ -538,3 +535,15 @@ input, textarea, [contenteditable="true"] {
 }
 .tabstrip__new:hover { background: #eceff3; border-radius: 7px 7px 0 0; }
 .tabstrip__meta { font-size: 12px; color: #94a3b8; padding-bottom: 4px; white-space: nowrap; }
+
+/* Empty state: no tabs open (distinct from a fresh-but-open diagram). */
+.canvas-empty-wrap { display: flex; align-items: center; justify-content: center; background: #fff; }
+.canvas-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; max-width: 340px; }
+.canvas-empty__title { font-size: 13px; font-weight: 600; color: #475569; }
+.canvas-empty__body { font-size: 12.5px; color: #64748b; line-height: 1.5; }
+.canvas-empty__actions { display: flex; gap: 14px; margin-top: 8px; }
+.canvas-empty__actions button {
+  font: inherit; font-size: 12.5px; color: #4f46e5; background: none; border: none;
+  padding: 0; cursor: pointer;
+}
+.canvas-empty__actions button:hover { text-decoration: underline; }

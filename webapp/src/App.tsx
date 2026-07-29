@@ -38,11 +38,12 @@ import {
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
 import { FlowPanel } from './FlowPanel'
-import { DiagramBar } from './DiagramBar'
+import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { MenuBar } from './MenuBar'
 import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
+import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
 import { flowStates } from './flowState'
@@ -57,6 +58,7 @@ import type {
 } from './model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
+const OPEN_TABS_KEY = 'homelab-open-tabs'
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
 // The shape MenuBar's save-status indicator expects — a subset of SaveState
 // (it has no separate "idle" rendering; idle maps onto "saved" with no text).
@@ -198,14 +200,18 @@ function Flow({
   setModel,
   activeId,
   setActiveId,
+  openTabs,
+  setOpenTabs,
   undoFlags,
   saveState,
   onRetrySave,
 }: {
   model: Model
   setModel: React.Dispatch<React.SetStateAction<Model>>
-  activeId: string
-  setActiveId: (id: string) => void
+  activeId: string | null
+  setActiveId: (id: string | null) => void
+  openTabs: string[]
+  setOpenTabs: React.Dispatch<React.SetStateAction<string[]>>
   undoFlags: { canUndo: boolean; canRedo: boolean }
   saveState: BarSaveState
   onRetrySave: () => void
@@ -266,6 +272,20 @@ function Flow({
   const active = useMemo(
     () => (model && activeId ? M.getDiagram(model, activeId) : undefined),
     [model, activeId],
+  )
+  // Tab strip contents: every open id that still resolves to a real diagram
+  // (a stale id — e.g. one deleted from another client — just drops silently
+  // rather than rendering a broken tab).
+  const tabs = useMemo(
+    () =>
+      openTabs
+        .map((id) => ({ id, name: (model && M.getDiagram(model, id)?.name) ?? id }))
+        .filter((t) => model && M.getDiagram(model, t.id)),
+    [openTabs, model],
+  )
+  const meta = useMemo(
+    () => (active ? { entities: active.nodes.length, groups: active.groups.length, edges: active.edges.length } : null),
+    [active],
   )
   const currentFlow = useMemo(
     () => active?.flows?.find((f) => f.id === currentFlowId) ?? null,
@@ -368,12 +388,13 @@ function Flow({
   // note/edge arrays (see flushCanvasInto).
   useEffect(() => {
     if (!loaded.current || !activeId) return
+    const diagramId = activeId
     const delay = flushImmediately.current ? 0 : 400
     flushImmediately.current = false
     const t = setTimeout(() => {
       setModel((m) => {
         skipReseed.current = true
-        return flushCanvasInto(m, activeId, nodes, edges)
+        return flushCanvasInto(m, diagramId, nodes, edges)
       })
     }, delay)
     return () => clearTimeout(t)
@@ -383,9 +404,11 @@ function Flow({
   // release), so an undo taken right after doesn't race the 400ms debounced
   // write-back above.
   const flushNow = useCallback(() => {
+    if (!activeId) return
+    const diagramId = activeId
     setModel((m) => {
       skipReseed.current = true
-      return flushCanvasInto(m, activeId, nodes, edges)
+      return flushCanvasInto(m, diagramId, nodes, edges)
     })
   }, [activeId, nodes, edges, setModel])
 
@@ -402,8 +425,8 @@ function Flow({
   // mutation to that flushed base — so pending canvas edits survive the re-seed.
   const selectDiagram = useCallback(
     (id: string) => {
-      if (!model || !activeId || id === activeId) return
-      const base = flushCanvasInto(model, activeId, nodes, edges)
+      if (!model || id === activeId) return
+      const base = activeId ? flushCanvasInto(model, activeId, nodes, edges) : model
       setModel(base)
       setActiveId(id)
     },
@@ -412,13 +435,40 @@ function Flow({
 
   const newDiagram = useCallback(
     (name: string) => {
-      if (!model || !activeId) return
-      const base = flushCanvasInto(model, activeId, nodes, edges)
+      if (!model) return
+      const base = activeId ? flushCanvasInto(model, activeId, nodes, edges) : model
       const { model: m2, id } = M.addDiagram(base, name, 'canvas')
       setModel(m2)
       setActiveId(id)
+      setOpenTabs((t) => addTab(t, id))
+      return id
     },
-    [model, activeId, nodes, edges],
+    [model, activeId, nodes, edges, setOpenTabs],
+  )
+
+  // ---- tab-strip handlers (chrome redesign phase 2) ----
+  // Opening a not-yet-open diagram: add it to the tab strip, then switch to it
+  // (selectDiagram already flushes the outgoing canvas + sets the active id).
+  const openDiagram = useCallback(
+    (id: string) => {
+      setOpenTabs((t) => addTab(t, id))
+      selectDiagram(id)
+    },
+    [setOpenTabs, selectDiagram],
+  )
+
+  // Closing a tab: drop it from openTabs; if it was the active tab, hand off
+  // to whatever neighbor closeTab picked (or clear activeId if none remain).
+  const closeDiagramTab = useCallback(
+    (id: string) => {
+      const r = closeTab(openTabs, activeId, id)
+      setOpenTabs(r.openTabs)
+      if (r.activeId !== activeId) {
+        if (r.activeId) selectDiagram(r.activeId)
+        else setActiveId(null)
+      }
+    },
+    [openTabs, activeId, selectDiagram, setOpenTabs, setActiveId],
   )
 
   const renameDiagramById = useCallback(
@@ -728,9 +778,11 @@ function Flow({
   )
 
   const doUndo = useCallback(() => {
+    if (!activeId) return
     void undoReq(activeId).catch(() => {})
   }, [activeId])
   const doRedo = useCallback(() => {
+    if (!activeId) return
     void redoReq(activeId).catch(() => {})
   }, [activeId])
 
@@ -817,6 +869,13 @@ function Flow({
     )?.trim()
     if (name) newDiagram(name)
   }, [showPrompt, newDiagram])
+
+  // "+" in the tab strip / "New diagram" in the empty state: same prompt-then-
+  // create flow as the File menu's "New diagram" (newDiagram already opens the
+  // created id as a tab).
+  const newDiagramInTab = useCallback(() => {
+    void promptNewDiagram()
+  }, [promptNewDiagram])
 
   const promptRenameDiagram = useCallback(async () => {
     if (!activeId) return
@@ -1116,6 +1175,33 @@ function Flow({
         saveState={saveState}
         onOpenChange={handleMenuOpenChange}
       />
+      <DiagramTabs
+        tabs={tabs}
+        activeId={activeId}
+        onSelect={selectDiagram}
+        onClose={closeDiagramTab}
+        onNew={newDiagramInTab}
+        meta={meta}
+      />
+      {!activeId ? (
+        <div className="canvas-empty-wrap" style={{ width: '100vw', flex: 1, minHeight: 0 }}>
+          <div className="canvas-empty">
+            <div className="canvas-empty__title">No diagram open</div>
+            <div className="canvas-empty__body">
+              Open one from File ▸ Open diagram… or create a new diagram.
+            </div>
+            <div className="canvas-empty__actions">
+              {/* TODO(task4): open dialog */}
+              <button type="button" onClick={() => {}}>
+                Open diagram…
+              </button>
+              <button type="button" onClick={newDiagramInTab}>
+                New diagram
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div
         ref={wrapperRef}
         className={groupEditing ? 'group-editing' : undefined}
@@ -1245,14 +1331,6 @@ function Flow({
         </Panel>
 
         <Panel position="top-left" className="stack-tl">
-          {model && activeId && (
-            <DiagramBar
-              diagrams={model.diagrams}
-              activeId={activeId}
-              onSelect={selectDiagram}
-            />
-          )}
-
           <div className="panel">
             <h4>Legend</h4>
             <div className="legend__row">
@@ -1284,6 +1362,7 @@ function Flow({
         />
       )}
       </div>
+      )}
     </div>
   )
 }
@@ -1297,6 +1376,15 @@ export default function App() {
   // `model` itself hasn't changed since the failure.
   const [retryNonce, setRetryNonce] = useState(0)
   const [undoMap, setUndoMap] = useState<Record<string, { canUndo: boolean; canRedo: boolean }>>({})
+  // Open-tabs (chrome redesign phase 2): which diagrams show as tabs in the
+  // strip, persisted across reloads. Lazily seeded from localStorage.
+  const [openTabs, setOpenTabs] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(OPEN_TABS_KEY) || '[]')
+    } catch {
+      return []
+    }
+  })
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
   const loaded = useRef(false)
@@ -1335,6 +1423,28 @@ export default function App() {
       cancelled = true
     }
   }, [])
+
+  // Reconcile the open-tabs list against the loaded model: drop tabs for
+  // diagrams that no longer exist, dedupe, and make sure the active diagram
+  // always has a tab. Compared by JSON.stringify so a no-op reconcile doesn't
+  // set state (openTabs is itself an effect dependency of the persist effect
+  // below — churn here would loop).
+  useEffect(() => {
+    if (!model) return
+    setOpenTabs((t) => {
+      const sanitized = sanitizeOpenTabs(
+        t,
+        model.diagrams.map((d) => d.id),
+        activeId,
+      )
+      return JSON.stringify(sanitized) === JSON.stringify(t) ? t : sanitized
+    })
+  }, [model, activeId])
+
+  // Persist the open-tabs list across reloads.
+  useEffect(() => {
+    localStorage.setItem(OPEN_TABS_KEY, JSON.stringify(openTabs))
+  }, [openTabs])
 
   // Live-reconcile with the server: track the latest pushed snapshot, and apply
   // genuinely-newer external state while ignoring the echo of our own writes.
@@ -1401,7 +1511,7 @@ export default function App() {
   // is unchanged, which recomputes and resends the same pending ops.
   const retrySave = useCallback(() => setRetryNonce((n) => n + 1), [])
 
-  const handleSetActive = useCallback((id: string) => setActiveId(id), [])
+  const handleSetActive = useCallback((id: string | null) => setActiveId(id), [])
   // App owns the model, so setModel here is typed against a non-null Model;
   // Flow receives it once model has loaded (never null below).
   const setModelNonNull = setModel as React.Dispatch<React.SetStateAction<Model>>
@@ -1421,9 +1531,11 @@ export default function App() {
       <Flow
         model={model}
         setModel={setModelNonNull}
-        activeId={activeId!}
+        activeId={activeId}
         setActiveId={handleSetActive}
-        undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
+        openTabs={openTabs}
+        setOpenTabs={setOpenTabs}
+        undoFlags={undoMap[activeId ?? ''] ?? { canUndo: false, canRedo: false }}
         saveState={saveState}
         onRetrySave={retrySave}
       />
