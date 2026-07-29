@@ -452,6 +452,9 @@ input, textarea, [contenteditable="true"] {
 .iconinput__cat { color: #94a3b8; font-size: 11px; }
 .iconinput__loading { padding: 8px; color: #64748b; font-size: 12px; }
 
+/* ---------- App shell (menu bar + canvas, chrome redesign phase 1) ---------- */
+.shell { height: 100vh; display: flex; flex-direction: column; }
+
 /* ---------- Menu bar (chrome redesign phase 1) ---------- */
 .menubar {
   position: relative; z-index: 60; height: 31px; flex: none;

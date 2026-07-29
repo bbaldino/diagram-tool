@@ -40,6 +40,8 @@ import { Inspector } from './Inspector'
 import { FlowPanel } from './FlowPanel'
 import { DiagramBar } from './DiagramBar'
 import { CanvasAddMenu } from './CanvasAddMenu'
+import { MenuBar } from './MenuBar'
+import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
 import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
 import { diffToOps } from './diff'
@@ -56,6 +58,9 @@ import type {
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 type SaveState = 'idle' | 'saving' | 'saved' | 'error'
+// The shape MenuBar's save-status indicator expects — a subset of SaveState
+// (it has no separate "idle" rendering; idle maps onto "saved" with no text).
+type BarSaveState = { label: string; kind: 'saved' | 'saving' | 'error' }
 
 // RF needs every parent node to appear before its children in the array —
 // and since groups can nest, "groups before non-groups" alone isn't enough:
@@ -194,14 +199,16 @@ function Flow({
   activeId,
   setActiveId,
   undoFlags,
+  saveState,
 }: {
   model: Model
   setModel: React.Dispatch<React.SetStateAction<Model>>
   activeId: string
   setActiveId: (id: string) => void
   undoFlags: { canUndo: boolean; canRedo: boolean }
+  saveState: BarSaveState
 }) {
-  const { showPrompt } = useDialogs()
+  const { showPrompt, showConfirm } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -791,6 +798,122 @@ function Flow({
     setTimeout(() => rf.fitView({ padding: 0.2 }), 40)
   }, [rf, setNodes, setEdges])
 
+  // ---- menu bar: File menu model + dispatch ----
+  // The prompt-then-mutate flows below reproduce what the removed DiagramBar
+  // buttons used to do inline (showPrompt/showConfirm around the same
+  // newDiagram/renameDiagramById/deleteActiveDiagram handlers).
+  const promptNewDiagram = useCallback(async () => {
+    const name = (
+      await showPrompt({ title: 'New diagram', label: 'Name', placeholder: 'e.g. Call flow' })
+    )?.trim()
+    if (name) newDiagram(name)
+  }, [showPrompt, newDiagram])
+
+  const promptRenameDiagram = useCallback(async () => {
+    if (!activeId) return
+    const cur = model?.diagrams.find((d) => d.id === activeId)
+    const name = (
+      await showPrompt({ title: 'Rename diagram', label: 'Name', defaultValue: cur?.name })
+    )?.trim()
+    if (name) renameDiagramById(activeId, name)
+  }, [showPrompt, model, activeId, renameDiagramById])
+
+  const confirmDeleteDiagram = useCallback(async () => {
+    if (!activeId) return
+    const ok = await showConfirm({
+      title: 'Delete this diagram?',
+      message: 'This removes the diagram and everything on it.',
+      danger: true,
+    })
+    if (ok) deleteActiveDiagram(activeId)
+  }, [showConfirm, activeId, deleteActiveDiagram])
+
+  const fileMenuItems: MenuItem[] = useMemo(
+    () => [
+      { id: 'new', label: 'New diagram', shortcut: '⌘N' },
+      { id: 'open', label: 'Open diagram…', shortcut: '⌘O', disabled: true },
+      { id: 'rename', label: 'Rename…' },
+      { id: 'duplicate', label: 'Duplicate', disabled: true },
+      { id: 'import', label: 'Import JSON…', separatorBefore: true },
+      {
+        id: 'export',
+        label: 'Export',
+        submenu: [
+          { id: 'export-json', label: 'JSON', shortcut: '⌘⇧E' },
+          { id: 'export-png-view', label: 'PNG (current view)', disabled: true },
+          { id: 'export-png-all', label: 'PNG (whole diagram)', disabled: true },
+          { id: 'export-svg', label: 'SVG', disabled: true },
+        ],
+      },
+      { id: 'reset', label: 'Reset diagram…', danger: true, separatorBefore: true },
+      { id: 'delete', label: 'Delete diagram…', danger: true },
+    ],
+    [],
+  )
+
+  // Edit/View/Arrange open with empty item lists this phase — only File is wired.
+  const menus = useMemo(
+    () => [
+      { id: 'file' as const, title: 'File', items: fileMenuItems },
+      { id: 'edit' as const, title: 'Edit', items: [] },
+      { id: 'view' as const, title: 'View', items: [] },
+      { id: 'arrange' as const, title: 'Arrange', items: [] },
+    ],
+    [fileMenuItems],
+  )
+
+  const onMenuItem = useCallback(
+    (menuId: string, itemId: string) => {
+      if (menuId !== 'file') return
+      switch (itemId) {
+        case 'new':
+          void promptNewDiagram()
+          break
+        case 'rename':
+          void promptRenameDiagram()
+          break
+        case 'import':
+          fileRef.current?.click()
+          break
+        case 'export-json':
+          exportJson()
+          break
+        case 'reset':
+          reset()
+          break
+        case 'delete':
+          void confirmDeleteDiagram()
+          break
+        // 'open', 'duplicate', 'export-png-view', 'export-png-all', 'export-svg'
+        // are disabled items — MenuBar never dispatches clicks on them.
+        default:
+          break
+      }
+    },
+    [promptNewDiagram, promptRenameDiagram, exportJson, reset, confirmDeleteDiagram],
+  )
+
+  // Minimal File-menu keyboard shortcuts: ⌘/Ctrl+N (new), ⌘/Ctrl+Shift+E
+  // (export JSON). Ignored while a text input/textarea/contentEditable is
+  // focused. ⌘O is a no-op for now (Open is disabled this phase).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
+      if (!(e.metaKey || e.ctrlKey)) return
+      const key = e.key.toLowerCase()
+      if (key === 'n' && !e.shiftKey) {
+        e.preventDefault()
+        void promptNewDiagram()
+      } else if (key === 'e' && e.shiftKey) {
+        e.preventDefault()
+        exportJson()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [promptNewDiagram, exportJson])
+
   const miniColor = useCallback((n: Node) => {
     if (n.type === 'group') return (n.data as any).color as string
     if (n.type === 'note') return '#fde047'
@@ -972,15 +1095,17 @@ function Flow({
 
   const groupEditing = selectedNode?.type === 'group'
   return (
-    <div
-      ref={wrapperRef}
-      className={groupEditing ? 'group-editing' : undefined}
-      style={{ width: '100vw', height: 'calc(100vh - 40px)' }}
-      onMouseMove={(e) => {
-        pointer.current = { x: e.clientX, y: e.clientY }
-      }}
-      onDoubleClick={onCanvasDoubleClick}
-    >
+    <div className="shell">
+      <MenuBar menus={menus} onItem={onMenuItem} saveState={saveState} />
+      <div
+        ref={wrapperRef}
+        className={groupEditing ? 'group-editing' : undefined}
+        style={{ width: '100vw', flex: 1, minHeight: 0 }}
+        onMouseMove={(e) => {
+          pointer.current = { x: e.clientX, y: e.clientY }
+        }}
+        onDoubleClick={onCanvasDoubleClick}
+      >
       <ReactFlow
         nodes={nodes}
         edges={flowEdges}
@@ -1065,9 +1190,6 @@ function Flow({
                 <option value="straight">Straight</option>
               </select>
             </label>
-            <button onClick={exportJson}>Export</button>
-            <button onClick={() => fileRef.current?.click()}>Import</button>
-            <button onClick={reset}>Reset</button>
             <input
               ref={fileRef}
               type="file"
@@ -1109,9 +1231,6 @@ function Flow({
               diagrams={model.diagrams}
               activeId={activeId}
               onSelect={selectDiagram}
-              onNew={newDiagram}
-              onRename={renameDiagramById}
-              onDelete={deleteActiveDiagram}
             />
           )}
 
@@ -1145,6 +1264,7 @@ function Flow({
           onClose={() => setAddMenu(null)}
         />
       )}
+      </div>
     </div>
   )
 }
@@ -1152,7 +1272,7 @@ function Flow({
 export default function App() {
   const [model, setModel] = useState<Model | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveStatus, setSaveStatus] = useState<SaveState>('idle')
   const [undoMap, setUndoMap] = useState<Record<string, { canUndo: boolean; canRedo: boolean }>>({})
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
@@ -1233,7 +1353,7 @@ export default function App() {
       if (!base) return
       const ops = diffToOps(base, next)
       if (!ops.length) return
-      setSaveState('saving')
+      setSaveStatus('saving')
       sendOps(ops)
         .then((res) => {
           const rev = 'rev' in res ? res.rev : undefined
@@ -1243,12 +1363,12 @@ export default function App() {
           if (typeof rev === 'number' && rev >= 0) {
             ownRev.current = rev
             lastServerModel.current = next
-            setSaveState('saved')
+            setSaveStatus('saved')
           } else {
-            setSaveState('error')
+            setSaveStatus('error')
           }
         })
-        .catch(() => setSaveState('error'))
+        .catch(() => setSaveStatus('error'))
     }, 500)
     return () => clearTimeout(t)
   }, [model])
@@ -1258,35 +1378,26 @@ export default function App() {
   // Flow receives it once model has loaded (never null below).
   const setModelNonNull = setModel as React.Dispatch<React.SetStateAction<Model>>
 
-  const saveLabel =
-    saveState === 'saving'
-      ? '● saving…'
-      : saveState === 'saved'
-        ? '✓ saved to model.json'
-        : saveState === 'error'
-          ? '⚠ not saved (no server)'
-          : ''
-  const saveColor =
-    saveState === 'error' ? '#dc2626' : saveState === 'saving' ? '#d97706' : '#16a34a'
+  // Map the raw save status onto the menu bar's save-status shape. `idle`
+  // (before the first diff) has no dedicated bar rendering — it shows the
+  // "saved" icon with no text, matching the old tabbar's blank initial label.
+  const saveState: BarSaveState =
+    saveStatus === 'saving'
+      ? { label: 'saving…', kind: 'saving' }
+      : saveStatus === 'error'
+        ? { label: "couldn't save — retry", kind: 'error' }
+        : { label: saveStatus === 'saved' ? 'saved to model.json' : '', kind: 'saved' }
 
-  return (
-    <>
-      <div className="tabbar">
-        <span className="tabbar__save" style={{ color: saveColor }}>
-          {saveLabel}
-        </span>
-      </div>
-      {!model ? null : (
-        <ReactFlowProvider>
-          <Flow
-            model={model}
-            setModel={setModelNonNull}
-            activeId={activeId!}
-            setActiveId={handleSetActive}
-            undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
-          />
-        </ReactFlowProvider>
-      )}
-    </>
+  return !model ? null : (
+    <ReactFlowProvider>
+      <Flow
+        model={model}
+        setModel={setModelNonNull}
+        activeId={activeId!}
+        setActiveId={handleSetActive}
+        undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
+        saveState={saveState}
+      />
+    </ReactFlowProvider>
   )
 }
