@@ -547,3 +547,68 @@ input, textarea, [contenteditable="true"] {
   padding: 0; cursor: pointer;
 }
 .canvas-empty__actions button:hover { text-decoration: underline; }
+
+/* ---------- Open diagram dialog (⌘O / File ▸ Open diagram…) ---------- */
+.opendlg__scrim {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.28);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.opendlg {
+  width: 560px; max-height: 78vh; display: flex; flex-direction: column;
+  background: #fff; border: 1px solid #d7dce4; border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.14); overflow: hidden;
+}
+.opendlg__title { font-size: 15.5px; font-weight: 700; padding: 15px 18px 0; }
+.opendlg__filter {
+  margin: 10px 14px 4px; padding: 7px 10px; border: 1px solid #dfe3ea;
+  border-radius: 8px; display: flex; align-items: center; gap: 7px;
+}
+.opendlg__filter-glyph { font-size: 12.5px; color: #94a3b8; }
+.opendlg__filter input {
+  flex: 1; border: none; outline: none; font-size: 12.5px; font-family: inherit;
+  color: #1e293b; background: transparent;
+}
+.opendlg__filter input::placeholder { color: #94a3b8; }
+.opendlg__list { flex: 1; overflow-y: auto; padding: 4px 10px 10px; }
+.opendlg__row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 11px;
+  border-radius: 8px; cursor: pointer;
+}
+.opendlg__row:hover { background: #f7f8fb; }
+.opendlg__row.is-selected { background: #f1f2f9; }
+.opendlg__thumb {
+  flex: none; width: 42px; height: 30px; border-radius: 5px; background: #eceff3;
+}
+.opendlg__rowbody { flex: 1; min-width: 0; }
+.opendlg__name {
+  font-size: 13.5px; color: #1e293b; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.opendlg__sub { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+.opendlg__open-chip {
+  flex: none; font-size: 11px; background: #eceff3; color: #64748b;
+  padding: 2px 7px; border-radius: 5px;
+}
+.opendlg__footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 11px 14px; border-top: 1px solid #eceff3; background: #fbfbfc;
+}
+.opendlg__footer-left { display: flex; gap: 14px; }
+.opendlg__footer-right { display: flex; gap: 8px; }
+.opendlg__textaction {
+  font: inherit; font-size: 12.5px; color: #475569; background: none; border: none;
+  padding: 0; cursor: pointer;
+}
+.opendlg__textaction:hover { text-decoration: underline; }
+.opendlg__btn {
+  font-size: 12.5px; font-weight: 550; padding: 7px 13px; border: 1px solid #dfe3ea;
+  border-radius: 7px; background: #fff; color: #1e293b; cursor: pointer;
+}
+.opendlg__btn:hover { background: #f1f5f9; }
+.opendlg__btn--primary {
+  font-weight: 600; padding: 7px 15px; border: none; background: #4f46e5; color: #fff;
+}
+.opendlg__btn--primary:hover { background: #4338ca; }
+.opendlg__btn--primary:disabled {
+  background: #c7cdfa; cursor: default; color: #fff;
+}

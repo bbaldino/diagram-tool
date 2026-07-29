@@ -41,6 +41,7 @@ import { FlowPanel } from './FlowPanel'
 import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { MenuBar } from './MenuBar'
+import { OpenDiagramDialog } from './OpenDiagramDialog'
 import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -447,6 +448,8 @@ function Flow({
   )
 
   // ---- tab-strip handlers (chrome redesign phase 2) ----
+  const [openDialog, setOpenDialog] = useState(false)
+
   // Opening a not-yet-open diagram: add it to the tab strip, then switch to it
   // (selectDiagram already flushes the outgoing canvas + sets the active id).
   const openDiagram = useCallback(
@@ -907,7 +910,7 @@ function Flow({
   const fileMenuItems: MenuItem[] = useMemo(
     () => [
       { id: 'new', label: 'New diagram', shortcut: '⌘N' },
-      { id: 'open', label: 'Open diagram…', shortcut: '⌘O', disabled: true },
+      { id: 'open', label: 'Open diagram…', shortcut: '⌘O' },
       { id: 'rename', label: 'Rename…' },
       { id: 'duplicate', label: 'Duplicate', disabled: true },
       { id: 'import', label: 'Import JSON…', separatorBefore: true },
@@ -949,6 +952,9 @@ function Flow({
         case 'new':
           void promptNewDiagram()
           break
+        case 'open':
+          setOpenDialog(true)
+          break
         case 'rename':
           void promptRenameDiagram()
           break
@@ -964,8 +970,8 @@ function Flow({
         case 'delete':
           void confirmDeleteDiagram()
           break
-        // 'open', 'duplicate', 'export-png-view', 'export-png-all', 'export-svg'
-        // are disabled items — MenuBar never dispatches clicks on them.
+        // 'duplicate', 'export-png-view', 'export-png-all', 'export-svg' are
+        // disabled items — MenuBar never dispatches clicks on them.
         default:
           break
       }
@@ -974,8 +980,8 @@ function Flow({
   )
 
   // Minimal File-menu keyboard shortcuts: ⌘/Ctrl+N (new), ⌘/Ctrl+Shift+E
-  // (export JSON). Ignored while a text input/textarea/contentEditable is
-  // focused. ⌘O is a no-op for now (Open is disabled this phase).
+  // (export JSON), ⌘/Ctrl+O (open dialog). Ignored while a text
+  // input/textarea/contentEditable is focused.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
@@ -988,6 +994,9 @@ function Flow({
       } else if (key === 'e' && e.shiftKey) {
         e.preventDefault()
         exportJson()
+      } else if (key === 'o') {
+        e.preventDefault()
+        setOpenDialog(true)
       }
     }
     window.addEventListener('keydown', onKey)
@@ -1199,8 +1208,7 @@ function Flow({
               Open one from File ▸ Open diagram… or create a new diagram.
             </div>
             <div className="canvas-empty__actions">
-              {/* TODO(task4): open dialog */}
-              <button type="button" onClick={() => {}}>
+              <button type="button" onClick={() => setOpenDialog(true)}>
                 Open diagram…
               </button>
               <button type="button" onClick={newDiagramInTab}>
@@ -1370,6 +1378,25 @@ function Flow({
         />
       )}
       </div>
+      )}
+      {openDialog && (
+        <OpenDiagramDialog
+          diagrams={model.diagrams.map((d) => ({ id: d.id, name: d.name, entities: d.nodes.length }))}
+          openTabIds={openTabs}
+          onOpen={(id) => {
+            openDiagram(id)
+            setOpenDialog(false)
+          }}
+          onNew={() => {
+            setOpenDialog(false)
+            newDiagramInTab()
+          }}
+          onImport={() => {
+            setOpenDialog(false)
+            fileRef.current?.click()
+          }}
+          onClose={() => setOpenDialog(false)}
+        />
       )}
     </div>
   )
