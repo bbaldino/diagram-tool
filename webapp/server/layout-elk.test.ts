@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { runElk } from './layout-elk'
+import { runElk, runElkFlat } from './layout-elk'
 
 const diagram = {
   id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
@@ -40,5 +40,21 @@ describe('runElk', () => {
   it('ignores an edge that targets a group id instead of a node (no throw)', async () => {
     const bad = { ...diagram, edges: [{ id: 'e2', from: 'out', to: 'g', type: 'talks-to' as const }] }
     await expect(runElk(bad, heights)).resolves.toBeTruthy()
+  })
+})
+
+describe('runElkFlat', () => {
+  it('runElkFlat lays out flat boxes and returns a position per box', async () => {
+    const pos = await runElkFlat(
+      [
+        { id: 'a', width: 180, height: 64 },
+        { id: 'b', width: 180, height: 64 },
+      ],
+      [{ from: 'a', to: 'b' }],
+    )
+    expect(Object.keys(pos).sort()).toEqual(['a', 'b'])
+    // layered RIGHT → b is to the right of a
+    expect(pos.b.x).toBeGreaterThan(pos.a.x)
+    expect(typeof pos.a.y).toBe('number')
   })
 })

@@ -1,6 +1,6 @@
 import ELK, { type ElkNode, type ElkExtendedEdge } from 'elkjs/lib/elk.bundled.js'
 import type { Diagram } from '../src/model'
-import { W, type EngineAdapter, type EngineResult } from './layout'
+import { W, type EngineAdapter, type EngineResult, type FlatEngine } from './layout'
 
 // A group is an ELK parent node whose children are its members (real
 // hierarchy). Cross-group edges declared at the root only affect layout with
@@ -66,4 +66,26 @@ export const runElk: EngineAdapter = async (diagram, heightById): Promise<Engine
   walk(result, 0, 0)
 
   return { nodes, groups }
+}
+
+export const runElkFlat: FlatEngine = async (boxes, edges) => {
+  const ids = new Set(boxes.map((b) => b.id))
+  const graph: ElkNode = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '80',
+      'elk.spacing.nodeNode': '40',
+      'elk.spacing.componentComponent': '60',
+    },
+    children: boxes.map((b) => ({ id: b.id, width: b.width, height: b.height })),
+    edges: edges
+      .filter((e) => ids.has(e.from) && ids.has(e.to))
+      .map((e, i) => ({ id: `fe${i}`, sources: [e.from], targets: [e.to] })),
+  }
+  const result = await elk.layout(graph)
+  const out: Record<string, { x: number; y: number }> = {}
+  for (const c of result.children ?? []) out[c.id] = { x: c.x ?? 0, y: c.y ?? 0 }
+  return out
 }

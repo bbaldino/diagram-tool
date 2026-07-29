@@ -13,6 +13,13 @@ export interface EngineNode { id: string; x: number; y: number; parentId?: strin
 export interface EngineGroup { id: string; x: number; y: number; width: number; height: number }
 export interface EngineResult { nodes: EngineNode[]; groups: EngineGroup[] }
 
+export interface FlatBox { id: string; width: number; height: number }
+export interface FlatEdge { from: string; to: string }
+// Lay out a flat set of sized boxes; return each box's top-left position in
+// engine coordinates (arbitrary origin — the orchestrator normalizes). No
+// groups, no clusters, no hierarchy.
+export type FlatEngine = (boxes: FlatBox[], edges: FlatEdge[]) => Promise<Record<string, { x: number; y: number }>>
+
 // The engine adapters (layout-elk.ts / layout-graphviz.ts) are untouched by
 // the node-model migration — they still speak the old placement-shaped
 // diagram (`placements: { entityId, position, parentId }[]`). layoutDiagram
