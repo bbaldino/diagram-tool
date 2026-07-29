@@ -1,10 +1,6 @@
 import ELK, { type ElkNode } from 'elkjs/lib/elk.bundled.js'
 import type { FlatEngine } from './layout'
 
-// A group is an ELK parent node whose children are its members (real
-// hierarchy). Cross-group edges declared at the root only affect layout with
-// `elk.hierarchyHandling: INCLUDE_CHILDREN`. ELK returns coords relative to the
-// immediate parent, so we walk the tree accumulating absolute offsets.
 const elk = new ELK()
 
 export const runElk: FlatEngine = async (boxes, edges) => {

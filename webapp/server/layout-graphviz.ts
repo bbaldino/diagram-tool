@@ -2,8 +2,8 @@ import { Graphviz } from '@hpcc-js/wasm/graphviz'
 import type { FlatEngine } from './layout'
 
 // Graphviz coords are points (72/inch), Y-UP, origin bottom-left; we flip every
-// box against the graph bb height to top-left / Y-down. Fixed node size is given
-// in INCHES; cluster subgraph names MUST start with the literal "cluster".
+// box against the graph bb height to top-left / Y-down. Fixed node size is
+// given in INCHES.
 let graphvizPromise: ReturnType<typeof Graphviz.load> | null = null
 const getGraphviz = () => (graphvizPromise ??= Graphviz.load())
 const dotId = (id: string): string => `"${id.replace(/"/g, '\\"')}"`
