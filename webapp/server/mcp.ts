@@ -1,11 +1,12 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { EdgeDir } from '../src/graph'
-import type { Diagram, Edge, EdgeOrientation, Node, Note, Status } from '../src/model'
+import type { Diagram, Edge, EdgeOrientation, Field, Group, Node, Note, Status } from '../src/model'
 import { getDiagram } from '../src/model'
 import { newId } from '../src/ids'
-import type { Op } from '../src/ops'
+import { applyOps, type Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
+import { reflowContainment } from '../src/containment'
 import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
@@ -56,10 +57,57 @@ export interface RemoveArgs {
   noteId?: string
 }
 
+export interface EditNodeArgs {
+  diagramId: string
+  id: string
+  patch: Partial<{
+    label: string
+    icon: string
+    sub: string
+    status: Status
+    actor: boolean
+    fields: Field[]
+    parentId: string | null
+  }>
+}
+
+export interface AddGroupArgs {
+  diagramId: string
+  label: string
+  color?: string
+  parentId?: string | null
+  position?: { x: number; y: number }
+  size?: { width: number; height: number }
+}
+
+export interface EditGroupArgs {
+  diagramId: string
+  id: string
+  patch: Partial<{
+    label: string
+    color: string
+    size: { width: number; height: number }
+    parentId: string | null
+  }>
+}
+
 type ErrorResult = { error: string }
 type OkResult = { ok: true }
 
 const err = (message: string): ErrorResult => ({ error: message })
+
+// Apply ops, then reflow the diagram's containment (padding/sizing) and persist
+// the result — so an MCP grouping/reparent lands padded+sized like a human edit.
+// One op batch in, one diffed op batch out = one write (one store.apply call).
+function applyWithReflow(store: Store, diagramId: string, ops: Op[]): void {
+  const before = store.getState().model
+  const stepped = applyOps(before, ops)
+  const d = getDiagram(stepped, diagramId)
+  const reflowed = d
+    ? { ...stepped, diagrams: stepped.diagrams.map((x) => (x.id === diagramId ? reflowContainment(x) : x)) }
+    : stepped
+  store.apply(diffToOps(before, reflowed), 'mcp')
+}
 
 // A flow step's element reference: either an existing element id (node,
 // edge, group, or note) or an edge specified by its endpoints.
@@ -217,6 +265,56 @@ export const handlers = {
     }
     if (ops.length === 0) return err('remove: specify one of nodeId, edgeId, groupId, or noteId')
     store.apply(ops, 'mcp')
+    return { ok: true }
+  },
+
+  editNode(store: Store, a: EditNodeArgs): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    if (!diagram.nodes.some((n) => n.id === a.id)) return err(`unknown node "${a.id}" in diagram "${a.diagramId}"`)
+    if (a.patch.parentId != null && !diagram.groups.some((g) => g.id === a.patch.parentId)) {
+      return err(`unknown group "${a.patch.parentId}"`)
+    }
+    const touchesContainment = 'parentId' in a.patch
+    const { parentId, ...rest } = a.patch
+    const patch: Partial<Omit<Node, 'id'>> = { ...rest }
+    if (touchesContainment) patch.parentId = parentId ?? undefined
+    const op: Op = { t: 'node.update', diagramId: a.diagramId, id: a.id, patch }
+    if (touchesContainment) applyWithReflow(store, a.diagramId, [op])
+    else store.apply([op], 'mcp')
+    return { ok: true }
+  },
+
+  addGroup(store: Store, a: AddGroupArgs): { id: string } | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    if (a.parentId != null && !diagram.groups.some((g) => g.id === a.parentId)) {
+      return err(`unknown group "${a.parentId}"`)
+    }
+    const group: Group = {
+      id: newId(),
+      label: a.label,
+      color: a.color ?? '#64748b',
+      position: a.position ?? { x: 40, y: 40 },
+      size: a.size ?? { width: 320, height: 200 },
+    }
+    if (a.parentId) group.parentId = a.parentId
+    applyWithReflow(store, a.diagramId, [{ t: 'group.add', diagramId: a.diagramId, group }])
+    return { id: group.id }
+  },
+
+  editGroup(store: Store, a: EditGroupArgs): OkResult | ErrorResult {
+    const diagram = getDiagram(store.getState().model, a.diagramId)
+    if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
+    if (!diagram.groups.some((g) => g.id === a.id)) return err(`unknown group "${a.id}" in diagram "${a.diagramId}"`)
+    if (a.patch.parentId != null && !diagram.groups.some((g) => g.id === a.patch.parentId)) {
+      return err(`unknown group "${a.patch.parentId}"`)
+    }
+    const touchesParent = 'parentId' in a.patch
+    const { parentId, ...rest } = a.patch
+    const patch: Partial<Omit<Group, 'id'>> = { ...rest }
+    if (touchesParent) patch.parentId = parentId ?? undefined
+    applyWithReflow(store, a.diagramId, [{ t: 'group.update', diagramId: a.diagramId, id: a.id, patch }])
     return { ok: true }
   },
 
@@ -486,6 +584,73 @@ export function createMcpServer(store: Store): McpServer {
       },
     },
     (args) => wrap(handlers.remove(store, args as RemoveArgs)),
+  )
+
+  const nodePatchShape = z.object({
+    label: z.string().optional(),
+    icon: z.string().optional(),
+    sub: z.string().optional(),
+    status: z.enum(['up', 'down', 'idle']).optional(),
+    actor: z.boolean().optional(),
+    fields: z.array(z.object({ key: z.string(), value: z.string(), showOnNode: z.boolean().optional() })).optional(),
+    parentId: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('Set to a group id to move the node into that group, or null to un-parent.'),
+  })
+
+  server.registerTool(
+    'edit_node',
+    {
+      description:
+        'Update an existing node\'s label/icon/sub/status/actor/fields, and/or move it into or out of a group via parentId. Reparenting also reflows the target group\'s size/padding so the change lands like a human edit.',
+      inputSchema: {
+        diagramId: z.string(),
+        id: z.string(),
+        patch: nodePatchShape,
+      },
+    },
+    (args) => wrap(handlers.editNode(store, args as EditNodeArgs)),
+  )
+
+  server.registerTool(
+    'add_group',
+    {
+      description: 'Create a new group (a visual container for nodes/notes/groups) on a diagram. Returns the created group id.',
+      inputSchema: {
+        diagramId: z.string(),
+        label: z.string(),
+        color: z.string().optional(),
+        parentId: z.string().nullable().optional(),
+        position: positionShape.optional(),
+        size: z.object({ width: z.number(), height: z.number() }).optional(),
+      },
+    },
+    (args) => wrap(handlers.addGroup(store, args as AddGroupArgs)),
+  )
+
+  server.registerTool(
+    'edit_group',
+    {
+      description:
+        'Update an existing group\'s label/color/size, and/or nest it into or out of another group via parentId. Reflows containment (padding/sizing) afterward so the change lands like a human edit.',
+      inputSchema: {
+        diagramId: z.string(),
+        id: z.string(),
+        patch: z.object({
+          label: z.string().optional(),
+          color: z.string().optional(),
+          size: z.object({ width: z.number(), height: z.number() }).optional(),
+          parentId: z
+            .string()
+            .nullable()
+            .optional()
+            .describe('Set to a group id to nest this group inside it, or null to un-parent.'),
+        }),
+      },
+    },
+    (args) => wrap(handlers.editGroup(store, args as EditGroupArgs)),
   )
 
   server.registerTool(
