@@ -451,3 +451,79 @@ input, textarea, [contenteditable="true"] {
 .iconinput__slug { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .iconinput__cat { color: #94a3b8; font-size: 11px; }
 .iconinput__loading { padding: 8px; color: #64748b; font-size: 12px; }
+
+/* ---------- Menu bar (chrome redesign phase 1) ---------- */
+.menubar {
+  position: relative; z-index: 60; height: 31px; flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fbfbfc; border-bottom: 1px solid #eceff3; padding: 0 12px;
+  font-size: 13px; color: #1e293b;
+  -webkit-user-select: none; user-select: none;
+}
+.menubar__left { display: flex; align-items: center; }
+.menubar__brand {
+  width: 13px; height: 13px; border-radius: 3px; background: #4f46e5;
+  flex: none; margin-right: 7px;
+}
+.menubar__word {
+  font-size: 13px; font-weight: 650; letter-spacing: -0.01em;
+  padding-right: 14px; white-space: nowrap;
+}
+.menubar__titles { display: flex; align-items: center; gap: 1px; }
+.menubar__titlewrap { position: relative; }
+.menubar__title {
+  font-size: 13px; font-weight: 400; padding: 4px 9px; border-radius: 5px;
+  cursor: pointer; white-space: nowrap;
+}
+.menubar__title:hover { background: #eceff3; }
+.menubar__title.is-open { background: #eceff3; font-weight: 500; }
+.menubar__save {
+  font-size: 12px; display: flex; align-items: center; gap: 5px;
+  white-space: nowrap; flex: none;
+}
+.menubar__save--saved { color: #16a34a; }
+.menubar__save--saving { color: #64748b; }
+.menubar__save--error { color: #b91c1c; cursor: pointer; }
+
+/* Dropdown panel, attached flush under its title. */
+.menu {
+  position: absolute; top: 100%; left: 0; z-index: 70;
+  width: 260px; background: #fff; border: 1px solid #dfe3ea;
+  border-radius: 0 0 9px 9px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+  padding: 6px; display: flex; flex-direction: column; gap: 1px;
+  font-size: 13px; color: #1e293b;
+}
+.menu__item {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 9px; border-radius: 5px; cursor: pointer;
+}
+.menu__item:hover, .menu__item.is-active { background: #f1f2f9; }
+.menu__item.is-disabled { color: #b0b8c4; cursor: default; }
+.menu__item.is-disabled:hover, .menu__item.is-disabled.is-active { background: transparent; }
+.menu__item.is-danger { color: #b91c1c; }
+.menu__item.is-danger.is-disabled { color: #b0b8c4; }
+.menu__label {
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.menu__check {
+  display: inline-flex; flex: none; width: 9px; color: #4f46e5; font-size: 11px;
+}
+.menu__shortcut {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: #94a3b8; flex: none;
+}
+.menu__arrow { color: #94a3b8; font-size: 12px; flex: none; }
+.menu__sep { height: 1px; background: #eceff3; margin: 5px 4px; }
+/* Anchors the flyout submenu to this row (see .menu__submenu). */
+.menu__submenu-parent { position: relative; }
+/* Flush to the parent panel's right edge, top-aligned to its own row —
+   positioned absolute WITHIN the item row (not canvas coordinates). The
+   panel has 6px padding, so offsetting left by that amount lines the
+   submenu's left edge up with the parent panel's outer right edge. */
+.menu__submenu {
+  position: absolute; top: 0; left: calc(100% + 6px); z-index: 71;
+  width: 260px; background: #fff; border: 1px solid #dfe3ea;
+  border-radius: 9px; box-shadow: 0 12px 32px rgba(15, 23, 42, 0.15);
+  padding: 6px; display: flex; flex-direction: column; gap: 1px;
+  font-size: 13px; color: #1e293b;
+}
