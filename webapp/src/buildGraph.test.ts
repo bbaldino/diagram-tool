@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { buildDiagramGraph } from './buildGraph'
+import { paddedExtent } from './graph'
 import type { Diagram, Template } from './model'
 
 function makeDiagram(over: Partial<Diagram> = {}): Diagram {
@@ -41,7 +42,8 @@ describe('buildDiagramGraph', () => {
     const n1 = nodes.find((n) => n.id === 'n1')!
     expect(n1.type).toBe('service')
     expect(n1.parentId).toBe('g1')
-    expect(n1.extent).toBe('parent')
+    // service nodes have no model size, so the child side of the clamp is {0,0}
+    expect(n1.extent).toEqual(paddedExtent({ width: 200, height: 100 }, { width: 0, height: 0 }))
 
     const note1 = nodes.find((n) => n.id === 'note1')!
     expect(note1.type).toBe('note')
@@ -131,6 +133,6 @@ describe('buildDiagramGraph', () => {
 
     const inner = nodes.find((n) => n.id === 'inner')!
     expect(inner.parentId).toBe('outer')
-    expect(inner.extent).toBe('parent')
+    expect(inner.extent).toEqual(paddedExtent({ width: 200, height: 200 }, { width: 50, height: 50 }))
   })
 })

@@ -242,6 +242,140 @@ const EDGES: E[] = [
 export const GROUP_COLOR: Record<string, string> = Object.fromEntries(
   GROUPS.map((g) => [g.id, g.color]),
 )
+
+// ---- Nested-group geometry ----
+// Every child (node/note/group) keeps this much clearance from its parent
+// group's top/left/right/bottom edges. Without it, a nested child sized ~as
+// big as its parent gets clamped by RF's extent:'parent' to the parent's
+// top-left corner, and the two boxes — and their `.group__label` titles,
+// which render just above the box — end up coincident.
+export const GROUP_PAD = 16
+// A group can never be smaller than this (matches the GroupNode NodeResizer's
+// own minWidth/minHeight, so the interactive resize floor and the model floor
+// agree).
+export const GROUP_MIN = { width: 220, height: 130 }
+
+// Extra top clearance for a freshly-nested child's STARTING position only —
+// requiredGroupSize/paddedExtent stay GROUP_PAD-uniform on every side, this
+// is purely where App.tsx's reparent drops a child the instant it's nested.
+// A group's `.group__label` (index.css) renders in the strip just above its
+// OWN box, so a child placed flush at GROUP_PAD from its parent's top edge
+// has its title collide with the parent's title, which sits in that same
+// strip just above the parent. This is comfortably bigger than the label's
+// rendered footprint (~19px line box + 5px margin ≈ 24px) so the two titles
+// never touch right after a nest. (Dragging the child back up to y=GROUP_PAD
+// afterwards can still bring the titles close — see the reparent scope note.)
+export const GROUP_NEST_TOP_PAD = 32
+
+// The smallest size that contains every child with GROUP_PAD clearance on
+// the right/bottom (children are kept >=pad from the top/left by the
+// position clamp, so only the far edge needs accounting for here), floored
+// at `min` on each axis.
+export function requiredGroupSize(
+  children: { position: { x: number; y: number }; size: { width: number; height: number } }[],
+  pad = GROUP_PAD,
+  min: { width: number; height: number } = GROUP_MIN,
+): { width: number; height: number } {
+  let width = min.width
+  let height = min.height
+  for (const c of children) {
+    width = Math.max(width, c.position.x + c.size.width + pad)
+    height = Math.max(height, c.position.y + c.size.height + pad)
+  }
+  return { width, height }
+}
+
+// The React Flow `extent` box that keeps a child within its parent's padded
+// region — i.e. the drag-clamp equivalent of `requiredGroupSize`. Top-left
+// is always [pad, pad]. Bottom-right is the padded region's far edge
+// (parentSize - pad) — NOT pre-backed-off by the child's own size: RF's own
+// clampPosition (@xyflow/system) already subtracts the dragged/rendered
+// node's `measured` width/height from extent[1] before clamping
+// node.position, both on mount (calculateChildXYZ) and on drag
+// (calculateNodePosition). Subtracting childSize here too would double it,
+// which inverts the clamp (max < min) whenever the child is close to the
+// available room — exactly the nested-similar-size-groups case this whole
+// fix targets — and RF's clamp() then snaps the node to that (very
+// negative) max instead of holding it at min. `childSize` is still taken so
+// we can floor the bound at `pad + childSize` for the (should-be-rare) case
+// of a child bigger than the parent's padded interior, keeping RF's
+// internal subtraction from going negative there too.
+export function paddedExtent(
+  parentSize: { width: number; height: number },
+  childSize: { width: number; height: number },
+  pad = GROUP_PAD,
+): [[number, number], [number, number]] {
+  return [
+    [pad, pad],
+    [
+      Math.max(pad + childSize.width, parentSize.width - pad),
+      Math.max(pad + childSize.height, parentSize.height - pad),
+    ],
+  ]
+}
+
+// Best-known on-canvas footprint of a live RF node, for sizing/clamping
+// groups around their children. Groups and notes carry an explicit size
+// (style.width/height, falling back to RF's measured size once rendered);
+// service nodes are sized by CSS with no model dimension, so they're treated
+// as zero-footprint — GROUP_PAD/GROUP_MIN keep them comfortably inside their
+// parent regardless.
+function liveFootprint(n: Node): { width: number; height: number } {
+  if (n.type === 'group' || n.type === 'note') {
+    const style = n.style as { width?: number; height?: number } | undefined
+    const measured = (n as { measured?: { width?: number; height?: number } }).measured
+    return {
+      width: Number(style?.width) || Number(measured?.width) || 0,
+      height: Number(style?.height) || Number(measured?.height) || 0,
+    }
+  }
+  return { width: 0, height: 0 }
+}
+
+// Grow every group (innermost first, so an outer group's required size
+// accounts for its inner group's just-grown size rather than its stale one)
+// to contain its current children with GROUP_PAD clearance, floored at
+// GROUP_MIN. Only ever grows — never shrinks a group below what it already
+// needs to contain its existing kids. Because GROUP_PAD > 0 and a nested
+// group's own position is clamped to >=GROUP_PAD, a parent grown this way is
+// always strictly bigger than any group it directly contains.
+export function growGroupsToFitChildren(nodes: Node[]): Node[] {
+  const groups = nodes.filter((n) => n.type === 'group')
+  if (!groups.length) return nodes
+  const sizeById = new Map(nodes.map((n) => [n.id, liveFootprint(n)]))
+  for (const g of topoOrderByParent(groups).reverse()) {
+    const kids = nodes
+      .filter((n) => n.parentId === g.id)
+      .map((n) => ({ position: n.position, size: sizeById.get(n.id)! }))
+    const required = requiredGroupSize(kids)
+    const current = sizeById.get(g.id)!
+    sizeById.set(g.id, {
+      width: Math.max(current.width, required.width),
+      height: Math.max(current.height, required.height),
+    })
+  }
+  return nodes.map((n) => {
+    if (n.type !== 'group') return n
+    const { width, height } = sizeById.get(n.id)!
+    return { ...n, style: { ...n.style, width, height } }
+  })
+}
+
+// Grow groups to fit their children (see growGroupsToFitChildren), then
+// recompute every parented node's drag `extent` from the (possibly just-
+// grown) parent size — so a reparent/nest is immediately reflected both in
+// the parent's box and in every child's drag clamp, not just the one that
+// moved.
+export function reflowGroups(nodes: Node[]): Node[] {
+  const grown = growGroupsToFitChildren(nodes)
+  const byId = new Map(grown.map((n) => [n.id, n]))
+  return grown.map((n) => {
+    if (!n.parentId) return n
+    const parent = byId.get(n.parentId)
+    if (!parent) return n
+    return { ...n, extent: paddedExtent(liveFootprint(parent), liveFootprint(n)) }
+  })
+}
 const PARENT_OF: Record<string, string> = Object.fromEntries(
   GROUPS.flatMap((g) => g.nodes.map((n) => [n.id, g.id])),
 )

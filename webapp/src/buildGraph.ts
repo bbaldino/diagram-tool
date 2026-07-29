@@ -1,5 +1,5 @@
 import { type Node, type Edge } from '@xyflow/react'
-import { makeEdge, restyleEdge, topoOrderByParent } from './graph'
+import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
 import type { Diagram, Field, Node as DNode, Template } from './model'
 
 // A field shows on the card if it says so itself, or — absent that — if its
@@ -13,7 +13,19 @@ function shownFields(node: DNode, tmpl: Template | undefined): { key: string; va
 
 export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []): { nodes: Node[]; edges: Edge[] } {
   const templatesById = new Map(templates.map((t) => [t.id, t]))
+  const groupsById = new Map(diagram.groups.map((g) => [g.id, g]))
   const nodes: Node[] = []
+
+  // The drag-clamp `extent` for a parented child: a padded box inside the
+  // parent's model size, backed off further by the child's own size (service
+  // nodes have no model size, so they pass {0,0} — a top-left padded clamp).
+  // Falls back to the plain RF 'parent' clamp if the parentId doesn't
+  // resolve to a known group (shouldn't happen, but keeps this defensive).
+  function clampExtent(parentId: string | undefined, childSize: { width: number; height: number }) {
+    if (!parentId) return undefined
+    const parent = groupsById.get(parentId)
+    return parent ? paddedExtent(parent.size, childSize) : ('parent' as const)
+  }
 
   // groups first, outer-to-inner (parents before children)
   for (const g of topoOrderByParent(diagram.groups)) {
@@ -22,7 +34,7 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
       type: 'group',
       position: g.position,
       parentId: g.parentId ?? undefined,
-      extent: g.parentId ? 'parent' : undefined,
+      extent: clampExtent(g.parentId, g.size),
       data: { label: g.label, color: g.color },
       style: { width: g.size.width, height: g.size.height },
       zIndex: -1, // group panes sit BEHIND edges (elevateNodesOnSelect lifts a selected group above them so its resize handles stay grabbable)
@@ -35,7 +47,7 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
       type: 'service',
       position: n.position,
       parentId: n.parentId ?? undefined,
-      extent: n.parentId ? 'parent' : undefined,
+      extent: clampExtent(n.parentId, { width: 0, height: 0 }),
       data: {
         label: n.label,
         sub: n.sub,
@@ -54,7 +66,7 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
       type: 'note',
       position: nt.position,
       parentId: nt.parentId ?? undefined,
-      extent: nt.parentId ? 'parent' : undefined,
+      extent: clampExtent(nt.parentId, nt.size),
       data: { text: nt.text },
       style: { width: nt.size.width, height: nt.size.height },
       zIndex: 2,

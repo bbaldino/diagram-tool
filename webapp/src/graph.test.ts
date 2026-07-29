@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest'
-import type { Edge, Connection } from '@xyflow/react'
-import { applyReconnect, topoOrderByParent } from './graph'
+import type { Edge, Connection, Node } from '@xyflow/react'
+import {
+  applyReconnect,
+  topoOrderByParent,
+  requiredGroupSize,
+  paddedExtent,
+  growGroupsToFitChildren,
+  reflowGroups,
+  GROUP_PAD,
+  GROUP_MIN,
+} from './graph'
 
 const edge = (over: Partial<Edge> = {}): Edge => ({
   id: 'e0-npm-authelia', source: 'npm', target: 'authelia', type: 'waypoint',
@@ -81,5 +90,180 @@ describe('topoOrderByParent', () => {
     const items: Item[] = [{ id: 'orphan', parentId: 'nonexistent' }, { id: 'root' }]
     const out = topoOrderByParent(items)
     expect(out.map((i) => i.id)).toEqual(['orphan', 'root'])
+  })
+})
+
+describe('requiredGroupSize', () => {
+  it('floors at the minimum when there are no children', () => {
+    expect(requiredGroupSize([])).toEqual(GROUP_MIN)
+  })
+
+  it('floors at the minimum when children fit comfortably inside it', () => {
+    const children = [{ position: { x: 16, y: 16 }, size: { width: 40, height: 40 } }]
+    expect(requiredGroupSize(children)).toEqual(GROUP_MIN)
+  })
+
+  it('grows past the minimum to contain a child, with pad clearance on the right/bottom', () => {
+    const children = [{ position: { x: 16, y: 16 }, size: { width: 300, height: 200 } }]
+    expect(requiredGroupSize(children)).toEqual({
+      width: 16 + 300 + GROUP_PAD,
+      height: 16 + 200 + GROUP_PAD,
+    })
+  })
+
+  it('sizes to the max extent across multiple children', () => {
+    const children = [
+      { position: { x: 16, y: 16 }, size: { width: 300, height: 40 } },
+      { position: { x: 16, y: 300 }, size: { width: 40, height: 40 } },
+    ]
+    const size = requiredGroupSize(children)
+    expect(size.width).toBe(16 + 300 + GROUP_PAD) // widest child wins width
+    expect(size.height).toBe(300 + 40 + GROUP_PAD) // lowest child wins height
+  })
+
+  it('honors custom pad/min overrides', () => {
+    const children = [{ position: { x: 0, y: 0 }, size: { width: 50, height: 50 } }]
+    expect(requiredGroupSize(children, 10, { width: 0, height: 0 })).toEqual({ width: 60, height: 60 })
+  })
+})
+
+describe('paddedExtent', () => {
+  // NOTE: extent[1] is the padded region's far edge — RF's own clampPosition
+  // (@xyflow/system) subtracts the node's `measured` width/height from
+  // extent[1] itself before clamping node.position, both on mount and on
+  // drag. So extent[1] must NOT also be backed off by childSize here, or the
+  // subtraction happens twice — see the "never inverts" case below for why
+  // that matters (it's the exact bug this fix targets).
+
+  it('keeps top-left at [pad, pad] and sets bottom-right to the padded region edge (parentSize - pad)', () => {
+    const extent = paddedExtent({ width: 400, height: 300 }, { width: 100, height: 50 })
+    expect(extent).toEqual([
+      [GROUP_PAD, GROUP_PAD],
+      [400 - GROUP_PAD, 300 - GROUP_PAD],
+    ])
+  })
+
+  it('treats an unknown (zero) child size as a top-left padded clamp', () => {
+    const extent = paddedExtent({ width: 220, height: 130 }, { width: 0, height: 0 })
+    expect(extent).toEqual([
+      [GROUP_PAD, GROUP_PAD],
+      [220 - GROUP_PAD, 130 - GROUP_PAD],
+    ])
+  })
+
+  it('never inverts the extent when the child is as big as (or bigger than) the padded interior', () => {
+    // This is exactly the overlap-bug scenario: a child nearly as big as its
+    // parent. Naively setting extent[1] to (parentSize - pad - childSize)
+    // here (double-subtracting childSize, since RF subtracts it again
+    // internally) would make RF's clamp() computed max go NEGATIVE — and
+    // since Math.min(Math.max(v,min),max) returns max when max < min, the
+    // node would snap far off to the negative side instead of holding at
+    // [pad,pad]. The pad+childSize floor below keeps RF's own subtraction
+    // (extent[1] - childSize) landing at exactly `pad`, never less.
+    const extent = paddedExtent({ width: 240, height: 146 }, { width: 240, height: 146 })
+    expect(extent).toEqual([
+      [GROUP_PAD, GROUP_PAD],
+      [GROUP_PAD + 240, GROUP_PAD + 146], // RF's (extent[1] - childSize) lands at exactly `pad`
+    ])
+  })
+})
+
+describe('growGroupsToFitChildren', () => {
+  const group = (over: Partial<Node> = {}): Node => ({
+    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 }, ...over,
+  })
+  const service = (over: Partial<Node> = {}): Node => ({
+    id: 's', type: 'service', position: { x: 0, y: 0 }, data: {}, ...over,
+  })
+
+  it('leaves a group at GROUP_MIN when it has no children', () => {
+    const out = growGroupsToFitChildren([group()])
+    expect(out[0].style).toMatchObject(GROUP_MIN)
+  })
+
+  it('grows a group to contain a child that overflows it', () => {
+    const nodes = [
+      group({ id: 'g1', style: { width: 220, height: 130 } }),
+      service({ id: 's1', parentId: 'g1', position: { x: 16, y: 16 } }),
+      group({ id: 'g2', parentId: 'g1', position: { x: 16, y: 16 }, style: { width: 300, height: 200 } }),
+    ]
+    const out = growGroupsToFitChildren(nodes)
+    const g1 = out.find((n) => n.id === 'g1')!
+    // must contain the nested group g2 (300x200 at 16,16) with GROUP_PAD clearance
+    expect((g1.style as any).width).toBe(16 + 300 + GROUP_PAD)
+    expect((g1.style as any).height).toBe(16 + 200 + GROUP_PAD)
+  })
+
+  it('a nested group always ends up strictly smaller than its (grown) parent', () => {
+    // The regression scenario: child group is ~as big as the parent.
+    const nodes = [
+      group({ id: 'outer', style: { width: 240, height: 146 } }),
+      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 16 }, style: { width: 240, height: 146 } }),
+    ]
+    const out = growGroupsToFitChildren(nodes)
+    const outer = out.find((n) => n.id === 'outer')!
+    const inner = out.find((n) => n.id === 'inner')!
+    expect((outer.style as any).width).toBeGreaterThan((inner.style as any).width)
+    expect((outer.style as any).height).toBeGreaterThan((inner.style as any).height)
+  })
+
+  it('cascades growth outward through multiple nesting levels', () => {
+    const nodes = [
+      group({ id: 'a', style: { width: 220, height: 130 } }),
+      group({ id: 'b', parentId: 'a', position: { x: 16, y: 16 }, style: { width: 220, height: 130 } }),
+      group({ id: 'c', parentId: 'b', position: { x: 16, y: 16 }, style: { width: 220, height: 130 } }),
+    ]
+    const out = growGroupsToFitChildren(nodes)
+    const byId = new Map(out.map((n) => [n.id, (n.style as any)]))
+    // each level must be strictly bigger than the one it contains
+    expect(byId.get('a').width).toBeGreaterThan(byId.get('b').width)
+    expect(byId.get('b').width).toBeGreaterThan(byId.get('c').width)
+    expect(byId.get('a').height).toBeGreaterThan(byId.get('b').height)
+    expect(byId.get('b').height).toBeGreaterThan(byId.get('c').height)
+  })
+
+  it('never shrinks a group below its current size', () => {
+    const nodes = [group({ id: 'g1', style: { width: 600, height: 500 } })]
+    const out = growGroupsToFitChildren(nodes)
+    const g1 = out.find((n) => n.id === 'g1')!
+    expect(g1.style).toMatchObject({ width: 600, height: 500 })
+  })
+
+  it('leaves non-group nodes untouched', () => {
+    const nodes = [group({ id: 'g1' }), service({ id: 's1', parentId: 'g1' })]
+    const out = growGroupsToFitChildren(nodes)
+    const s1 = out.find((n) => n.id === 's1')!
+    expect(s1).toEqual(nodes[1])
+  })
+})
+
+describe('reflowGroups', () => {
+  const group = (over: Partial<Node> = {}): Node => ({
+    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 }, ...over,
+  })
+
+  it('grows the parent AND updates the nested child extent from the grown size', () => {
+    const nodes = [
+      group({ id: 'outer', style: { width: 240, height: 146 } }),
+      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 16 }, style: { width: 240, height: 146 } }),
+    ]
+    const out = reflowGroups(nodes)
+    const outer = out.find((n) => n.id === 'outer')!
+    const inner = out.find((n) => n.id === 'inner')!
+    const outerStyle = outer.style as any
+    expect(outerStyle.width).toBeGreaterThan(240)
+    // inner's extent must be computed against the GROWN outer size, not the stale 240x146
+    expect(inner.extent).toEqual(paddedExtent({ width: outerStyle.width, height: outerStyle.height }, { width: 240, height: 146 }))
+  })
+
+  it('leaves an un-parented node without an extent', () => {
+    const out = reflowGroups([group({ id: 'g1' })])
+    expect(out[0].extent).toBeUndefined()
+  })
+
+  it('leaves a node with a dangling parentId (no matching parent node) untouched', () => {
+    const service: Node = { id: 's1', type: 'service', parentId: 'ghost', position: { x: 0, y: 0 }, data: {} }
+    const out = reflowGroups([service])
+    expect(out[0]).toEqual(service)
   })
 })
