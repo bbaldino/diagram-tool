@@ -469,47 +469,6 @@ export function relayout(nodes: Node[]): Node[] {
   return out
 }
 
-// Re-grid ONE group's members to fit its current width; grow its height to fit.
-// Live rendered size (resizes land on measured/width, not style.width).
-function groupSize(group: Node): { w: number; h: number } {
-  const g = group as any
-  const { CW, GX, PX } = LAYOUT
-  return {
-    w: Number(g.measured?.width) || Number(g.width) || Number(g.style?.width) || PX * 2 + 2 * CW + GX,
-    h: Number(g.measured?.height) || Number(g.height) || Number(g.style?.height) || 200,
-  }
-}
-
-function groupKids(nodes: Node[], groupId: string): Node[] {
-  return nodes.filter((n) => n.parentId === groupId && n.type === 'service')
-}
-
-// KEEP the group's size; spread members evenly to fill its width AND height.
-export function distributeGroupChildren(nodes: Node[], groupId: string): Node[] {
-  const { CW, CH, GX, PX, PT, PB } = LAYOUT
-  const group = nodes.find((n) => n.id === groupId)
-  if (!group) return nodes
-  const { w, h } = groupSize(group)
-  const kids = groupKids(nodes, groupId)
-  const n = kids.length
-  if (!n) return nodes
-  const cols = Math.min(n, Math.max(1, Math.floor((w - PX * 2 + GX) / (CW + GX))))
-  const rows = Math.ceil(n / cols)
-  const cellW = (w - PX * 2) / cols
-  const cellH = (h - PT - PB) / rows
-  const indexOf = new Map(kids.map((k, i) => [k.id, i]))
-  return nodes.map((node) => {
-    const idx = indexOf.get(node.id)
-    if (idx === undefined) return node
-    const col = idx % cols
-    const row = Math.floor(idx / cols)
-    return {
-      ...node,
-      position: { x: PX + col * cellW + (cellW - CW) / 2, y: PT + row * cellH + (cellH - CH) / 2 },
-    }
-  })
-}
-
 // Real rendered footprint of ANY child, for shrink-to-fit. Unlike
 // liveFootprint (which treats a service node as a zero-footprint point — fine
 // for grow-only sizing, where GROUP_MIN/GROUP_PAD keep small nodes loosely

@@ -10,7 +10,6 @@ interface Props {
   onNodeParent: (parentId: string) => void
   onEdge: (patch: { type?: RelType; label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => void
   diagramColors: string[]
-  onDistribute: () => void
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
   onDelete: () => void
@@ -34,7 +33,6 @@ export function Inspector({
   onNodeData,
   onNodeParent,
   onEdge,
-  onDistribute,
   onShrink,
   onGroupSize,
   onDelete,
@@ -162,9 +160,6 @@ export function Inspector({
             ))}
           </select>
         </Field>
-        <button className="insp__action" onClick={onDistribute}>
-          Space to fit
-        </button>
         <button className="insp__action" onClick={onShrink}>
           Shrink to fit
         </button>

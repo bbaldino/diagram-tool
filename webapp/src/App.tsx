@@ -23,7 +23,6 @@ import {
   makeEdge,
   restyleEdge,
   applyReconnect,
-  distributeGroupChildren,
   shrinkGroupToChildren,
   topoOrderByParent,
   reflowGroups,
@@ -732,11 +731,6 @@ function Flow({
       .finally(() => setTimeout(() => rf.fitView({ padding: 0.2 }), 250))
   }, [rf, activeId, layoutEngine])
 
-  const distributeGroup = useCallback(() => {
-    if (!selNode) return
-    setNodes((ns) => distributeGroupChildren(ns, selNode))
-  }, [selNode, setNodes])
-
   const shrinkGroup = useCallback(() => {
     if (!selNode) return
     // Shrink tight, then refresh child extents from the new (smaller) size so a
@@ -1099,7 +1093,6 @@ function Flow({
               onNodeData={updateNodeData}
               onNodeParent={reparent}
               onEdge={updateEdge}
-              onDistribute={distributeGroup}
               onShrink={shrinkGroup}
               onGroupSize={setGroupSize}
               onDelete={deleteSelected}
