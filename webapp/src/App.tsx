@@ -1311,13 +1311,6 @@ function Flow({
                 <option value="straight">Straight</option>
               </select>
             </label>
-            <input
-              ref={fileRef}
-              type="file"
-              accept="application/json"
-              style={{ display: 'none' }}
-              onChange={onImport}
-            />
           </div>
           {flowMode !== 'none' && currentFlow ? (
             <FlowPanel
@@ -1398,6 +1391,13 @@ function Flow({
           onClose={() => setOpenDialog(false)}
         />
       )}
+      <input
+        ref={fileRef}
+        type="file"
+        accept="application/json"
+        style={{ display: 'none' }}
+        onChange={onImport}
+      />
     </div>
   )
 }
