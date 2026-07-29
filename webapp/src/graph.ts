@@ -518,21 +518,21 @@ function shrinkFootprint(n: Node): { width: number; height: number } {
 
 // Shrink-to-fit: RESIZE the group to wrap its children where they already sit,
 // without moving them. Counterpart to growGroupsToFitChildren, but forces the
-// size DOWN to what's required (that grows only). Considers EVERY child kind —
-// service nodes (zero-footprint by liveFootprint), notes, and nested groups —
-// so a group holding a note or sub-group tightens around them instead of
-// clipping to fit only its service nodes. GROUP_SLACK keeps a lone child
-// draggable (see growGroupsToFitChildren); an empty group drops to GROUP_MIN.
+// size DOWN to what's required (that grows only) and adds NO GROUP_SLACK — an
+// explicit shrink is a request to be tight, so it stops at GROUP_PAD past the
+// children's far edges (auto-grow keeps slack for draggability; a manual
+// shrink deliberately does not). Considers EVERY child kind at its real size
+// (shrinkFootprint) — service nodes, notes, and nested groups — so it tightens
+// around a note or sub-group instead of clipping to fit only its service
+// nodes. requiredGroupSize floors at GROUP_MIN, so an empty (or tiny-content)
+// group bottoms out there.
 export function shrinkGroupToChildren(nodes: Node[], groupId: string): Node[] {
   const group = nodes.find((n) => n.id === groupId)
   if (!group) return nodes
   const kids = nodes
     .filter((n) => n.parentId === groupId)
     .map((n) => ({ position: n.position, size: shrinkFootprint(n) }))
-  const required = requiredGroupSize(kids)
-  const slack = kids.length ? GROUP_SLACK : 0
-  const width = required.width + slack
-  const height = required.height + slack
+  const { width, height } = requiredGroupSize(kids)
   return nodes.map((node) =>
     node.id === groupId ? { ...node, width, height, style: { ...node.style, width, height } } : node,
   )

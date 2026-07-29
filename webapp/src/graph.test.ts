@@ -409,6 +409,18 @@ describe('shrinkGroupToChildren', () => {
     expect(out.find((n) => n.id === 'g1')!.style).toMatchObject(GROUP_MIN)
   })
 
+  it('wraps tight — exactly GROUP_PAD past the children, no GROUP_SLACK', () => {
+    const nodes = [
+      group({ id: 'g1', style: { width: 800, height: 800 } }),
+      // tall note so the fit clears the GROUP_MIN height floor and the exact
+      // bottom is measurable: far bottom = 100 + 220 = 320, +GROUP_PAD = 336.
+      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 100 }, style: { width: 160, height: 220 } }),
+    ]
+    const out = shrinkGroupToChildren(nodes, 'g1')
+    const g1 = out.find((n) => n.id === 'g1')!.style as any
+    expect(g1.height).toBe(100 + 220 + GROUP_PAD) // 336 — NOT +GROUP_SLACK
+  })
+
   it('contains a service node fully — accounts for its rendered size, not just its position (regression)', () => {
     // A node positioned away from the origin must stay wrapped: sizing it as a
     // zero-footprint point would shrink the box PAST the node's far edges.
