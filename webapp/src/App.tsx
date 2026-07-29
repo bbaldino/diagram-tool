@@ -40,6 +40,7 @@ import { Inspector } from './Inspector'
 import { FlowPanel } from './FlowPanel'
 import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
+import { CanvasPill } from './CanvasPill'
 import { MenuBar } from './MenuBar'
 import { OpenDiagramDialog } from './OpenDiagramDialog'
 import type { MenuItem } from './menuNav'
@@ -1048,10 +1049,11 @@ function Flow({
     return () => window.removeEventListener('keydown', onKey)
   }, [zoomAtPointer, rf])
 
-  // Keyboard: Ctrl/Cmd-Z undo, Ctrl/Cmd-Shift-Z or Ctrl-Y redo. Inert while a
-  // text input/textarea/contentEditable is focused so the browser's own undo
-  // still works in the Inspector/note textarea. Separate from the zoom
-  // handler above, which early-returns on ANY modifier.
+  // Keyboard: Ctrl/Cmd-Z undo, Ctrl/Cmd-Shift-Z or Ctrl-Y redo, Ctrl/Cmd-Shift-L
+  // re-run layout. Inert while a text input/textarea/contentEditable is
+  // focused so the browser's own undo still works in the Inspector/note
+  // textarea. Separate from the zoom handler above, which early-returns on
+  // ANY modifier.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
@@ -1060,10 +1062,11 @@ function Flow({
       const key = e.key.toLowerCase()
       if (key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo() }
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
+      else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [doUndo, doRedo])
+  }, [doUndo, doRedo, tidy])
 
   // Keyboard: arrow-key stepping through the active flow in Play mode.
   // Right/Down advance, Left/Up go back; both preventDefault so React Flow
@@ -1254,20 +1257,24 @@ function Flow({
         <Controls />
         <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />
 
+        <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
+          <CanvasPill
+            canUndo={undoFlags.canUndo}
+            canRedo={undoFlags.canRedo}
+            onUndo={doUndo}
+            onRedo={doRedo}
+            onTidy={tidy}
+            engine={layoutEngine}
+            engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
+            onChooseEngine={(id) => chooseEngine(id as 'elk' | 'graphviz')}
+            onReRun={tidy}
+          />
+        </Panel>
+
         <Panel position="top-right" className="stack-tr">
           <div className="panel toolbar">
             <button onClick={() => addGroup()}>+ Group</button>
             <button onClick={() => addNote()}>+ Note</button>
-            <button onClick={doUndo} disabled={!undoFlags.canUndo} title="Undo (Ctrl/Cmd-Z)">↶ Undo</button>
-            <button onClick={doRedo} disabled={!undoFlags.canRedo} title="Redo (Ctrl/Cmd-Shift-Z)">↷ Redo</button>
-            <button onClick={tidy}>Tidy</button>
-            <label className="edgestyle">
-              Layout:
-              <select value={layoutEngine} onChange={(e) => chooseEngine(e.target.value as 'elk' | 'graphviz')}>
-                <option value="elk">elkjs</option>
-                <option value="graphviz">Graphviz</option>
-              </select>
-            </label>
             <label className="edgestyle">
               Flow:
               <select
