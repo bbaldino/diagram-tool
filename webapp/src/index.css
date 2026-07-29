@@ -612,3 +612,37 @@ input, textarea, [contenteditable="true"] {
 .opendlg__btn--primary:disabled {
   background: #c7cdfa; cursor: default; color: #fff;
 }
+
+/* ---------- Canvas pill (chrome redesign phase 3) ---------- */
+/* Positioning (absolute, top-centered over the canvas) is the mounting
+   parent's job — this is just a self-sized flex row. */
+.pill {
+  display: flex; align-items: center; gap: 3px; padding: 5px;
+  background: #fff; border: 1px solid #dfe3ea; border-radius: 10px;
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.09);
+  font-size: 13px; color: #1e293b;
+  -webkit-user-select: none; user-select: none;
+}
+.pill__btn {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  width: 31px; height: 29px; border-radius: 6px; font-size: 15px; color: #475569;
+  background: none; border: none; cursor: pointer;
+}
+.pill__btn:hover:not(:disabled) { background: #f1f2f4; }
+.pill__btn:disabled { color: #cbd5e1; cursor: default; }
+.pill__divider { flex: none; width: 1px; height: 18px; background: #e6e9ee; margin: 0 4px; }
+.pill__text {
+  flex: none; display: flex; align-items: center; gap: 6px; height: 29px; padding: 0 11px;
+  border-radius: 6px; font-size: 13px; font-weight: 550; color: #1e293b;
+  white-space: nowrap; background: none; border: none; cursor: pointer;
+}
+.pill__text:hover:not(:disabled) { background: #f1f2f4; }
+.pill__text.is-open { background: #f1f2f4; }
+.pill__text:disabled { color: #b0b8c4; cursor: default; }
+.pill__text-icon { color: #64748b; }
+.pill__caret { font-size: 10px; color: #94a3b8; }
+.pill__layoutwrap { position: relative; }
+/* Reuses .menu / .menu__item / .menu__check / .menu__shortcut / .menu__sep
+   for the dropdown contents; only width/position/radius differ from the
+   menu-bar's flush-attached panel since this one floats below the button. */
+.pill__menu { top: calc(100% + 6px); left: 0; width: 216px; border-radius: 9px; }
