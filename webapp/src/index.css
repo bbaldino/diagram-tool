@@ -93,10 +93,9 @@ body {
 }
 .group__label {
   position: absolute;
-  bottom: 100%; /* sit just above the box */
+  top: 8px; /* sit INSIDE the box, in the header strip children are padded clear of */
   left: 50%;
   transform: translateX(-50%);
-  margin-bottom: 5px;
   font-weight: 700; font-size: 16px; color: var(--group-color, #475569);
   letter-spacing: 0.02em; white-space: nowrap;
   pointer-events: none; /* don't block the top resize handles */
