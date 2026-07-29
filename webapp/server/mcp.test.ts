@@ -120,7 +120,7 @@ describe('handlers', () => {
       const { id: nodeA } = handlers.addNode(store, { diagramId, label: 'Plex', parentId: groupId }) as { id: string }
       const a = getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeA)!
       expect(a.parentId).toBe(groupId)
-      expect(a.position).toEqual({ x: 16, y: 32 })
+      expect(a.position).toEqual({ x: 16, y: 40 }) // GROUP_PAD x, GROUP_NEST_TOP_PAD y
 
       // second child: placed beside its sibling (not stacked on top), and the group grows to fit both.
       const { id: nodeB } = handlers.addNode(store, { diagramId, label: 'Sonarr', parentId: groupId }) as { id: string }
@@ -601,7 +601,7 @@ describe('edit_node / add_group / edit_group', () => {
     const node = d.nodes.find((n) => n.id === nodeId)!
     expect(node.parentId).toBe(groupId)
     // repositioned to the group's padded top-left, not left at its old (500,500).
-    expect(node.position).toEqual({ x: 16, y: 32 })
+    expect(node.position).toEqual({ x: 16, y: 40 }) // GROUP_PAD x, GROUP_NEST_TOP_PAD y
     const group = d.groups.find((g) => g.id === groupId)!
     // a single child fits within the group's existing floor size — no growth needed.
     expect(group.size).toEqual(before.size)

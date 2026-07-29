@@ -20,13 +20,13 @@ export const GROUP_MIN = { width: 220, height: 130 }
 // clamped by paddedExtent, so it never needs its own top-pad notion).
 // A group's `.group__label` (index.css) renders as a header INSIDE its box's
 // top strip, so a child placed flush at GROUP_PAD from its parent's top edge
-// would sit under that header. This top pad reserves the header's height so a
-// child clears it — comfortably bigger than the label's rendered footprint
-// (~19px line box + a little breathing room) — whether the child lands there
-// on nest or is dragged up to the top of its clamped range. (The label used to
-// float just ABOVE the box; moving it inside made this reserved strip read as
-// the title area instead of empty padding, without changing this value.)
-export const GROUP_NEST_TOP_PAD = 32
+// would sit under that header. This top pad reserves the header's FULL height —
+// the label sits at ~10px with a ~20px line box (bottom ~30px), so a child must
+// clear ~30px + a small gap — whether it lands there on nest or is dragged up
+// to the top of its clamped range. (When the label floated just ABOVE the box
+// this only needed ~32; moving it inside pushed the clearance to 40 so a
+// dragged-up child no longer overlaps the title.)
+export const GROUP_NEST_TOP_PAD = 40
 
 // Extra room left on the far side when a group is grown to fit its children
 // (see growGroupsToFitChildren). Without this, a group grown to EXACTLY fit
