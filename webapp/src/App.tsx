@@ -464,11 +464,19 @@ function Flow({
       const r = closeTab(openTabs, activeId, id)
       setOpenTabs(r.openTabs)
       if (r.activeId !== activeId) {
-        if (r.activeId) selectDiagram(r.activeId)
-        else setActiveId(null)
+        if (r.activeId) {
+          selectDiagram(r.activeId)
+        } else if (activeId) {
+          // No neighbor left — same flush-before-switch every other diagram
+          // path does (selectDiagram/newDiagram/deleteActiveDiagram), so a
+          // pending non-drag edit on the closed diagram isn't lost when the
+          // debounced write-back's cleanup cancels on activeId -> null.
+          setModel((m) => flushCanvasInto(m, activeId, nodes, edges))
+          setActiveId(null)
+        }
       }
     },
-    [openTabs, activeId, selectDiagram, setOpenTabs, setActiveId],
+    [openTabs, activeId, selectDiagram, setOpenTabs, setActiveId, setModel, nodes, edges],
   )
 
   const renameDiagramById = useCallback(
@@ -1380,7 +1388,8 @@ export default function App() {
   // strip, persisted across reloads. Lazily seeded from localStorage.
   const [openTabs, setOpenTabs] = useState<string[]>(() => {
     try {
-      return JSON.parse(localStorage.getItem(OPEN_TABS_KEY) || '[]')
+      const raw = JSON.parse(localStorage.getItem(OPEN_TABS_KEY) || '[]')
+      return Array.isArray(raw) ? raw : []
     } catch {
       return []
     }
