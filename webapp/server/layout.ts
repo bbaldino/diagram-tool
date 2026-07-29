@@ -1,6 +1,8 @@
-import type { Diagram, Node, Group, Edge, EdgeOrientation } from '../src/model'
-import { runElk } from './layout-elk'
-import { runGraphviz } from './layout-graphviz'
+import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../src/model'
+import { runElk, runElkFlat } from './layout-elk'
+import { runGraphviz, runGraphvizFlat } from './layout-graphviz'
+import { contractEdges } from './layout-tree'
+import { requiredGroupSize, reflowContainment, GROUP_PAD, GROUP_NEST_TOP_PAD } from '../src/containment'
 
 type HandleId = 'top' | 'right' | 'bottom' | 'left'
 
@@ -116,48 +118,97 @@ export function assignEdgeHandles(
   })
 }
 
-// Multi-engine layout dispatcher: delegates to the chosen engine adapter for
-// raw absolute placement, then converts child node coords to parent-relative
-// (React Flow child coords are relative to their parent group) and bakes edge
-// handles from the final geometry. Pure — does not mutate `diagram`.
+// Leaf-first recursive layout orchestrator: lays out each container (group,
+// or the canvas root) as its own flat box-packing problem, recursing into
+// child groups FIRST so their required sizes are known before the parent
+// packs them as boxes alongside its own direct-child nodes/notes. Every
+// container's children come out parent-relative to THAT container's own
+// padded top-left, so there's no separate global recomposition pass — the
+// per-container result already is the final (parent-relative) position.
+// Preserves nesting depth (unlike the old flatten-everything dispatcher) and
+// carries grouped notes through as first-class laid-out entities. Pure —
+// does not mutate `diagram`.
 export async function layoutDiagram(
   diagram: Diagram,
   engine: LayoutEngine = DEFAULT_ENGINE,
-): Promise<{ nodes: Node[]; groups: Group[]; edges: Edge[] }> {
+): Promise<{ nodes: Node[]; groups: Group[]; notes: Note[]; edges: Edge[] }> {
+  const flat = engine === 'graphviz' ? runGraphvizFlat : runElkFlat
   const heightById: Record<string, number> = {}
   for (const n of diagram.nodes) heightById[n.id] = nodeHeight(n)
 
-  const engineDiagram: EngineDiagram = {
-    id: diagram.id,
-    groups: diagram.groups,
-    edges: diagram.edges,
-    placements: diagram.nodes.map((n) => ({ entityId: n.id, position: n.position, parentId: n.parentId ?? null })),
+  const nodeIds = new Set(diagram.nodes.map((n) => n.id))
+  const groupIds = new Set(diagram.groups.map((g) => g.id))
+  const edgesByLca = contractEdges(diagram)
+
+  const nodePos = new Map<string, { x: number; y: number }>()
+  const notePos = new Map<string, { x: number; y: number }>()
+  const groupPos = new Map<string, { x: number; y: number }>()
+  const groupSize = new Map<string, { width: number; height: number }>()
+
+  // Lay out one container (a group id, or null for the canvas root). Recurses
+  // into child groups FIRST (leaf-first) so their sizes are known before this
+  // container is packed. Records each direct child's parent-relative position.
+  const layoutContainer = async (containerId: string | null): Promise<{ width: number; height: number }> => {
+    const childGroups = diagram.groups.filter((g) => (g.parentId ?? null) === containerId)
+    for (const cg of childGroups) await layoutContainer(cg.id)
+
+    const childNodes = diagram.nodes.filter((n) => (n.parentId ?? null) === containerId)
+    // Top-level notes are left where they are; only grouped notes are arranged.
+    const childNotes = containerId === null ? [] : diagram.notes.filter((n) => n.parentId === containerId)
+
+    const boxes: FlatBox[] = [
+      ...childNodes.map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? 64 })),
+      ...childGroups.map((g) => ({ id: g.id, ...groupSize.get(g.id)! })),
+      ...childNotes.map((n) => ({ id: n.id, ...n.size })),
+    ]
+
+    if (boxes.length === 0) {
+      const existing = containerId ? diagram.groups.find((g) => g.id === containerId)!.size : { width: 0, height: 0 }
+      if (containerId) groupSize.set(containerId, existing)
+      return existing
+    }
+
+    const rawEdges = edgesByLca.get(containerId) ?? []
+    const pos = await flat(boxes, rawEdges)
+
+    // Normalize the engine's arbitrary origin: shift the bbox top-left to the
+    // container's padded top-left (root → (0,0)).
+    const originX = Math.min(...boxes.map((b) => pos[b.id].x))
+    const originY = Math.min(...boxes.map((b) => pos[b.id].y))
+    const padX = containerId === null ? 0 : GROUP_PAD
+    const padY = containerId === null ? 0 : GROUP_NEST_TOP_PAD
+
+    const placed: { position: { x: number; y: number }; size: { width: number; height: number } }[] = []
+    for (const b of boxes) {
+      const p = {
+        x: Math.round(pos[b.id].x - originX + padX),
+        y: Math.round(pos[b.id].y - originY + padY),
+      }
+      placed.push({ position: p, size: { width: b.width, height: b.height } })
+      if (nodeIds.has(b.id)) nodePos.set(b.id, p)
+      else if (groupIds.has(b.id)) groupPos.set(b.id, p)
+      else notePos.set(b.id, p)
+    }
+
+    if (containerId === null) return { width: 0, height: 0 }
+    const size = requiredGroupSize(placed)
+    groupSize.set(containerId, size)
+    return size
   }
 
-  const result = await (engine === 'graphviz' ? runGraphviz : runElk)(engineDiagram, heightById)
+  await layoutContainer(null)
 
-  const groupAbsById: Record<string, EngineGroup> = Object.fromEntries(result.groups.map((g) => [g.id, g]))
-  const nodeAbsById: Record<string, EngineNode> = Object.fromEntries(result.nodes.map((n) => [n.id, n]))
+  const groups: Group[] = diagram.groups.map((g) => ({
+    ...g,
+    position: groupPos.get(g.id) ?? g.position,
+    size: groupSize.get(g.id) ?? g.size,
+  }))
+  const nodes: Node[] = diagram.nodes.map((n) => ({ ...n, position: nodePos.get(n.id) ?? n.position }))
+  const notes: Note[] = diagram.notes.map((n) => ({ ...n, position: notePos.get(n.id) ?? n.position }))
 
-  const groups: Group[] = diagram.groups.map((g) => {
-    const eg = groupAbsById[g.id]
-    if (!eg) return g
-    return { ...g, position: { x: Math.round(eg.x), y: Math.round(eg.y) }, size: { width: Math.round(eg.width), height: Math.round(eg.height) } }
-  })
-  const groupById: Record<string, Group> = Object.fromEntries(groups.map((g) => [g.id, g]))
+  // Backstop: enforce padding/slack/grow-to-fit invariants (grow-only).
+  const reflowed = reflowContainment({ ...diagram, nodes, groups, notes })
 
-  const nodes: Node[] = diagram.nodes.map((n) => {
-    const en = nodeAbsById[n.id]
-    if (!en) return n
-    let x = en.x
-    let y = en.y
-    if (n.parentId && groupById[n.parentId]) {
-      x -= groupById[n.parentId].position.x
-      y -= groupById[n.parentId].position.y
-    }
-    return { ...n, position: { x: Math.round(x), y: Math.round(y) } }
-  })
-
-  const edges = assignEdgeHandles(nodes, groups, diagram.edges, heightById)
-  return { nodes, groups, edges }
+  const edges = assignEdgeHandles(reflowed.nodes, reflowed.groups, diagram.edges, heightById)
+  return { nodes: reflowed.nodes, groups: reflowed.groups, notes: reflowed.notes, edges }
 }

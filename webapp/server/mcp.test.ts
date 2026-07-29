@@ -334,6 +334,19 @@ describe('handlers', () => {
       const r = await handlers.layout(store, diagramId, 'graphviz')
       expect(r).toEqual({ ok: true })
     })
+
+    it('layout persists notes and keeps a grouped note inside its group', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, { name: 'L', nodes: ['Seed'] })) as { diagramId: string }
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'G' }) as { id: string }
+      handlers.addNode(store, { diagramId, label: 'N', parentId: groupId })
+      const { id: noteId } = handlers.addNote(store, { diagramId, text: 'hi', parentId: groupId }) as { id: string }
+      const r = await handlers.layout(store, diagramId)
+      expect(r).toEqual({ ok: true })
+      const d = getDiagram(store.getState().model, diagramId)!
+      const note = d.notes.find((n) => n.id === noteId)!
+      expect(note.parentId).toBe(groupId) // still grouped after tidy
+    })
   })
 })
 

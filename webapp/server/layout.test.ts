@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { layoutDiagram, handlesFor, absoluteCenter, assignEdgeHandles } from './layout'
-import type { Group } from '../src/model'
+import type { Diagram, Group } from '../src/model'
+import { reflowContainment } from '../src/containment'
 
 describe('layoutDiagram dispatcher', () => {
   const diagram = {
@@ -164,5 +165,61 @@ describe('assignEdgeHandles', () => {
     const edges = [{ id: 'e1', from: 'a', to: 'ghost', type: 'talks-to' as const, sourceHandle: 'top' as const }]
     const out = assignEdgeHandles([{ id: 'a', label: 'A', fields: [], position: { x: 0, y: 0 } }], [], edges, { a: 64 })
     expect(out[0].sourceHandle).toBe('top')
+  })
+})
+
+describe('layoutDiagram (nested + notes)', () => {
+  // Root → B{ b1, C{ c1 } }, plus a note inside C, laid out for each engine.
+  const nested = (): Diagram => ({
+    id: 'd', name: 'D', title: 'D', type: 'canvas' as const,
+    groups: [
+      { id: 'B', label: 'B', color: '#000', position: { x: 0, y: 0 }, size: { width: 220, height: 130 } },
+      { id: 'C', label: 'C', color: '#000', position: { x: 0, y: 0 }, size: { width: 220, height: 130 }, parentId: 'B' },
+    ],
+    nodes: [
+      { id: 'b1', label: 'b1', fields: [], position: { x: 0, y: 0 }, parentId: 'B' },
+      { id: 'c1', label: 'c1', fields: [], position: { x: 0, y: 0 }, parentId: 'C' },
+    ],
+    notes: [{ id: 'n1', text: 'note', position: { x: 0, y: 0 }, size: { width: 160, height: 90 }, parentId: 'C' }],
+    edges: [{ id: 'e', from: 'b1', to: 'c1', type: 'talks-to' as const }],
+    flows: [],
+  })
+
+  for (const engine of ['elk', 'graphviz'] as const) {
+    it(`(${engine}) keeps the inner group nested under the outer group`, async () => {
+      const { groups } = await layoutDiagram(nested(), engine)
+      expect(groups.find((g) => g.id === 'C')!.parentId).toBe('B') // not un-nested
+    })
+
+    it(`(${engine}) keeps the grouped note as a child of its group`, async () => {
+      const { notes } = await layoutDiagram(nested(), engine)
+      expect(notes.find((n) => n.id === 'n1')!.parentId).toBe('C')
+    })
+
+    it(`(${engine}) sizes C to actually contain its child c1 and note (reflow-valid)`, async () => {
+      const laid = await layoutDiagram(nested(), engine)
+      // reflowContainment is grow-only; if C already contains its kids, applying
+      // it again changes nothing → proof the returned sizes satisfy containment.
+      const again = reflowContainment({ ...nested(), nodes: laid.nodes, groups: laid.groups, notes: laid.notes })
+      const cBefore = laid.groups.find((g) => g.id === 'C')!
+      const cAfter = again.groups.find((g) => g.id === 'C')!
+      expect(cAfter.size).toEqual(cBefore.size)
+      // and C is at least big enough for the note's footprint
+      expect(cBefore.size.width).toBeGreaterThanOrEqual(160)
+    })
+
+    it(`(${engine}) returns child positions parent-relative (non-negative within padding)`, async () => {
+      const { nodes } = await layoutDiagram(nested(), engine)
+      const c1 = nodes.find((n) => n.id === 'c1')!
+      expect(c1.position.x).toBeGreaterThanOrEqual(0)
+      expect(c1.position.y).toBeGreaterThanOrEqual(0)
+    })
+  }
+
+  it('leaves a top-level note untouched', async () => {
+    const d = nested()
+    d.notes.push({ id: 'top', text: 'floating', position: { x: 777, y: 555 }, size: { width: 160, height: 90 } })
+    const { notes } = await layoutDiagram(d, 'elk')
+    expect(notes.find((n) => n.id === 'top')!.position).toEqual({ x: 777, y: 555 })
   })
 })

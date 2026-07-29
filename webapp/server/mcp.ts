@@ -439,7 +439,7 @@ export const handlers = {
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
     const laid = await layoutDiagram(diagram, engine)
-    const nextDiagram: Diagram = { ...diagram, nodes: laid.nodes, groups: laid.groups, edges: laid.edges }
+    const nextDiagram: Diagram = { ...diagram, nodes: laid.nodes, groups: laid.groups, notes: laid.notes, edges: laid.edges }
     const nextModel = {
       ...model,
       diagrams: model.diagrams.map((d) => (d.id === diagramId ? nextDiagram : d)),
