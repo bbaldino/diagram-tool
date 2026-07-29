@@ -408,4 +408,18 @@ describe('shrinkGroupToChildren', () => {
     const out = shrinkGroupToChildren([group({ id: 'g1', style: { width: 800, height: 800 } })], 'g1')
     expect(out.find((n) => n.id === 'g1')!.style).toMatchObject(GROUP_MIN)
   })
+
+  it('contains a service node fully — accounts for its rendered size, not just its position (regression)', () => {
+    // A node positioned away from the origin must stay wrapped: sizing it as a
+    // zero-footprint point would shrink the box PAST the node's far edges.
+    const nodes = [
+      group({ id: 'g1', style: { width: 800, height: 800 } }),
+      { id: 's1', type: 'service', parentId: 'g1', position: { x: 100, y: 200 }, data: {}, measured: { width: 170, height: 64 } },
+    ] as unknown as Node[]
+    const out = shrinkGroupToChildren(nodes, 'g1')
+    const g1 = out.find((n) => n.id === 'g1')!.style as any
+    // node's far edges are at x=270 / y=264 — the group must contain them (+pad).
+    expect(g1.width).toBeGreaterThanOrEqual(100 + 170 + GROUP_PAD)
+    expect(g1.height).toBeGreaterThanOrEqual(200 + 64 + GROUP_PAD)
+  })
 })

@@ -1,5 +1,5 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
-import { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
+import { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, NODE_EST_SIZE, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
 
 export { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
 
@@ -502,6 +502,20 @@ export function distributeGroupChildren(nodes: Node[], groupId: string): Node[] 
   })
 }
 
+// Real rendered footprint of ANY child, for shrink-to-fit. Unlike
+// liveFootprint (which treats a service node as a zero-footprint point — fine
+// for grow-only sizing, where GROUP_MIN/GROUP_PAD keep small nodes loosely
+// inside), shrinking tightly must wrap a node's ACTUAL box or the group edge
+// cuts across it. Service nodes carry no model size, so use their measured
+// (rendered) size, falling back to NODE_EST_SIZE before RF has measured them.
+function shrinkFootprint(n: Node): { width: number; height: number } {
+  const g = n as { width?: number; height?: number; measured?: { width?: number; height?: number }; style?: { width?: number; height?: number } }
+  return {
+    width: Number(g.width) || Number(g.measured?.width) || Number(g.style?.width) || NODE_EST_SIZE.width,
+    height: Number(g.height) || Number(g.measured?.height) || Number(g.style?.height) || NODE_EST_SIZE.height,
+  }
+}
+
 // Shrink-to-fit: RESIZE the group to wrap its children where they already sit,
 // without moving them. Counterpart to growGroupsToFitChildren, but forces the
 // size DOWN to what's required (that grows only). Considers EVERY child kind —
@@ -514,7 +528,7 @@ export function shrinkGroupToChildren(nodes: Node[], groupId: string): Node[] {
   if (!group) return nodes
   const kids = nodes
     .filter((n) => n.parentId === groupId)
-    .map((n) => ({ position: n.position, size: liveFootprint(n) }))
+    .map((n) => ({ position: n.position, size: shrinkFootprint(n) }))
   const required = requiredGroupSize(kids)
   const slack = kids.length ? GROUP_SLACK : 0
   const width = required.width + slack
