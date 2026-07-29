@@ -309,15 +309,23 @@ export function growGroupsToFitChildren(nodes: Node[]): Node[] {
 // grown) parent size — so a reparent/nest is immediately reflected both in
 // the parent's box and in every child's drag clamp, not just the one that
 // moved.
-export function reflowGroups(nodes: Node[]): Node[] {
-  const grown = growGroupsToFitChildren(nodes)
-  const byId = new Map(grown.map((n) => [n.id, n]))
-  return grown.map((n) => {
+// Recompute every parented child's drag `extent` from its parent's CURRENT
+// (live) size — WITHOUT resizing any group. Use this after a manual size change
+// (NodeResizer, inspector, shrink-to-fit) so a child's clamp tracks the new box
+// and can't be dragged past it, but the user's chosen size is left exactly as
+// set (unlike reflowGroups, which also grows groups + re-adds GROUP_SLACK).
+export function recomputeChildExtents(nodes: Node[]): Node[] {
+  const byId = new Map(nodes.map((n) => [n.id, n]))
+  return nodes.map((n) => {
     if (!n.parentId) return n
     const parent = byId.get(n.parentId)
     if (!parent) return n
     return { ...n, extent: paddedExtent(liveFootprint(parent), liveFootprint(n)) }
   })
+}
+
+export function reflowGroups(nodes: Node[]): Node[] {
+  return recomputeChildExtents(growGroupsToFitChildren(nodes))
 }
 const PARENT_OF: Record<string, string> = Object.fromEntries(
   GROUPS.flatMap((g) => g.nodes.map((n) => [n.id, g.id])),

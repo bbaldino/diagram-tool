@@ -9,6 +9,7 @@ import {
   growGroupsToFitChildren,
   shrinkGroupToChildren,
   reflowGroups,
+  recomputeChildExtents,
   GROUP_PAD,
   GROUP_MIN,
   GROUP_NEST_TOP_PAD,
@@ -353,6 +354,28 @@ describe('reflowGroups', () => {
     const service: Node = { id: 's1', type: 'service', parentId: 'ghost', position: { x: 0, y: 0 }, data: {} }
     const out = reflowGroups([service])
     expect(out[0]).toEqual(service)
+  })
+})
+
+describe('recomputeChildExtents', () => {
+  it('sets a child extent from the parent LIVE size (no growing) so it stays inside after a shrink', () => {
+    // group already shrunk tight around the note (live size on width/height);
+    // the note's extent must reflect that tight size — not a stale larger one —
+    // so it cannot be dragged past the new edges.
+    const nodes = [
+      { id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, width: 192, height: 306, style: { width: 192, height: 306 } },
+      { id: 'n', type: 'note', parentId: 'g', position: { x: 16, y: 200 }, data: {}, style: { width: 160, height: 90 } },
+    ] as unknown as Node[]
+    const out = recomputeChildExtents(nodes)
+    const note = out.find((n) => n.id === 'n')!
+    expect(note.extent).toEqual(paddedExtent({ width: 192, height: 306 }, { width: 160, height: 90 }))
+    // and it does NOT resize the group (pure extent refresh)
+    expect((out.find((n) => n.id === 'g')! as any).width).toBe(192)
+  })
+
+  it('leaves an un-parented node without an extent', () => {
+    const out = recomputeChildExtents([{ id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 } } as unknown as Node])
+    expect(out[0].extent).toBeUndefined()
   })
 })
 

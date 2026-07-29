@@ -27,6 +27,7 @@ import {
   shrinkGroupToChildren,
   topoOrderByParent,
   reflowGroups,
+  recomputeChildExtents,
   placeInGroup,
   liveFootprint,
   REL,
@@ -738,7 +739,10 @@ function Flow({
 
   const shrinkGroup = useCallback(() => {
     if (!selNode) return
-    setNodes((ns) => shrinkGroupToChildren(ns, selNode))
+    // Shrink tight, then refresh child extents from the new (smaller) size so a
+    // child can't be dragged past the shrunk edges. recomputeChildExtents, NOT
+    // reflowGroups — the latter would re-grow the group and undo the tight fit.
+    setNodes((ns) => recomputeChildExtents(shrinkGroupToChildren(ns, selNode)))
   }, [selNode, setNodes])
 
   const setGroupSize = useCallback(
@@ -756,8 +760,9 @@ function Flow({
         }),
       )
       // Resizing a group changes its children's allowed drag region — recompute
-      // their extents from the new size (same reason as the NodeResizer path).
-      setNodes((ns) => reflowGroups(ns))
+      // their extents from the new size. recomputeChildExtents (not reflowGroups)
+      // so the user's chosen size stands, without re-growing/re-slacking it.
+      setNodes((ns) => recomputeChildExtents(ns))
     },
     [selNode, setNodes],
   )
@@ -765,12 +770,12 @@ function Flow({
   // Wrap RF's node-change applier: after a NodeResizer resize ends, recompute
   // every child's drag `extent` from its (now resized) parent. The extent is
   // otherwise set only on nest/load, so without this a child stays clamped to
-  // the group's pre-resize boundary.
+  // the group's pre-resize boundary (or, after a shrink, can escape past it).
   const handleNodesChange = useCallback(
     (changes: NodeChange<Node>[]) => {
       onNodesChange(changes)
       if (changes.some((c) => c.type === 'dimensions' && c.resizing === false)) {
-        setNodes((ns) => reflowGroups(ns))
+        setNodes((ns) => recomputeChildExtents(ns))
       }
     },
     [onNodesChange, setNodes],
