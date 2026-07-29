@@ -40,10 +40,9 @@ export function DiagramBar({ diagrams, activeId, onSelect, onNew, onRename, onDe
       </button>
       <button
         onClick={async () => {
-          if (diagrams.length < 2) return
           const ok = await showConfirm({
             title: 'Delete this diagram?',
-            message: 'The diagram is removed. Entities used only here are deleted; entities also placed in other diagrams are kept.',
+            message: 'This removes the diagram and everything on it.',
             danger: true,
           })
           if (ok) onDelete(activeId)

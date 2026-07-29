@@ -417,12 +417,17 @@ function Flow({
     (id: string) => {
       if (!model || !activeId) return
       const base = flushCanvasInto(model, activeId, nodes, edges)
-      const m = M.deleteDiagram(base, id)
-      setModel(m)
-      if (id === activeId) {
-        const nextId = m.diagrams[0]?.id
-        setActiveId(nextId ?? null)
+      let m = M.deleteDiagram(base, id)
+      // Never leave the app with zero diagrams — deleting the last one resets
+      // to a fresh empty diagram (so "delete the only diagram" = "clear it").
+      let nextId = m.diagrams[0]?.id
+      if (!nextId) {
+        const created = M.addDiagram(m, 'Untitled', 'canvas')
+        m = created.model
+        nextId = created.id
       }
+      setModel(m)
+      if (id === activeId) setActiveId(nextId)
     },
     [model, activeId, nodes, edges],
   )
