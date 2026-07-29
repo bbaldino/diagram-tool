@@ -1,4 +1,7 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
+import { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
+
+export { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
 
 // dashboard-icons (homarr-labs) — same set used in the D2 diagram
 export const ICON_BASE =
@@ -242,120 +245,6 @@ const EDGES: E[] = [
 export const GROUP_COLOR: Record<string, string> = Object.fromEntries(
   GROUPS.map((g) => [g.id, g.color]),
 )
-
-// ---- Nested-group geometry ----
-// Every child (node/note/group) keeps this much clearance from its parent
-// group's top/left/right/bottom edges. Without it, a nested child sized ~as
-// big as its parent gets clamped by RF's extent:'parent' to the parent's
-// top-left corner, and the two boxes — and their `.group__label` titles,
-// which render just above the box — end up coincident.
-export const GROUP_PAD = 16
-// A group can never be smaller than this (matches the GroupNode NodeResizer's
-// own minWidth/minHeight, so the interactive resize floor and the model floor
-// agree).
-export const GROUP_MIN = { width: 220, height: 130 }
-
-// Extra top clearance — used both for a freshly-nested child's STARTING
-// position (App.tsx's reparent) AND as paddedExtent's top drag-clamp bound,
-// so the clearance holds uniformly whether a child lands there on nest or
-// gets dragged there afterwards. requiredGroupSize stays GROUP_PAD-uniform
-// (it derives its floor from the child's actual position, which is itself
-// clamped by paddedExtent, so it never needs its own top-pad notion).
-// A group's `.group__label` (index.css) renders in the strip just above its
-// OWN box, so a child placed flush at GROUP_PAD from its parent's top edge
-// has its title collide with the parent's title, which sits in that same
-// strip just above the parent. This is comfortably bigger than the label's
-// rendered footprint (~19px line box + 5px margin ≈ 24px) so the two titles
-// never touch, whether right after a nest or after dragging the child back
-// up to the top of its clamped range.
-export const GROUP_NEST_TOP_PAD = 32
-
-// Extra room left on the far side when a group is grown to fit its children
-// (see growGroupsToFitChildren). Without this, a group grown to EXACTLY fit
-// its (largest) child leaves that child's paddedExtent collapsed to a single
-// point — [pad,pad] on both ends — so it can be placed but never dragged.
-// Must be bigger than (GROUP_NEST_TOP_PAD - GROUP_PAD) so the top-pad's
-// extra clearance doesn't eat the whole slack on the y axis too.
-export const GROUP_SLACK = 40
-
-// The smallest size that contains every child with GROUP_PAD clearance on
-// the right/bottom (children are kept >=pad from the top/left by the
-// position clamp, so only the far edge needs accounting for here), floored
-// at `min` on each axis.
-export function requiredGroupSize(
-  children: { position: { x: number; y: number }; size: { width: number; height: number } }[],
-  pad = GROUP_PAD,
-  min: { width: number; height: number } = GROUP_MIN,
-): { width: number; height: number } {
-  let width = min.width
-  let height = min.height
-  for (const c of children) {
-    width = Math.max(width, c.position.x + c.size.width + pad)
-    height = Math.max(height, c.position.y + c.size.height + pad)
-  }
-  return { width, height }
-}
-
-// The React Flow `extent` box that keeps a child within its parent's padded
-// region — i.e. the drag-clamp equivalent of `requiredGroupSize`. Top-left
-// is [padX, padTop] — padTop uses GROUP_NEST_TOP_PAD (not GROUP_PAD) so the
-// clamp holds the SAME title clearance whether a child lands there on nest
-// or gets dragged there afterwards; without this, a child dragged straight
-// up could still park at y=GROUP_PAD and re-crowd its title against the
-// parent's (both render in the same strip just above each box — see
-// GROUP_NEST_TOP_PAD). Left stays GROUP_PAD since there's no horizontal
-// label-collision risk. Bottom-right is the padded region's far edge
-// (parentSize - pad) — NOT pre-backed-off by the child's own size: RF's own
-// clampPosition (@xyflow/system) already subtracts the dragged/rendered
-// node's `measured` width/height from extent[1] before clamping
-// node.position, both on mount (calculateChildXYZ) and on drag
-// (calculateNodePosition). Subtracting childSize here too would double it,
-// which inverts the clamp (max < min) whenever the child is close to the
-// available room — exactly the nested-similar-size-groups case this whole
-// fix targets — and RF's clamp() then snaps the node to that (very
-// negative) max instead of holding it at min. `childSize` is still taken so
-// we can floor the bound at `pad + childSize` for the (should-be-rare) case
-// of a child bigger than the parent's padded interior, keeping RF's
-// internal subtraction from going negative there too.
-export function paddedExtent(
-  parentSize: { width: number; height: number },
-  childSize: { width: number; height: number },
-  padX = GROUP_PAD,
-  padTop = GROUP_NEST_TOP_PAD,
-): [[number, number], [number, number]] {
-  return [
-    [padX, padTop],
-    [
-      Math.max(padX + childSize.width, parentSize.width - padX),
-      Math.max(padTop + childSize.height, parentSize.height - padX),
-    ],
-  ]
-}
-
-// Starting position for a child newly nested INTO a group, chosen so it
-// doesn't land on top of a sibling already there. Every previously-nested
-// child used to start at the same fixed (GROUP_PAD, GROUP_NEST_TOP_PAD), so
-// nesting a second thing (e.g. a note and a group) into the same parent
-// stacked them exactly on top of each other. No siblings → same padded
-// top-left as before. Otherwise a simple row layout: place the child just
-// right of every existing sibling's bounding box, at the same top
-// clearance — good enough for the common few-children case without full
-// bin-packing (see task notes; deliberately not over-engineered).
-// `childSize` isn't needed by this row-layout strategy (only the far edge of
-// the existing siblings matters) but stays in the signature so a denser
-// future packing strategy — e.g. wrapping to a new row once a row fills up —
-// can use it without changing callers.
-export function placeInGroup(
-  _childSize: { width: number; height: number },
-  existingSiblings: { position: { x: number; y: number }; size: { width: number; height: number } }[],
-  padX = GROUP_PAD,
-  padTop = GROUP_NEST_TOP_PAD,
-  gap = 16,
-): { x: number; y: number } {
-  if (!existingSiblings.length) return { x: padX, y: padTop }
-  const rightEdge = Math.max(...existingSiblings.map((s) => s.position.x + s.size.width))
-  return { x: rightEdge + gap, y: padTop }
-}
 
 // Best-known on-canvas footprint of a live RF node, for sizing/clamping
 // groups around their children. Groups and notes carry an explicit size
