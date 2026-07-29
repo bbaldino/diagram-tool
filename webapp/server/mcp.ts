@@ -1,8 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { EdgeDir } from '../src/graph'
-import type { Diagram, Edge, EdgeOrientation, Field, Group, Node, Note, Status } from '../src/model'
-import { getDiagram } from '../src/model'
+import type { Diagram, DiagramType, Edge, EdgeOrientation, Field, Group, Node, Note, Status } from '../src/model'
+import { addDiagram, getDiagram } from '../src/model'
 import { newId } from '../src/ids'
 import { applyOps, type Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
@@ -206,6 +206,30 @@ export const handlers = {
   getDiagram(store: Store, id: string): Diagram | ErrorResult {
     const d = getDiagram(store.getState().model, id)
     return d ?? err(`unknown diagram "${id}"`)
+  },
+
+  // Mints a brand-new, empty diagram. addDiagram (the model mutator) mints the
+  // id itself (a slug like `d-<slug>`, not a uuid — diagrams are slug-ided),
+  // so the id is read back from its return value rather than the applied op;
+  // the resulting model is diffed against the prior one so it's still a
+  // single store.apply/write.
+  newDiagram(store: Store, a: { name: string; type?: DiagramType }): { id: string } {
+    const before = store.getState().model
+    const { model, id } = addDiagram(before, a.name, a.type ?? 'canvas')
+    store.apply(diffToOps(before, model), 'mcp')
+    return { id }
+  },
+
+  renameDiagram(store: Store, a: { id: string; name: string }): OkResult | ErrorResult {
+    if (!getDiagram(store.getState().model, a.id)) return err(`unknown diagram "${a.id}"`)
+    store.apply([{ t: 'diagram.rename', id: a.id, name: a.name }], 'mcp')
+    return { ok: true }
+  },
+
+  deleteDiagram(store: Store, a: { id: string }): OkResult | ErrorResult {
+    if (!getDiagram(store.getState().model, a.id)) return err(`unknown diagram "${a.id}"`)
+    store.apply([{ t: 'diagram.delete', id: a.id }], 'mcp')
+    return { ok: true }
   },
 
   async authorDiagram(store: Store, spec: AuthorSpec): Promise<{ diagramId: string; nodeIds: string[] } | ErrorResult> {
@@ -584,6 +608,27 @@ export function createMcpServer(store: Store): McpServer {
     'get_diagram',
     { description: 'Get a single diagram by id.', inputSchema: { id: z.string() } },
     (args) => wrap(handlers.getDiagram(store, args.id)),
+  )
+
+  server.registerTool(
+    'new_diagram',
+    {
+      description: 'Create a new, empty diagram. Returns the created diagram id.',
+      inputSchema: { name: z.string(), type: z.enum(['canvas', 'topology', 'call-flow']).optional() },
+    },
+    (args) => wrap(handlers.newDiagram(store, args)),
+  )
+
+  server.registerTool(
+    'rename_diagram',
+    { description: 'Rename an existing diagram.', inputSchema: { id: z.string(), name: z.string() } },
+    (args) => wrap(handlers.renameDiagram(store, args)),
+  )
+
+  server.registerTool(
+    'delete_diagram',
+    { description: 'Delete a diagram.', inputSchema: { id: z.string() } },
+    (args) => wrap(handlers.deleteDiagram(store, args)),
   )
 
   server.registerTool(

@@ -350,6 +350,61 @@ describe('edge orientation', () => {
   })
 })
 
+describe('diagram lifecycle', () => {
+  it('newDiagram returns an id and the diagram exists, empty', async () => {
+    const store = await mkStore()
+    const r = handlers.newDiagram(store, { name: 'Homelab' })
+    expect(typeof r.id).toBe('string')
+    expect(r.id.length).toBeGreaterThan(0)
+    const d = getDiagram(store.getState().model, r.id)!
+    expect(d).toBeTruthy()
+    expect(d.name).toBe('Homelab')
+    expect(d.type).toBe('canvas')
+    expect(d.nodes).toEqual([])
+    expect(d.groups).toEqual([])
+    expect(d.notes).toEqual([])
+    expect(d.edges).toEqual([])
+  })
+
+  it('newDiagram accepts an explicit type', async () => {
+    const store = await mkStore()
+    const r = handlers.newDiagram(store, { name: 'Topo', type: 'topology' })
+    const d = getDiagram(store.getState().model, r.id)!
+    expect(d.type).toBe('topology')
+  })
+
+  it('renameDiagram changes the name', async () => {
+    const store = await mkStore()
+    const { id } = handlers.newDiagram(store, { name: 'Original' })
+    const r = handlers.renameDiagram(store, { id, name: 'Renamed' })
+    expect(r).toEqual({ ok: true })
+    const d = getDiagram(store.getState().model, id)!
+    expect(d.name).toBe('Renamed')
+  })
+
+  it('renameDiagram errors on an unknown diagram', async () => {
+    const store = await mkStore()
+    const r = handlers.renameDiagram(store, { id: 'nope', name: 'X' })
+    expect('error' in r).toBe(true)
+  })
+
+  it('deleteDiagram removes the diagram from listDiagrams and getDiagram', async () => {
+    const store = await mkStore()
+    const { id } = handlers.newDiagram(store, { name: 'Gone' })
+    expect(handlers.listDiagrams(store).some((d) => d.id === id)).toBe(true)
+    const r = handlers.deleteDiagram(store, { id })
+    expect(r).toEqual({ ok: true })
+    expect(handlers.listDiagrams(store).some((d) => d.id === id)).toBe(false)
+    expect('error' in handlers.getDiagram(store, id)).toBe(true)
+  })
+
+  it('deleteDiagram errors on an unknown diagram', async () => {
+    const store = await mkStore()
+    const r = handlers.deleteDiagram(store, { id: 'nope' })
+    expect('error' in r).toBe(true)
+  })
+})
+
 describe('createMcpServer', () => {
   it('registers tools without throwing', async () => {
     const store = await mkStore()
