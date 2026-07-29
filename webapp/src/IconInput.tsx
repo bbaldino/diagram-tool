@@ -58,6 +58,7 @@ export function IconInput({ value, onChange, placeholder }: Props) {
               e.preventDefault()
               pick(matches[highlight].slug)
             } else {
+              e.preventDefault()
               setOpen(false)
             }
           } else if (e.key === 'Escape') {
