@@ -7,6 +7,7 @@ import {
   paddedExtent,
   placeInGroup,
   growGroupsToFitChildren,
+  shrinkGroupToChildren,
   reflowGroups,
   GROUP_PAD,
   GROUP_MIN,
@@ -335,5 +336,59 @@ describe('reflowGroups', () => {
     const service: Node = { id: 's1', type: 'service', parentId: 'ghost', position: { x: 0, y: 0 }, data: {} }
     const out = reflowGroups([service])
     expect(out[0]).toEqual(service)
+  })
+})
+
+describe('shrinkGroupToChildren', () => {
+  const group = (over: Partial<Node> = {}): Node => ({
+    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 400, height: 400 }, ...over,
+  })
+  const service = (over: Partial<Node> = {}): Node => ({
+    id: 's', type: 'service', position: { x: 0, y: 0 }, data: {}, ...over,
+  })
+  const note = (over: Partial<Node> = {}): Node => ({
+    id: 'n', type: 'note', position: { x: 0, y: 0 }, data: {}, style: { width: 160, height: 90 }, ...over,
+  })
+
+  it('sizes the group to contain a NOTE child, not just its service nodes (the reported bug)', () => {
+    const nodes = [
+      group({ id: 'g1', style: { width: 400, height: 400 } }),
+      service({ id: 's1', parentId: 'g1', position: { x: 16, y: 32 } }),
+      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 200 }, style: { width: 160, height: 90 } }),
+    ]
+    const out = shrinkGroupToChildren(nodes, 'g1')
+    const g1 = out.find((n) => n.id === 'g1')!.style as any
+    // the note sits at y=200 (bottom 290); the group must still contain it, not
+    // clip down to fit only the (zero-footprint) service node.
+    expect(g1.height).toBeGreaterThanOrEqual(200 + 90 + GROUP_PAD)
+    expect(g1.width).toBeGreaterThanOrEqual(16 + 160 + GROUP_PAD)
+  })
+
+  it('sizes the group to contain a nested SUB-GROUP child', () => {
+    const nodes = [
+      group({ id: 'outer', style: { width: 200, height: 200 } }),
+      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 32 }, style: { width: 300, height: 220 } }),
+    ]
+    const out = shrinkGroupToChildren(nodes, 'outer')
+    const outer = out.find((n) => n.id === 'outer')!.style as any
+    expect(outer.width).toBeGreaterThanOrEqual(16 + 300 + GROUP_PAD)
+    expect(outer.height).toBeGreaterThanOrEqual(32 + 220 + GROUP_PAD)
+  })
+
+  it('shrinks an oversized group down to wrap its children', () => {
+    const nodes = [
+      group({ id: 'g1', style: { width: 900, height: 900 } }),
+      service({ id: 's1', parentId: 'g1', position: { x: 16, y: 32 } }),
+      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 120 }, style: { width: 160, height: 90 } }),
+    ]
+    const out = shrinkGroupToChildren(nodes, 'g1')
+    const g1 = out.find((n) => n.id === 'g1')!.style as any
+    expect(g1.width).toBeLessThan(900)
+    expect(g1.height).toBeLessThan(900)
+  })
+
+  it('an empty group shrinks to GROUP_MIN (no slack for no children)', () => {
+    const out = shrinkGroupToChildren([group({ id: 'g1', style: { width: 800, height: 800 } })], 'g1')
+    expect(out.find((n) => n.id === 'g1')!.style).toMatchObject(GROUP_MIN)
   })
 })

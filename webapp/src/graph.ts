@@ -498,27 +498,26 @@ export function distributeGroupChildren(nodes: Node[], groupId: string): Node[] 
   })
 }
 
-// Pack members at standard spacing; RESIZE the group to wrap them tightly.
+// Shrink-to-fit: RESIZE the group to wrap its children where they already sit,
+// without moving them. Counterpart to growGroupsToFitChildren, but forces the
+// size DOWN to what's required (that grows only). Considers EVERY child kind —
+// service nodes (zero-footprint by liveFootprint), notes, and nested groups —
+// so a group holding a note or sub-group tightens around them instead of
+// clipping to fit only its service nodes. GROUP_SLACK keeps a lone child
+// draggable (see growGroupsToFitChildren); an empty group drops to GROUP_MIN.
 export function shrinkGroupToChildren(nodes: Node[], groupId: string): Node[] {
-  const { CW, CH, GX, GY, PX, PT, PB } = LAYOUT
   const group = nodes.find((n) => n.id === groupId)
   if (!group) return nodes
-  const { w } = groupSize(group)
-  const kids = groupKids(nodes, groupId)
-  const n = Math.max(1, kids.length)
-  const cols = Math.max(1, Math.min(n, Math.floor((w - PX * 2 + GX) / (CW + GX))))
-  const rows = Math.ceil(n / cols)
-  const width = PX * 2 + cols * CW + (cols - 1) * GX
-  const height = PT + PB + rows * CH + (rows - 1) * GY
-  const indexOf = new Map(kids.map((k, i) => [k.id, i]))
-  return nodes.map((node) => {
-    if (node.id === groupId) return { ...node, width, height, style: { ...node.style, width, height } }
-    const idx = indexOf.get(node.id)
-    if (idx === undefined) return node
-    const col = idx % cols
-    const row = Math.floor(idx / cols)
-    return { ...node, position: { x: PX + col * (CW + GX), y: PT + row * (CH + GY) } }
-  })
+  const kids = nodes
+    .filter((n) => n.parentId === groupId)
+    .map((n) => ({ position: n.position, size: liveFootprint(n) }))
+  const required = requiredGroupSize(kids)
+  const slack = kids.length ? GROUP_SLACK : 0
+  const width = required.width + slack
+  const height = required.height + slack
+  return nodes.map((node) =>
+    node.id === groupId ? { ...node, width, height, style: { ...node.style, width, height } } : node,
+  )
 }
 
 // ---- Deterministic initial layout: groups shelf-packed, children in a grid ----
