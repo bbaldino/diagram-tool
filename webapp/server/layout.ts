@@ -44,9 +44,14 @@ export function absoluteCenter(
 ): { x: number; y: number } {
   let x = n.position.x
   let y = n.position.y
-  if (n.parentId && groupById[n.parentId]) {
-    x += groupById[n.parentId].position.x
-    y += groupById[n.parentId].position.y
+  let parentId = n.parentId
+  const seen = new Set<string>()
+  while (parentId && groupById[parentId] && !seen.has(parentId)) {
+    seen.add(parentId)
+    const g = groupById[parentId]
+    x += g.position.x
+    y += g.position.y
+    parentId = g.parentId
   }
   return { x: x + W / 2, y: y + height / 2 }
 }

@@ -123,6 +123,17 @@ describe('layoutDiagram edge handles', () => {
     // position — this is what removing the `+=` lines would break.
     expect(center).toEqual({ x: withoutParent.x + group.position.x, y: withoutParent.y + group.position.y })
   })
+
+  it('absoluteCenter: node in a nested group adds every ancestor group offset', () => {
+    const groupById: Record<string, Group> = {
+      outer: { id: 'outer', label: 'O', color: '#000', position: { x: 100, y: 200 }, size: { width: 400, height: 300 } },
+      inner: { id: 'inner', label: 'I', color: '#000', position: { x: 20, y: 30 }, size: { width: 200, height: 150 }, parentId: 'outer' },
+    }
+    // node at (5,5) relative to inner; inner at (20,30) relative to outer; outer at (100,200) absolute.
+    // center = (100+20+5 + W/2, 200+30+5 + h/2) with W=180, h=64 → (125+90, 235+32) = (215, 267)
+    const c = absoluteCenter({ position: { x: 5, y: 5 }, parentId: 'inner' }, groupById, 64)
+    expect(c).toEqual({ x: 215, y: 267 })
+  })
 })
 
 describe('assignEdgeHandles', () => {
