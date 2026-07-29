@@ -6,7 +6,7 @@ import { getDiagram } from '../src/model'
 import { newId } from '../src/ids'
 import { applyOps, type Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
-import { reflowContainment } from '../src/containment'
+import { reflowContainment, placeInGroup, NODE_EST_SIZE } from '../src/containment'
 import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
@@ -107,6 +107,51 @@ function applyWithReflow(store: Store, diagramId: string, ops: Op[]): void {
     ? { ...stepped, diagrams: stepped.diagrams.map((x) => (x.id === diagramId ? reflowContainment(x) : x)) }
     : stepped
   store.apply(diffToOps(before, reflowed), 'mcp')
+}
+
+// Landing position for a child (node/group/note) newly parented into
+// `groupId`, laid out relative to its new siblings via placeInGroup — same
+// helper the on-canvas drag-to-nest path uses (App.tsx) — so an MCP reparent
+// doesn't coincide with an existing sibling or the group's own title strip.
+// Model `position` is interpreted relative to the parent once `parentId` is
+// set (buildGraph.ts passes it straight through to React Flow), so this MUST
+// run before applyWithReflow whenever a handler sets a non-null parentId.
+function positionInGroup(
+  diagram: Diagram,
+  groupId: string,
+  childId: string,
+  childSize: { width: number; height: number },
+): { x: number; y: number } {
+  const siblingsOf = <T extends { id: string; parentId?: string; position: { x: number; y: number } }>(
+    items: T[],
+    sizeOf: (item: T) => { width: number; height: number },
+  ) => items.filter((x) => x.parentId === groupId && x.id !== childId).map((x) => ({ position: x.position, size: sizeOf(x) }))
+  const siblings = [
+    ...siblingsOf(diagram.nodes, () => NODE_EST_SIZE),
+    ...siblingsOf(diagram.groups, (g) => g.size),
+    ...siblingsOf(diagram.notes, (n) => n.size),
+  ]
+  return placeInGroup(childSize, siblings)
+}
+
+// Transitive descendant group ids of `groupId` (via parentId), used to
+// reject an edit_group reparent that would create a cycle — a group nested
+// into itself or into one of its own descendants. Nodes/notes have no
+// descendants, so editNode needs no equivalent guard.
+function groupDescendants(diagram: Diagram, groupId: string): Set<string> {
+  const childrenOf = new Map<string, string[]>()
+  for (const g of diagram.groups) {
+    if (g.parentId) childrenOf.set(g.parentId, [...(childrenOf.get(g.parentId) ?? []), g.id])
+  }
+  const out = new Set<string>()
+  const stack = [...(childrenOf.get(groupId) ?? [])]
+  while (stack.length) {
+    const cur = stack.pop()!
+    if (out.has(cur)) continue
+    out.add(cur)
+    stack.push(...(childrenOf.get(cur) ?? []))
+  }
+  return out
 }
 
 // A flow step's element reference: either an existing element id (node,
@@ -278,7 +323,10 @@ export const handlers = {
     const touchesContainment = 'parentId' in a.patch
     const { parentId, ...rest } = a.patch
     const patch: Partial<Omit<Node, 'id'>> = { ...rest }
-    if (touchesContainment) patch.parentId = parentId ?? undefined
+    if (touchesContainment) {
+      patch.parentId = parentId ?? undefined
+      if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, NODE_EST_SIZE)
+    }
     const op: Op = { t: 'node.update', diagramId: a.diagramId, id: a.id, patch }
     if (touchesContainment) applyWithReflow(store, a.diagramId, [op])
     else store.apply([op], 'mcp')
@@ -298,7 +346,10 @@ export const handlers = {
       position: a.position ?? { x: 40, y: 40 },
       size: a.size ?? { width: 320, height: 200 },
     }
-    if (a.parentId) group.parentId = a.parentId
+    if (a.parentId) {
+      group.parentId = a.parentId
+      if (a.position === undefined) group.position = positionInGroup(diagram, a.parentId, group.id, group.size)
+    }
     applyWithReflow(store, a.diagramId, [{ t: 'group.add', diagramId: a.diagramId, group }])
     return { id: group.id }
   },
@@ -306,14 +357,21 @@ export const handlers = {
   editGroup(store: Store, a: EditGroupArgs): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!diagram.groups.some((g) => g.id === a.id)) return err(`unknown group "${a.id}" in diagram "${a.diagramId}"`)
-    if (a.patch.parentId != null && !diagram.groups.some((g) => g.id === a.patch.parentId)) {
-      return err(`unknown group "${a.patch.parentId}"`)
+    const group = diagram.groups.find((g) => g.id === a.id)
+    if (!group) return err(`unknown group "${a.id}" in diagram "${a.diagramId}"`)
+    if (a.patch.parentId != null) {
+      if (!diagram.groups.some((g) => g.id === a.patch.parentId)) return err(`unknown group "${a.patch.parentId}"`)
+      if (a.patch.parentId === a.id || groupDescendants(diagram, a.id).has(a.patch.parentId)) {
+        return err('cannot parent a group into itself or a descendant')
+      }
     }
     const touchesParent = 'parentId' in a.patch
     const { parentId, ...rest } = a.patch
     const patch: Partial<Omit<Group, 'id'>> = { ...rest }
-    if (touchesParent) patch.parentId = parentId ?? undefined
+    if (touchesParent) {
+      patch.parentId = parentId ?? undefined
+      if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? group.size)
+    }
     applyWithReflow(store, a.diagramId, [{ t: 'group.update', diagramId: a.diagramId, id: a.id, patch }])
     return { ok: true }
   },

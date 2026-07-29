@@ -435,9 +435,12 @@ describe('edit_node / add_group / edit_group', () => {
     expect('error' in handlers.editNode(store, { diagramId, id: nodeIds[0], patch: { parentId: 'no-such-group' } })).toBe(true)
   })
 
-  it('editNode reparents a node into a group, and the group grows to contain it via reflow', async () => {
+  it('editNode reparenting a lone node into a group places it at the padded top-left (no absurd growth)', async () => {
     const store = await mkStore()
     const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    // position is intentionally far away — a naive reparent that kept this
+    // position (reinterpreted as relative to the new parent, per buildGraph.ts)
+    // would force the group to balloon or crowd the group's title strip.
     const { id: nodeId } = handlers.addNode(store, { diagramId, label: 'Plex', position: { x: 500, y: 500 } }) as {
       id: string
     }
@@ -448,11 +451,38 @@ describe('edit_node / add_group / edit_group', () => {
     expect(r).toEqual({ ok: true })
 
     const d = getDiagram(store.getState().model, diagramId)!
-    expect(d.nodes.find((n) => n.id === nodeId)!.parentId).toBe(groupId)
+    const node = d.nodes.find((n) => n.id === nodeId)!
+    expect(node.parentId).toBe(groupId)
+    // repositioned to the group's padded top-left, not left at its old (500,500).
+    expect(node.position).toEqual({ x: 16, y: 32 })
     const group = d.groups.find((g) => g.id === groupId)!
-    // reflow grows the group to contain the far-away node with padding/slack.
-    expect(group.size.width).toBeGreaterThan(before.size.width)
-    expect(group.size.height).toBeGreaterThan(before.size.height)
+    // a single child fits within the group's existing floor size — no growth needed.
+    expect(group.size).toEqual(before.size)
+  })
+
+  it('editNode reparenting a second node into a group with an existing child places it non-overlapping, growing the group', async () => {
+    const store = await mkStore()
+    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { id: nodeA } = handlers.addNode(store, { diagramId, label: 'Plex' }) as { id: string }
+    const { id: nodeB } = handlers.addNode(store, { diagramId, label: 'Sonarr' }) as { id: string }
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
+
+    handlers.editNode(store, { diagramId, id: nodeA, patch: { parentId: groupId } })
+    const afterA = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+
+    const r = handlers.editNode(store, { diagramId, id: nodeB, patch: { parentId: groupId } })
+    expect(r).toEqual({ ok: true })
+
+    const d = getDiagram(store.getState().model, diagramId)!
+    const a = d.nodes.find((n) => n.id === nodeA)!
+    const b = d.nodes.find((n) => n.id === nodeB)!
+    expect(b.parentId).toBe(groupId)
+    // placed beside its sibling, not on top of it.
+    expect(b.position).not.toEqual(a.position)
+    expect(b.position.x).toBeGreaterThan(a.position.x)
+    const group = d.groups.find((g) => g.id === groupId)!
+    // now needs to grow to fit both children side by side.
+    expect(group.size.width).toBeGreaterThan(afterA.size.width)
   })
 
   it('editNode un-parents a node when parentId is set to null', async () => {
@@ -524,6 +554,27 @@ describe('edit_node / add_group / edit_group', () => {
     expect('error' in handlers.editGroup(store, { diagramId, id: 'ghost', patch: { label: 'x' } })).toBe(true)
     expect('error' in handlers.editGroup(store, { diagramId: 'nope', id: groupId, patch: { label: 'x' } })).toBe(true)
     expect('error' in handlers.editGroup(store, { diagramId, id: groupId, patch: { parentId: 'no-such-group' } })).toBe(true)
+  })
+
+  it('editGroup rejects reparenting a group into itself or into its own descendant (cycle guard)', async () => {
+    const store = await mkStore()
+    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { id: outerId } = handlers.addGroup(store, { diagramId, label: 'Outer' }) as { id: string }
+    const { id: innerId } = handlers.addGroup(store, { diagramId, label: 'Inner' }) as { id: string }
+    handlers.editGroup(store, { diagramId, id: innerId, patch: { parentId: outerId } })
+
+    // self-parenting
+    const selfRes = handlers.editGroup(store, { diagramId, id: outerId, patch: { parentId: outerId } })
+    expect('error' in selfRes).toBe(true)
+
+    // outer -> inner would create a cycle since inner is already outer's child
+    const cycleRes = handlers.editGroup(store, { diagramId, id: outerId, patch: { parentId: innerId } })
+    expect('error' in cycleRes).toBe(true)
+
+    // model unchanged: outer is still top-level, inner still parented to outer
+    const d = getDiagram(store.getState().model, diagramId)!
+    expect(d.groups.find((g) => g.id === outerId)!.parentId).toBeUndefined()
+    expect(d.groups.find((g) => g.id === innerId)!.parentId).toBe(outerId)
   })
 })
 
