@@ -116,7 +116,7 @@ body {
 /* App chrome must not capture text selection: a Shift+drag box-select that
    crosses a panel should draw the marquee, not highlight the panel's text.
    Real inputs stay selectable so field/note editing works normally. */
-.tabbar, .diagrambar, .panel, .palette, .addmenu, .colorpick, .dialog {
+.diagrambar, .panel, .palette, .addmenu, .colorpick, .dialog {
   -webkit-user-select: none;
   user-select: none;
 }
@@ -153,12 +153,6 @@ input, textarea, [contenteditable="true"] {
 
 .diagrambar { display: flex; align-items: center; gap: 6px; }
 .diagrambar select { font: inherit; font-size: 12px; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; color: #1f2937; }
-.diagrambar button {
-  font: inherit; font-size: 12px; cursor: pointer;
-  border: 1px solid #cbd5e1; background: #fff; color: #1f2937;
-  border-radius: 8px; padding: 6px 10px;
-}
-.diagrambar button:hover { background: #f1f5f9; }
 
 /* Group resize handles: push them OUTSIDE the group edge so child nodes (which
    stack above the parent) can't cover them, and give a fat side grab-strip. */
@@ -317,23 +311,6 @@ input, textarea, [contenteditable="true"] {
   cursor: grab; pointer-events: all;
 }
 .wp-dot:active { cursor: grabbing; }
-
-/* ---------- Tab bar (top-level view switcher) ---------- */
-.tabbar {
-  display: flex; align-items: center; gap: 4px;
-  box-sizing: border-box; height: 40px; padding: 0 10px;
-  background: #ffffff; border-bottom: 1px solid #e2e8f0;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-}
-.tabbar button {
-  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
-  padding: 6px 14px; border: 1px solid transparent; border-radius: 8px;
-  background: transparent; color: #64748b;
-}
-.tabbar button:hover { background: #f1f5f9; color: #1f2937; }
-.tabbar button.active { background: #eef2ff; color: #4f46e5; border-color: #c7d2fe; }
-.tabbar__save { margin-left: auto; font-size: 11px; }
-
 
 /* ---------- Modal dialogs (in-app prompt/confirm) ---------- */
 .dialog__overlay {

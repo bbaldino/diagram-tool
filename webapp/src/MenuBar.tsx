@@ -29,10 +29,12 @@ export function MenuBar({
   menus,
   onItem,
   saveState,
+  onOpenChange,
 }: {
   menus: MenuDef[]
   onItem: (menuId: string, itemId: string) => void
   saveState: SaveState
+  onOpenChange?: (open: boolean) => void
 }) {
   const [openMenu, setOpenMenu] = useState<MenuId | null>(null)
   const [highlight, setHighlight] = useState(-1)
@@ -169,6 +171,13 @@ export function MenuBar({
       if (hoverTimer.current != null) window.clearTimeout(hoverTimer.current)
     }
   }, [])
+
+  // Notify the parent whenever the open/closed state actually flips, so
+  // listeners outside this component (e.g. Flow's playback keydown handler)
+  // can suppress their own reactions to arrow keys while a menu is open.
+  useEffect(() => {
+    onOpenChange?.(openMenu != null)
+  }, [openMenu, onOpenChange])
 
   const handleTitleClick = (id: MenuId) => {
     setOpenMenu((prev) => (prev === id ? null : id))

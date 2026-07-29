@@ -200,6 +200,7 @@ function Flow({
   setActiveId,
   undoFlags,
   saveState,
+  onRetrySave,
 }: {
   model: Model
   setModel: React.Dispatch<React.SetStateAction<Model>>
@@ -207,6 +208,7 @@ function Flow({
   setActiveId: (id: string) => void
   undoFlags: { canUndo: boolean; canRedo: boolean }
   saveState: BarSaveState
+  onRetrySave: () => void
 }) {
   const { showPrompt, showConfirm } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
@@ -253,6 +255,13 @@ function Flow({
   // diagram actually changed, so same-diagram re-seeds (place/remove/rename)
   // don't jump the viewport.
   const lastSeededId = useRef<string | null>(null)
+  // Whether a MenuBar menu is currently open. Read (not subscribed to) by the
+  // flow-playback arrow-key handler below so an open menu's own arrow-key
+  // navigation doesn't also step the flow.
+  const menuOpenRef = useRef(false)
+  const handleMenuOpenChange = useCallback((open: boolean) => {
+    menuOpenRef.current = open
+  }, [])
 
   const active = useMemo(
     () => (model && activeId ? M.getDiagram(model, activeId) : undefined),
@@ -864,6 +873,10 @@ function Flow({
 
   const onMenuItem = useCallback(
     (menuId: string, itemId: string) => {
+      if (menuId === '_save') {
+        if (itemId === 'retry') onRetrySave()
+        return
+      }
       if (menuId !== 'file') return
       switch (itemId) {
         case 'new':
@@ -890,7 +903,7 @@ function Flow({
           break
       }
     },
-    [promptNewDiagram, promptRenameDiagram, exportJson, reset, confirmDeleteDiagram],
+    [promptNewDiagram, promptRenameDiagram, exportJson, reset, confirmDeleteDiagram, onRetrySave],
   )
 
   // Minimal File-menu keyboard shortcuts: ⌘/Ctrl+N (new), ⌘/Ctrl+Shift+E
@@ -983,6 +996,7 @@ function Flow({
   useEffect(() => {
     if (flowMode !== 'play') return
     const onKey = (e: KeyboardEvent) => {
+      if (menuOpenRef.current) return
       const t = e.target as HTMLElement | null
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
@@ -1096,7 +1110,12 @@ function Flow({
   const groupEditing = selectedNode?.type === 'group'
   return (
     <div className="shell">
-      <MenuBar menus={menus} onItem={onMenuItem} saveState={saveState} />
+      <MenuBar
+        menus={menus}
+        onItem={onMenuItem}
+        saveState={saveState}
+        onOpenChange={handleMenuOpenChange}
+      />
       <div
         ref={wrapperRef}
         className={groupEditing ? 'group-editing' : undefined}
@@ -1273,6 +1292,10 @@ export default function App() {
   const [model, setModel] = useState<Model | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveState>('idle')
+  // Bumped by the menu bar's "retry" affordance on a failed save; included as
+  // an effect dependency below so retrying re-runs the save even though
+  // `model` itself hasn't changed since the failure.
+  const [retryNonce, setRetryNonce] = useState(0)
   const [undoMap, setUndoMap] = useState<Record<string, { canUndo: boolean; canRedo: boolean }>>({})
   // Becomes true once the initial model load has completed, so the autosave
   // effect below doesn't fire before there's anything to save.
@@ -1371,7 +1394,12 @@ export default function App() {
         .catch(() => setSaveStatus('error'))
     }, 500)
     return () => clearTimeout(t)
-  }, [model])
+  }, [model, retryNonce])
+
+  // Re-run the save effect above on demand (menu bar's retry affordance on a
+  // failed save). Bumping the nonce re-triggers the effect even when `model`
+  // is unchanged, which recomputes and resends the same pending ops.
+  const retrySave = useCallback(() => setRetryNonce((n) => n + 1), [])
 
   const handleSetActive = useCallback((id: string) => setActiveId(id), [])
   // App owns the model, so setModel here is typed against a non-null Model;
@@ -1397,6 +1425,7 @@ export default function App() {
         setActiveId={handleSetActive}
         undoFlags={undoMap[activeId!] ?? { canUndo: false, canRedo: false }}
         saveState={saveState}
+        onRetrySave={retrySave}
       />
     </ReactFlowProvider>
   )
