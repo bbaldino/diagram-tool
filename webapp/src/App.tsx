@@ -54,6 +54,7 @@ import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redo
 import { diffToOps } from './diff'
 import { flowStates } from './flowState'
 import { newId } from './ids'
+import { groupNodes, ungroupNodes } from './grouping'
 import * as M from './model'
 import type {
   Model,
@@ -972,6 +973,37 @@ function Flow({
     [],
   )
 
+  // Group/Ungroup are top-level only this phase. canGroup: 2+ selected non-group
+  // nodes, all top-level. canUngroup: exactly one selected top-level group.
+  const groupableIds = useMemo(
+    () => nodes.filter((n) => n.selected && n.type !== 'group' && n.parentId == null).map((n) => n.id),
+    [nodes],
+  )
+  const canGroup = groupableIds.length >= 2
+  const selectedTopGroup = useMemo(
+    () => nodes.find((n) => n.selected && n.type === 'group' && n.parentId == null) ?? null,
+    [nodes],
+  )
+  const canUngroup = selectedTopGroup != null
+
+  const groupSelection = useCallback(() => {
+    if (groupableIds.length < 2) return
+    const gid = newId()
+    setNodes((ns) => recomputeChildExtents(
+      groupNodes(ns as any, groupableIds, gid, 'New Group', '#64748b') as any,
+    ))
+    setSelNode(gid)
+    setSelEdge(null)
+  }, [groupableIds, setNodes])
+
+  const ungroupSelection = useCallback(() => {
+    const g = selectedTopGroup
+    if (!g) return
+    setNodes((ns) => recomputeChildExtents(ungroupNodes(ns as any, g.id) as any))
+    setSelNode(null)
+    setSelEdge(null)
+  }, [selectedTopGroup, setNodes])
+
   const arrangeMenuItems: MenuItem[] = useMemo(
     () => [
       { id: 'tidy-up', label: 'Tidy up', shortcut: '⌘⇧T' },
@@ -993,12 +1025,12 @@ function Flow({
           { id: 'edge-straight', label: 'Straight', checked: edgeStyle === 'straight' },
         ],
       },
-      { id: 'group', label: 'Group selection', shortcut: '⌘G', disabled: true, separatorBefore: true },
-      { id: 'ungroup', label: 'Ungroup', shortcut: '⇧⌘G', disabled: true },
+      { id: 'group', label: 'Group selection', shortcut: '⌘G', disabled: !canGroup, separatorBefore: true },
+      { id: 'ungroup', label: 'Ungroup', shortcut: '⇧⌘G', disabled: !canUngroup },
       { id: 'bring-front', label: 'Bring to front', disabled: true, separatorBefore: true },
       { id: 'send-back', label: 'Send to back', disabled: true },
     ],
-    [layoutEngine, edgeStyle],
+    [layoutEngine, edgeStyle, canGroup, canUngroup],
   )
 
   const viewMenuItems: MenuItem[] = useMemo(
@@ -1061,7 +1093,9 @@ function Flow({
         else if (itemId === 'edge-default') applyEdgeStyle('default')
         else if (itemId === 'edge-smoothstep') applyEdgeStyle('smoothstep')
         else if (itemId === 'edge-straight') applyEdgeStyle('straight')
-        // group / ungroup / bring-front / send-back are disabled — never dispatched
+        else if (itemId === 'group') groupSelection()
+        else if (itemId === 'ungroup') ungroupSelection()
+        // bring-front / send-back are disabled — never dispatched
         return
       }
       if (menuId === 'edit') {
@@ -1125,6 +1159,8 @@ function Flow({
       deleteSelected,
       rf,
       toggleRailTab,
+      groupSelection,
+      ungroupSelection,
     ],
   )
 
