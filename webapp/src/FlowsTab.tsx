@@ -150,6 +150,11 @@ export function FlowsTab({
     const next = steps.slice()
     ;[next[i], next[j]] = [next[j], next[i]]
     onStepsChange(next)
+    // Keep the highlight on the step object that moved, not the fixed index
+    // — otherwise the card you were editing collapses and a different step
+    // expands in its place after a reorder.
+    if (activeStep === i) onSelStep(j)
+    else if (activeStep === j) onSelStep(i)
   }
 
   const addStep = () => {
