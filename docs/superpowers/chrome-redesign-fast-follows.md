@@ -66,6 +66,15 @@ Each was reviewed and judged safe to defer at the time.
 - **Open dialog not on the shared shell.** `OpenDiagramDialog` keeps its own `.opendlg*` markup + `.opendlg__scrim` (z-index 1000 vs the shared shell's 100). Harmless (mutually exclusive) but unify onto `DialogShell` when the Open dialog's deferred niceties (All/Recent/Open-tabs sub-tabs, real thumbnails, "edited Xm ago") are built.
 - **`buildSeed` now dead in graph.ts.** Reset no longer reseeds the demo graph, so `buildSeed` (graph.ts:509) and the module-level `GROUPS` seed it uses may be fully unused — remove in a cleanup sweep after confirming no other caller.
 
+## From Phase 10 (empty state + Group/Ungroup)
+
+- ~~`⌘⇧T` / `⌘⇧L` bypassed the `canTidy` gate~~ — **FIXED** in 453c763 (`tidy()` now no-ops when the canvas has zero nodes, so the keyboard shortcuts match the disabled pill/menu).
+- **Group/Ungroup keyboard shortcuts not wired.** The Arrange items advertise `⌘G` / `⇧⌘G` but only menu-click triggers them (consistent with the deferred View-zoom keys). Wire them (with `preventDefault`) in a later a11y/shortcuts pass, minding the browser `⌘G` "find next" clash.
+- **Group is top-level only.** `canGroup` requires all selected nodes be top-level (`parentId == null`); grouping already-nested nodes and ungrouping a nested group are deferred. Group also **preserves arrangement** (doesn't re-flow into a row) and sizes the new group from estimated service-node dimensions — a later pass could read React Flow `measured` sizes for a tighter fit.
+- **Notes are groupable.** `canGroup` includes selected `note` nodes (not just entities); grouping a note works end-to-end. If grouping should be entities-only, tighten the filter.
+- **Group + Ungroup can both enable at once** when the selection holds a top-level group AND 2+ top-level non-group nodes; `groupSelection` groups the non-group members and ignores the selected group. Coherent but slightly surprising — consider making the two mutually exclusive.
+- **Read-only / sample mode deferred.** No read-only flag exists on the model and nothing marks a diagram read-only; the §5b read-only chrome (muted status + disabled mutating controls) is deferred until there's a product trigger for it.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
