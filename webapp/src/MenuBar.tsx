@@ -277,6 +277,8 @@ export function MenuBar({
                         ]
                           .filter(Boolean)
                           .join(' ')}
+                        role="menuitem"
+                        aria-disabled={item.disabled}
                         onClick={() => handleItemClick(i, item)}
                         onMouseEnter={() => handleItemMouseEnter(i, item)}
                       >
@@ -296,6 +298,8 @@ export function MenuBar({
                                 ]
                                   .filter(Boolean)
                                   .join(' ')}
+                                role="menuitem"
+                                aria-disabled={subItem.disabled}
                                 onClick={() => handleSubItemClick(subItem)}
                                 onMouseEnter={() => setSubHighlight(j)}
                               >
