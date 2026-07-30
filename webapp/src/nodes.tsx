@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import {
   Handle,
   Position,
@@ -33,13 +34,23 @@ function initials(label: string): string {
 
 export function ServiceNode({ data, selected }: NodeProps) {
   const d = data as any
-  const iconUrl = d.icon ? `${ICON_BASE}/${d.icon}.svg` : null
+  // An icon slug that isn't in the dashboard-icons set 404s; fall back to the
+  // label's initials instead of showing a broken-image glyph. Reset the failure
+  // flag whenever the slug changes so a corrected icon can load.
+  const [iconBroken, setIconBroken] = useState(false)
+  useEffect(() => setIconBroken(false), [d.icon])
+  const iconUrl = d.icon && !iconBroken ? `${ICON_BASE}/${d.icon}.svg` : null
   return (
     <div className={`node ${selected ? 'selected' : ''}`}>
       <SideHandles />
       <div className="node__row">
         {iconUrl ? (
-          <img className="node__icon" src={iconUrl} alt="" />
+          <img
+            className="node__icon"
+            src={iconUrl}
+            alt=""
+            onError={() => setIconBroken(true)}
+          />
         ) : (
           <div className="node__icon node__icon--placeholder">
             {d.kind === 'actor' ? '👤' : initials(d.label)}

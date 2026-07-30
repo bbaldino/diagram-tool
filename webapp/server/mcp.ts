@@ -11,6 +11,16 @@ import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
 
+// Guidance for every `icon` field. Icons are slugs from the dashboard-icons set
+// (rendered as `<slug>.svg`); an unknown slug renders nothing, so agents must
+// not invent one — omitting the field falls back to the entity name's initials.
+const ICON_FIELD_DESC =
+  'OPTIONAL icon slug from the dashboard-icons set (github.com/homarr-labs/dashboard-icons), ' +
+  'e.g. "traefik", "plex", "postgresql", "nginx", "home-assistant", "grafana". Set this ONLY to a ' +
+  'slug you are confident exists in that set — do NOT guess, invent, or derive one from the label. ' +
+  'When unsure, omit it: the node then shows the entity name\'s initials, which looks better than a ' +
+  'missing icon.'
+
 // ---------------------------------------------------------------------------
 // Argument shapes for the write handlers.
 // ---------------------------------------------------------------------------
@@ -580,7 +590,12 @@ export const edgeAttrsShape = {
 const authorSpecShape = {
   name: z.string(),
   type: z.enum(['canvas', 'topology', 'call-flow']).optional(),
-  nodes: z.array(z.union([z.string(), z.object({ label: z.string(), icon: z.string().optional() })])),
+  nodes: z.array(
+    z.union([
+      z.string(),
+      z.object({ label: z.string(), icon: z.string().optional().describe(ICON_FIELD_DESC) }),
+    ]),
+  ),
   edges: z
     .array(
       z.tuple([
@@ -653,7 +668,7 @@ export function createMcpServer(store: Store): McpServer {
       inputSchema: {
         diagramId: z.string(),
         label: z.string(),
-        icon: z.string().optional(),
+        icon: z.string().optional().describe(ICON_FIELD_DESC),
         status: z.enum(['up', 'down', 'idle']).optional(),
         position: positionShape.optional(),
         parentId: z.string().nullable().optional(),
@@ -746,7 +761,7 @@ export function createMcpServer(store: Store): McpServer {
 
   const nodePatchShape = z.object({
     label: z.string().optional(),
-    icon: z.string().optional(),
+    icon: z.string().optional().describe(ICON_FIELD_DESC),
     sub: z.string().optional(),
     status: z.enum(['up', 'down', 'idle']).optional(),
     actor: z.boolean().optional(),
