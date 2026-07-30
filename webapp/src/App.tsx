@@ -327,12 +327,19 @@ function Flow({
   // re-tag effect (so step-only changes re-class without a re-seed).
   const flowClassOf = useCallback(
     (id: string): string | undefined => {
-      if (flowMode === 'none' || !currentFlow) return undefined
+      // The walkthrough (play) owns the canvas, so it always lights up. Editing
+      // a flow only lights up WHILE the Flows tab is the visible rail tab —
+      // otherwise selecting a flow left the diagram stuck dimmed with no way back
+      // to normal. Switching to the Inspector tab (or hiding the rail) now clears
+      // the highlight and returns the canvas to normal.
+      const lit =
+        flowMode === 'play' || (flowMode === 'edit' && railVisible && railTab === 'flows')
+      if (!lit || !currentFlow) return undefined
       const activeStep = flowMode === 'edit' ? selStep : currentStep
       const s = flowStates(currentFlow, activeStep)[id]
       return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
     },
-    [flowMode, currentFlow, currentStep, selStep],
+    [flowMode, currentFlow, currentStep, selStep, railVisible, railTab],
   )
 
   // Tag every live node/edge with a flow-walkthrough class (flow-active /
@@ -604,7 +611,11 @@ function Flow({
 
   const toggleInStep = useCallback(
     (elementId: string) => {
-      if (flowMode !== 'edit' || !currentFlow || !activeId) return
+      // Canvas clicks only toggle step membership while actively editing a flow
+      // in the visible Flows tab; on the Inspector tab (or with the rail hidden)
+      // a node/edge click selects normally.
+      if (flowMode !== 'edit' || !currentFlow || !activeId || !railVisible || railTab !== 'flows')
+        return
       if (!currentFlow.steps[selStep]) return
       const steps = currentFlow.steps.map((s, i) =>
         i !== selStep
@@ -618,7 +629,7 @@ function Flow({
       )
       setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
     },
-    [flowMode, currentFlow, activeId, selStep, setModel],
+    [flowMode, currentFlow, activeId, selStep, setModel, railVisible, railTab],
   )
 
   const chipLabel = useCallback(
