@@ -19,7 +19,6 @@ import {
 import { nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
 import {
-  buildSeed,
   makeEdge,
   restyleEdge,
   applyReconnect,
@@ -223,7 +222,7 @@ function Flow({
   saveState: BarSaveState
   onRetrySave: () => void
 }) {
-  const { showPrompt, showConfirm } = useDialogs()
+  const { showPrompt } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -944,6 +943,7 @@ function Flow({
         label: 'Name',
         defaultValue: cur?.name,
         helperText: 'Saved to model.json on confirm.',
+        confirmText: 'Rename',
       })
     )?.trim()
     if (name) renameDiagramById(activeId, name)
