@@ -842,6 +842,9 @@ function Flow({
   }, [activeId])
 
   const tidy = useCallback(() => {
+    // Nothing to lay out on an empty canvas — keep every caller (menu, pill,
+    // and the ⌘⇧T / ⌘⇧L shortcuts) consistent with the disabled Tidy controls.
+    if (nodes.length === 0) return
     // Run the server-side layout (elkjs/Graphviz per the selector); the
     // resulting moves stream back over SSE and re-seed the canvas. Then
     // fit the view once the new positions have landed.
@@ -852,7 +855,7 @@ function Flow({
     })
       .catch(() => {})
       .finally(() => setTimeout(() => rf.fitView({ padding: 0.2 }), 250))
-  }, [rf, activeId, layoutEngine])
+  }, [rf, activeId, layoutEngine, nodes.length])
 
   const shrinkGroup = useCallback(() => {
     if (!selNode) return
