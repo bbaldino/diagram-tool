@@ -49,7 +49,13 @@ export function DiagramTabs({
       </div>
       {meta && (
         <div className="tabstrip__meta">
-          {meta.entities} entities · {meta.groups} groups · {meta.edges} edges
+          {(() => {
+            const plural = (n: number, one: string) =>
+              `${n} ${n === 1 ? one : one + (one.endsWith('y') ? '' : 's')}`
+            // entities is irregular: "1 entity" / "2 entities"
+            const entities = `${meta.entities} ${meta.entities === 1 ? 'entity' : 'entities'}`
+            return `${entities} · ${plural(meta.groups, 'group')} · ${plural(meta.edges, 'edge')}`
+          })()}
         </div>
       )}
     </div>

@@ -273,7 +273,8 @@ function Flow({
   // Re-center the canvas whenever the rail is shown/hidden — its width change
   // shifts the available viewport.
   useEffect(() => {
-    rf.fitView({ padding: 0.2 })
+    const raf = requestAnimationFrame(() => rf.fitView({ padding: 0.2 }))
+    return () => cancelAnimationFrame(raf)
   }, [railVisible, rf])
   const loaded = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -982,12 +983,13 @@ function Flow({
     () => nodes.filter((n) => n.selected && n.type !== 'group' && n.parentId == null).map((n) => n.id),
     [nodes],
   )
-  const canGroup = groupableIds.length >= 2
   const selectedTopGroup = useMemo(
     () => nodes.find((n) => n.selected && n.type === 'group' && n.parentId == null) ?? null,
     [nodes],
   )
-  const canUngroup = selectedTopGroup != null
+  const selectedNodes = useMemo(() => nodes.filter((n) => n.selected), [nodes])
+  const canGroup = groupableIds.length >= 2 && !selectedNodes.some((n) => n.type === 'group')
+  const canUngroup = selectedNodes.length === 1 && selectedTopGroup != null
 
   // Fresh-diagram empty state: an open diagram with no entities on the canvas
   // yet. canTidy gates Tidy/Auto-layout (nothing to arrange when empty).
@@ -1187,7 +1189,7 @@ function Flow({
       } else if (key === 'e' && e.shiftKey) {
         e.preventDefault()
         exportJson()
-      } else if (key === 'o') {
+      } else if (key === 'o' && !e.shiftKey) {
         e.preventDefault()
         setOpenDialog(true)
       }
@@ -1493,7 +1495,7 @@ function Flow({
             onTidy={tidy}
             engine={layoutEngine}
             engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
-            onChooseEngine={(id) => chooseEngine(id as 'elk' | 'graphviz')}
+            onChooseEngine={(id) => { if (id === 'elk' || id === 'graphviz') chooseEngine(id) }}
             onReRun={tidy}
             canTidy={canTidy}
           />

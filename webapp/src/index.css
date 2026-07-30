@@ -566,7 +566,7 @@ input, textarea, [contenteditable="true"] {
 
 .rightrail {
   width: 292px; border-left: 1px solid #dfe3ea; background: #fff;
-  height: 100%; display: flex; flex-direction: column;
+  height: 100%; display: flex; flex-direction: column; flex-shrink: 0;
 }
 .rightrail__tabs {
   padding: 7px 8px 0; border-bottom: 1px solid #eceff3;
