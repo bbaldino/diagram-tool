@@ -37,6 +37,13 @@ Each was reviewed and judged safe to defer at the time.
 - **View zoom items show ⌘+/⌘−/⌘0/⇧1 hints but those keys aren't wired** (only the menu click works; the keys were intentionally not bound to avoid clobbering browser zoom). If desired later, wire them with `preventDefault` (best-effort) or drop the hints.
 - **Snap-to-grid defaults OFF** (behavior-preserving) rather than the handoff's "on by default" — deliberate; revisit if the redesign wants grid-snap on by default.
 
+## From Phase 6 (right rail — Inspector + Flows tabs)
+
+- **`fitView` vs React Flow's ResizeObserver timing** — the `useEffect([railVisible])` calls `rf.fitView` synchronously after commit, but RF updates its container width via a ResizeObserver that fires afterward, so the fit can momentarily run against pre-resize dimensions. Works fine in practice (Task-3 verified); wrapping the `fitView` call in `requestAnimationFrame` removes the dependence on RF's resize timing.
+- **`.rightrail` lacks `flex-shrink: 0`** — with `width:292px` as flex-basis and positive free space it holds 292px, but below a ~292px viewport it could shrink. Desktop-only scope makes it academic; add `flex-shrink:0` to harden.
+- **Flows tab is the relocated (old) flow UI, not the handoff's redesign** — the §3a from-scratch Flows-tab (flow-list rows + steps block + ⋯ menus) was deferred; the existing flow select/+Flow/Edit/Play/Rename/Delete + FlowPanel were moved in as-is.
+- **Inspector fields not restyled to §5a** — the Inspector's internal markup was kept as-is (just hosted in the rail); the pixel-perfect rail field styling (labels/inputs/toggles/chips) is a later restyle pass.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
