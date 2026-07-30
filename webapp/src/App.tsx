@@ -844,48 +844,57 @@ function Flow({
 
   // Double-click on empty canvas opens the Add menu at the cursor. Ignore
   // double-clicks that land on a node/edge/handle — only the pane counts.
-  // Detect a double-click on the empty canvas ourselves rather than relying on
-  // the native `dblclick` event. Browsers only emit `dblclick` when the two
-  // clicks land at essentially the same pixel, so a few pixels of hand-drift
-  // between clicks silently suppressed it — the intermittent "double-click
-  // doesn't add an entity". Two clicks within 500ms and ~12px of each other,
-  // both on the empty canvas surface, count as a double-click here.
-  const lastCanvasClick = useRef<{ t: number; x: number; y: number } | null>(null)
-  const onCanvasClick = useCallback(
-    (e: React.MouseEvent) => {
-      const t = e.target as HTMLElement
-      // Only clicks on the empty canvas surface pair into an add. Anything that
-      // owns its own interaction — a node/edge/handle, a floating panel (pill,
-      // legend, toolbar, controls, minimap are all `.react-flow__panel`), the
-      // add-menu popover, or the playback transport bar — resets the pairing so
-      // a click on a control can't combine with a later canvas click.
+  // Detect a double-click on the empty canvas ourselves, from POINTERDOWN — not
+  // the native `dblclick`, and not `click`. Both are movement-fragile: the
+  // browser suppresses `dblclick` when the two clicks drift a few px apart, and
+  // suppresses `click` when a single press micro-drags — which is why
+  // "double-click to add" intermittently did nothing. `pointerdown` always
+  // fires regardless of movement. We listen in the CAPTURE phase at the document
+  // (so React Flow's pane / d3-zoom handlers can't stop it) and scope to the
+  // canvas wrapper. Two primary-button presses within 500ms and ~16px, both on
+  // the empty canvas surface, open the add menu.
+  useEffect(() => {
+    let lastDown: { t: number; x: number; y: number } | null = null
+    const onDown = (e: PointerEvent) => {
+      if (e.button !== 0) return
+      const wrap = wrapperRef.current
+      const t = e.target as HTMLElement | null
+      if (!wrap || !t || !wrap.contains(t)) return
+      // Anything that owns its own interaction resets the pairing so a press on
+      // a control can't combine with a later canvas press.
       if (
         t.closest(
           '.react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__panel, .addmenu, .transport',
         )
       ) {
-        lastCanvasClick.current = null
+        lastDown = null
         return
       }
       const now = e.timeStamp
-      const prev = lastCanvasClick.current
+      const prev = lastDown
       if (
         prev &&
         now - prev.t < 500 &&
-        Math.abs(e.clientX - prev.x) <= 12 &&
-        Math.abs(e.clientY - prev.y) <= 12
+        Math.abs(e.clientX - prev.x) <= 16 &&
+        Math.abs(e.clientY - prev.y) <= 16
       ) {
-        lastCanvasClick.current = null
+        lastDown = null
         const flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY })
         const sx = Math.min(e.clientX, window.innerWidth - 240)
         const sy = Math.min(e.clientY, window.innerHeight - 260)
-        setAddMenu({ sx, sy, flow })
+        // Open on the NEXT frame, not synchronously: a mouse press fires
+        // `pointerdown` then `mousedown`, and the add-menu dismisses on outside
+        // `mousedown` — opening now would let this same press's `mousedown`
+        // immediately close it. Deferring past the current gesture's events
+        // keeps it open.
+        requestAnimationFrame(() => setAddMenu({ sx, sy, flow }))
         return
       }
-      lastCanvasClick.current = { t: now, x: e.clientX, y: e.clientY }
-    },
-    [rf],
-  )
+      lastDown = { t: now, x: e.clientX, y: e.clientY }
+    }
+    document.addEventListener('pointerdown', onDown, true)
+    return () => document.removeEventListener('pointerdown', onDown, true)
+  }, [rf])
 
   const exportJson = useCallback(() => {
     if (!model || !activeId) return
@@ -1525,7 +1534,6 @@ function Flow({
         onMouseMove={(e) => {
           pointer.current = { x: e.clientX, y: e.clientY }
         }}
-        onClick={onCanvasClick}
       >
       <ReactFlow
         className={flowMode === 'play' ? 'is-flow-play' : undefined}
