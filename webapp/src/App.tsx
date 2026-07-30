@@ -224,6 +224,12 @@ function Flow({
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
+  // View menu toggles — gate the Legend/Minimap/Inspector renders and the
+  // ReactFlow snap-to-grid behavior. Client-only, never persisted.
+  const [showLegend, setShowLegend] = useState(true)
+  const [showMinimap, setShowMinimap] = useState(true)
+  const [showInspector, setShowInspector] = useState(true)
+  const [snapToGrid, setSnapToGrid] = useState(false)
   const [layoutEngine, setLayoutEngine] = useState<'elk' | 'graphviz'>(
     () => (localStorage.getItem('homelab-layout-engine') as 'elk' | 'graphviz') || 'elk',
   )
@@ -960,6 +966,28 @@ function Flow({
     [layoutEngine, edgeStyle],
   )
 
+  const viewMenuItems: MenuItem[] = useMemo(
+    () => [
+      { id: 'zoom-in', label: 'Zoom in', shortcut: '⌘+' },
+      { id: 'zoom-out', label: 'Zoom out', shortcut: '⌘−' },
+      { id: 'zoom-fit', label: 'Zoom to fit', shortcut: '⇧1' },
+      { id: 'zoom-actual', label: 'Actual size', shortcut: '⌘0' },
+      { id: 'legend', label: 'Legend', checked: showLegend, separatorBefore: true },
+      { id: 'minimap', label: 'Minimap', checked: showMinimap },
+      { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: showInspector },
+      { id: 'snap', label: 'Snap to grid', checked: snapToGrid },
+      {
+        id: 'flows-panel',
+        label: 'Flows panel',
+        shortcut: '⌘⇧F',
+        checked: false,
+        disabled: true,
+        separatorBefore: true,
+      },
+    ],
+    [showLegend, showMinimap, showInspector, snapToGrid],
+  )
+
   const hasSelection = selNode != null || selEdge != null
   const editMenuItems: MenuItem[] = useMemo(
     () => [
@@ -976,15 +1004,14 @@ function Flow({
     [undoFlags.canUndo, undoFlags.canRedo, hasSelection],
   )
 
-  // View opens with an empty item list this phase — File, Edit, and Arrange are wired.
   const menus = useMemo(
     () => [
       { id: 'file' as const, title: 'File', items: fileMenuItems },
       { id: 'edit' as const, title: 'Edit', items: editMenuItems },
-      { id: 'view' as const, title: 'View', items: [] },
+      { id: 'view' as const, title: 'View', items: viewMenuItems },
       { id: 'arrange' as const, title: 'Arrange', items: arrangeMenuItems },
     ],
-    [fileMenuItems, editMenuItems, arrangeMenuItems],
+    [fileMenuItems, editMenuItems, viewMenuItems, arrangeMenuItems],
   )
 
   const onMenuItem = useCallback(
@@ -1008,6 +1035,18 @@ function Flow({
         else if (itemId === 'redo') doRedo()
         else if (itemId === 'delete') deleteSelected()
         // cut/copy/paste/duplicate/select-all/deselect are disabled — never dispatched
+        return
+      }
+      if (menuId === 'view') {
+        if (itemId === 'zoom-in') rf.zoomIn()
+        else if (itemId === 'zoom-out') rf.zoomOut()
+        else if (itemId === 'zoom-fit') rf.fitView({ padding: 0.2 })
+        else if (itemId === 'zoom-actual') rf.zoomTo(1)
+        else if (itemId === 'legend') setShowLegend((v) => !v)
+        else if (itemId === 'minimap') setShowMinimap((v) => !v)
+        else if (itemId === 'inspector') setShowInspector((v) => !v)
+        else if (itemId === 'snap') setSnapToGrid((v) => !v)
+        // flows-panel is disabled — never dispatched
         return
       }
       if (menuId !== 'file') return
@@ -1052,6 +1091,7 @@ function Flow({
       doUndo,
       doRedo,
       deleteSelected,
+      rf,
     ],
   )
 
@@ -1139,6 +1179,7 @@ function Flow({
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
       else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
       else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
+      else if (key === 'i') { e.preventDefault(); setShowInspector((v) => !v) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -1328,10 +1369,12 @@ function Flow({
         connectionMode={ConnectionMode.Loose}
         zoomOnDoubleClick={false}
         proOptions={{ hideAttribution: true }}
+        snapToGrid={snapToGrid}
+        snapGrid={[16, 16]}
       >
         <Background gap={22} color="#e2e8f0" />
         <Controls />
-        <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />
+        {showMinimap && <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />}
 
         <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
           <CanvasPill
@@ -1397,41 +1440,45 @@ function Flow({
               onExit={() => setFlowMode('none')}
             />
           ) : (
-            <Inspector
-              node={selectedNode}
-              edge={selectedEdge}
-              groups={groupParentOptions}
-              onNodeData={updateNodeData}
-              onNodeParent={reparent}
-              onEdge={updateEdge}
-              onShrink={shrinkGroup}
-              onGroupSize={setGroupSize}
-              onDelete={deleteSelected}
-              fields={inspectorFields}
-              onFieldShow={onFieldShow}
-              diagramColors={diagramColors}
-            />
+            showInspector && (
+              <Inspector
+                node={selectedNode}
+                edge={selectedEdge}
+                groups={groupParentOptions}
+                onNodeData={updateNodeData}
+                onNodeParent={reparent}
+                onEdge={updateEdge}
+                onShrink={shrinkGroup}
+                onGroupSize={setGroupSize}
+                onDelete={deleteSelected}
+                fields={inspectorFields}
+                onFieldShow={onFieldShow}
+                diagramColors={diagramColors}
+              />
+            )
           )}
         </Panel>
 
         <Panel position="top-left" className="stack-tl">
-          <div className="panel">
-            <h4>Legend</h4>
-            <div className="legend__row">
-              <span
-                className="legend__line"
-                style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
-              />
-              <span>dashed = inferred (guess)</span>
+          {showLegend && (
+            <div className="panel">
+              <h4>Legend</h4>
+              <div className="legend__row">
+                <span
+                  className="legend__line"
+                  style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+                />
+                <span>dashed = inferred (guess)</span>
+              </div>
+              <h4 style={{ marginTop: 10 }}>Status</h4>
+              <div className="legend__row">
+                <span className="legend__dot status-up" /> up
+              </div>
+              <div className="legend__row">
+                <span className="legend__dot status-idle" /> on-demand / idle
+              </div>
             </div>
-            <h4 style={{ marginTop: 10 }}>Status</h4>
-            <div className="legend__row">
-              <span className="legend__dot status-up" /> up
-            </div>
-            <div className="legend__row">
-              <span className="legend__dot status-idle" /> on-demand / idle
-            </div>
-          </div>
+          )}
         </Panel>
       </ReactFlow>
 
