@@ -1179,7 +1179,7 @@ function Flow({
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
       else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
       else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
-      else if (key === 'i') { e.preventDefault(); setShowInspector((v) => !v) }
+      else if (key === 'i' && !e.shiftKey && !e.altKey) { e.preventDefault(); setShowInspector((v) => !v) }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)

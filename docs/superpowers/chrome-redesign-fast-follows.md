@@ -31,6 +31,12 @@ Each was reviewed and judged safe to defer at the time.
 - **`role="menuitem"` on pill dropdown items** — the pill sets it; MenuBar's `.menu__item`s don't. Not a regression (the pill is arguably more correct); align them in an a11y pass.
 - **Tidy vs Re-run layout both call `tidy()`** — the design nominally separates Arrange ▸ Tidy up (⌘⇧T) from Auto-layout ▸ Re-run layout (⌘⇧L); collapsed onto one `/api/layout` call for now. Revisit when the Arrange menu / ⌘⇧T land.
 
+## From Phase 5 (Edit + View menus)
+
+- ~~⌘I Inspector-toggle intercepted Ctrl+Shift+I (DevTools)~~ — **FIXED** during Phase 5 (added `&& !e.shiftKey && !e.altKey` to the ⌘I handler so Ctrl+Shift+I / ⌘⌥I pass through to the browser).
+- **View zoom items show ⌘+/⌘−/⌘0/⇧1 hints but those keys aren't wired** (only the menu click works; the keys were intentionally not bound to avoid clobbering browser zoom). If desired later, wire them with `preventDefault` (best-effort) or drop the hints.
+- **Snap-to-grid defaults OFF** (behavior-preserving) rather than the handoff's "on by default" — deliberate; revisit if the redesign wants grid-snap on by default.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
