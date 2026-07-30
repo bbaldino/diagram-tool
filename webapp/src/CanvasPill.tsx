@@ -15,6 +15,7 @@ interface Props {
   engines: Engine[]
   onChooseEngine: (id: string) => void
   onReRun: () => void
+  canTidy?: boolean
 }
 
 // The floating canvas pill: the five commands used often enough to live on
@@ -32,6 +33,7 @@ export function CanvasPill({
   engines,
   onChooseEngine,
   onReRun,
+  canTidy,
 }: Props) {
   const [layoutOpen, setLayoutOpen] = useState(false)
   const layoutRef = useRef<HTMLDivElement>(null)
@@ -91,7 +93,7 @@ export function CanvasPill({
         <span>↷</span>
       </button>
       <div className="pill__divider" />
-      <button type="button" className="pill__text" onClick={onTidy}>
+      <button type="button" className="pill__text" onClick={onTidy} disabled={canTidy === false}>
         <span className="pill__text-icon">◫</span>
         <span>Tidy</span>
       </button>

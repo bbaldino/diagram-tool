@@ -986,6 +986,11 @@ function Flow({
   )
   const canUngroup = selectedTopGroup != null
 
+  // Fresh-diagram empty state: an open diagram with no entities on the canvas
+  // yet. canTidy gates Tidy/Auto-layout (nothing to arrange when empty).
+  const isEmptyCanvas = activeId != null && nodes.length === 0
+  const canTidy = nodes.length > 0
+
   const groupSelection = useCallback(() => {
     if (groupableIds.length < 2) return
     const gid = newId()
@@ -1006,14 +1011,14 @@ function Flow({
 
   const arrangeMenuItems: MenuItem[] = useMemo(
     () => [
-      { id: 'tidy-up', label: 'Tidy up', shortcut: '⌘⇧T' },
+      { id: 'tidy-up', label: 'Tidy up', shortcut: '⌘⇧T', disabled: !canTidy },
       {
         id: 'auto-layout',
         label: 'Auto-layout',
         submenu: [
           { id: 'engine-graphviz', label: 'Graphviz', checked: layoutEngine === 'graphviz' },
           { id: 'engine-elk', label: 'elkjs', checked: layoutEngine === 'elk' },
-          { id: 'rerun-layout', label: 'Re-run layout', shortcut: '⌘⇧L', separatorBefore: true },
+          { id: 'rerun-layout', label: 'Re-run layout', shortcut: '⌘⇧L', separatorBefore: true, disabled: !canTidy },
         ],
       },
       {
@@ -1030,7 +1035,7 @@ function Flow({
       { id: 'bring-front', label: 'Bring to front', disabled: true, separatorBefore: true },
       { id: 'send-back', label: 'Send to back', disabled: true },
     ],
-    [layoutEngine, edgeStyle, canGroup, canUngroup],
+    [layoutEngine, edgeStyle, canGroup, canUngroup, canTidy],
   )
 
   const viewMenuItems: MenuItem[] = useMemo(
@@ -1487,6 +1492,7 @@ function Flow({
             engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
             onChooseEngine={(id) => chooseEngine(id as 'elk' | 'graphviz')}
             onReRun={tidy}
+            canTidy={canTidy}
           />
         </Panel>
 
@@ -1559,6 +1565,10 @@ function Flow({
             setFlowMode('edit')
           }}
         />
+      )}
+
+      {isEmptyCanvas && (
+        <div className="canvas-fresh">Double-click anywhere to add your first entity</div>
       )}
       </div>
       {railVisible && (
