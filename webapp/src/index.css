@@ -669,3 +669,131 @@ input, textarea, [contenteditable="true"] {
   font-size: 10.5px; background: #eceff3; padding: 1px 5px; border-radius: 4px;
 }
 .rightrail__body { flex: 1; overflow: auto; }
+
+/* ---------- Flows tab (chrome redesign phase 7) ---------- */
+.flowstab {
+  height: 100%; display: flex; flex-direction: column;
+  font-size: 13px; color: #1e293b;
+}
+.flowstab__list {
+  flex: none; padding: 8px; display: flex; flex-direction: column; gap: 2px;
+  border-bottom: 1px solid #eceff3;
+}
+.flowstab__row {
+  position: relative; padding: 8px 9px; border-radius: 7px;
+  display: flex; align-items: center; gap: 9px; cursor: pointer;
+}
+.flowstab__row:hover { background: #f6f7f9; }
+.flowstab__row.is-active { background: #f1f2f9; }
+.flowstab__row-arrow { font-size: 11px; color: #94a3b8; flex: none; }
+.flowstab__row-arrow.is-active { color: #4338ca; }
+.flowstab__row-name {
+  flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.flowstab__row.is-active .flowstab__row-name { font-weight: 650; }
+.flowstab__row-count { font-size: 11.5px; color: #94a3b8; flex: none; }
+.flowstab__row-more {
+  flex: none; background: none; border: none; cursor: pointer; color: #64748b;
+  font-size: 13px; padding: 2px 4px; border-radius: 4px; line-height: 1;
+}
+.flowstab__row-more:hover { background: #eceff3; }
+.flowstab__new {
+  padding: 8px 9px; font-size: 12.5px; font-weight: 600; color: #4f46e5; cursor: pointer;
+  border-radius: 7px;
+}
+.flowstab__new:hover { background: #f6f7f9; }
+/* Reuses .menu / .menu__item / .menu__label styling; only position + shadow differ
+   since this popover floats near a row/footer button rather than a menu-bar title. */
+.flowstab__menu {
+  position: absolute; top: 100%; right: 0; z-index: 80; width: 160px;
+  border-radius: 9px; box-shadow: 0 12px 30px rgba(15, 23, 42, 0.13);
+}
+
+.flowstab__steps { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: auto; }
+.flowstab__steps-head {
+  flex: none; padding: 11px 13px 7px; display: flex; align-items: baseline; justify-content: space-between;
+}
+.flowstab__steps-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.09em; color: #64748b;
+}
+.flowstab__reorder { font-size: 11.5px; font-weight: 600; color: #4f46e5; cursor: pointer; }
+.flowstab__steplist {
+  flex: 1; padding: 4px 12px 12px; display: flex; flex-direction: column; gap: 7px;
+}
+.flowstab__step {
+  padding: 8px 9px; border: 1px solid #eceff3; border-radius: 8px;
+  display: flex; align-items: center; gap: 8px; cursor: pointer;
+}
+.flowstab__step.is-sel {
+  flex-direction: column; align-items: stretch; gap: 0; cursor: default;
+  padding: 0; border: 1px solid #c7cdfa; border-radius: 8px; overflow: hidden;
+}
+.flowstab__step-idx {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; font-weight: 700; color: #4338ca; flex: none;
+}
+.flowstab__step-idx--muted { color: #94a3b8; }
+.flowstab__step-title-view { font-size: 12.5px; color: #475569; flex: 1; }
+.flowstab__step-reorder { flex: none; display: flex; gap: 2px; }
+.flowstab__step-reorder button {
+  width: 20px; height: 20px; border: 1px solid #dfe3ea; border-radius: 5px;
+  background: #fff; color: #64748b; font-size: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.flowstab__step-reorder button:disabled { color: #cbd5e1; cursor: default; }
+.flowstab__step-head {
+  background: #f1f2f9; padding: 8px 9px; display: flex; align-items: center; gap: 8px;
+}
+.flowstab__step-title {
+  flex: 1; font-size: 12.5px; font-weight: 600; border: none; background: none;
+  color: #1e293b; padding: 0; outline: none;
+}
+.flowstab__step-drag { color: #94a3b8; font-size: 12px; flex: none; }
+.flowstab__step-body { padding: 9px; display: flex; flex-wrap: wrap; gap: 6px; }
+.flowstab__chip {
+  display: inline-flex; align-items: center; gap: 4px; font-size: 11px;
+  background: #eef0fb; color: #4338ca; padding: 3px 7px; border-radius: 5px;
+}
+.flowstab__chip-x {
+  border: none; background: none; color: inherit; cursor: pointer; padding: 0;
+  font-size: 11px; line-height: 1;
+}
+.flowstab__addchip {
+  display: inline-flex; align-items: center; font-size: 11px; color: #64748b;
+  border: 1px dashed #cbd5e1; padding: 3px 7px; border-radius: 5px;
+}
+.flowstab__addstep {
+  flex: none; margin-top: 2px; padding: 8px 0; text-align: center;
+  border: 1px dashed #cbd5e1; border-radius: 8px; font-size: 12.5px; color: #64748b;
+  cursor: pointer;
+}
+
+.flowstab__footer {
+  flex: none; border-top: 1px solid #eceff3; background: #fbfbfc;
+  padding: 11px 12px; display: flex; gap: 7px;
+}
+.flowstab__play {
+  flex: 1; text-align: center; padding: 8px 0; border-radius: 7px;
+  background: #4f46e5; color: #fff; font-size: 12.5px; font-weight: 600;
+  border: none; cursor: pointer;
+}
+.flowstab__morewrap { position: relative; flex: none; }
+.flowstab__more {
+  width: 34px; height: 100%; border: 1px solid #dfe3ea; border-radius: 7px;
+  font-size: 13px; color: #64748b; background: #fff; cursor: pointer;
+}
+.flowstab__more:hover { background: #f6f7f9; }
+.flowstab__morewrap .flowstab__menu { bottom: 100%; top: auto; right: 0; margin-bottom: 6px; }
+
+.flowstab__empty {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; padding: 26px 18px; gap: 12px;
+}
+.flowstab__empty-tile {
+  width: 34px; height: 34px; border-radius: 9px; background: #f1f2f4;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; color: #94a3b8;
+}
+.flowstab__empty-title { font-size: 13px; font-weight: 600; }
+.flowstab__empty-body { font-size: 12px; line-height: 1.55; color: #64748b; }
