@@ -38,7 +38,7 @@ import {
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
-import { FlowsPane } from './FlowsPane'
+import { FlowsTab } from './FlowsTab'
 import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { CanvasPill } from './CanvasPill'
@@ -252,13 +252,9 @@ function Flow({
     flow: { x: number; y: number }
   } | null>(null)
   const rf = useReactFlow()
-  // Right rail (Inspector | Flows) visibility + active tab. showRailTab always
-  // reveals the rail on the requested tab; toggleRailTab collapses the rail
-  // when that tab is already the one showing (⌘I / ⌘⇧F / View-menu behavior).
-  const showRailTab = useCallback((t: 'inspector' | 'flows') => {
-    setRailTab(t)
-    setRailVisible(true)
-  }, [])
+  // Right rail (Inspector | Flows) visibility + active tab. toggleRailTab
+  // collapses the rail when that tab is already the one showing (⌘I / ⌘⇧F /
+  // View-menu behavior).
   const toggleRailTab = useCallback(
     (t: 'inspector' | 'flows') => {
       setRailVisible((v) => !(v && railTab === t))
@@ -541,6 +537,7 @@ function Flow({
   // ---- flow handlers ----
   const selectFlow = useCallback((id: string | null) => {
     setCurrentFlowId(id)
+    setFlowMode(id ? 'edit' : 'none')
     setCurrentStep(0)
     setSelStep(0)
   }, [])
@@ -579,6 +576,19 @@ function Flow({
     [activeId, currentFlowId, setModel],
   )
 
+  const duplicateFlow = useCallback(
+    (id: string) => {
+      if (!activeId) return
+      const f = active?.flows?.find((x) => x.id === id)
+      if (!f) return
+      const copyId = newId()
+      const steps = f.steps.map((s) => ({ ...s, id: newId() }))
+      setModel((m) => M.addFlow(m, activeId, { id: copyId, name: `${f.name} copy`, steps }))
+      selectFlow(copyId)
+    },
+    [activeId, active, setModel, selectFlow],
+  )
+
   const toggleInStep = useCallback(
     (elementId: string) => {
       if (flowMode !== 'edit' || !currentFlow || !activeId) return
@@ -596,6 +606,17 @@ function Flow({
       setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
     },
     [flowMode, currentFlow, activeId, selStep, setModel],
+  )
+
+  const chipLabel = useCallback(
+    (elementId: string) => {
+      const n = nodes.find((x) => x.id === elementId)
+      if (n) return (n.data as any).label
+      const e = edges.find((x) => x.id === elementId)
+      if (e) return `${e.label ?? 'edge'} →`
+      return elementId
+    },
+    [nodes, edges],
   )
 
   // Ad-hoc-first: creation always mints a fresh diagram-local node (no shared
@@ -1223,6 +1244,8 @@ function Flow({
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault()
         setCurrentStep((s) => Math.max(0, s - 1))
+      } else if (e.key === 'Escape') {
+        setFlowMode('edit')
       }
     }
     window.addEventListener('keydown', onKey)
@@ -1476,26 +1499,26 @@ function Flow({
             />
           }
           flows={
-            <FlowsPane
+            <FlowsTab
               flows={active?.flows ?? []}
               currentFlowId={currentFlowId}
-              onSelectFlow={selectFlow}
-              onCreateFlow={createFlow}
-              flowMode={flowMode}
-              onSetMode={(m) => {
-                setFlowMode(m)
-                if (m !== 'none') showRailTab('flows')
-              }}
               currentFlow={currentFlow}
+              mode={flowMode}
               selStep={selStep}
               currentStep={currentStep}
-              onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
-              onStepsChange={(steps) =>
-                activeId && setModel((m) => M.updateFlow(m, activeId, currentFlow!.id, { steps }))
-              }
-              onExit={() => setFlowMode('none')}
+              onSelStep={(i) => (flowMode === 'play' ? setCurrentStep(i) : setSelStep(i))}
+              onSelectFlow={selectFlow}
+              onCreateFlow={createFlow}
               onRenameFlow={renameFlowById}
+              onDuplicateFlow={duplicateFlow}
               onDeleteFlow={deleteFlowById}
+              onStepsChange={(steps) =>
+                activeId && currentFlow && setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
+              }
+              newStepId={newId}
+              onPlay={() => setFlowMode('play')}
+              onStop={() => setFlowMode('edit')}
+              chipLabel={chipLabel}
             />
           }
         />
