@@ -21,6 +21,13 @@ export function ImportDialog(props: {
       try {
         const raw = JSON.parse(text)
         const model = normalizeModel(raw)
+        if (model.diagrams.length === 0) {
+          // normalizeModel maps any valid-JSON-but-not-a-model file (or an old
+          // catalog-shaped file) to an empty model. Treat that as an error so the
+          // replace path can't silently wipe the whole model with nothing.
+          setParsed({ ok: false, fileName: file.name, error: 'No diagrams found in this file' })
+          return
+        }
         setParsed({ ok: true, model, fileName: file.name, diagramCount: model.diagrams.length })
       } catch (err) {
         const msg = err instanceof SyntaxError ? err.message : 'Not valid JSON.'
