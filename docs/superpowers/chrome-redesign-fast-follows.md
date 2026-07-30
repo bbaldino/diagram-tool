@@ -91,6 +91,14 @@ Most Phase-1→10 fast-follows above were CLEARED in this sweep: dead `.dialog*`
 - **Select `▾` on Firefox** — the custom chevron uses `appearance:none` + `-webkit-appearance:none` but not `-moz-appearance:none`; older Firefox may show a faint native arrow. Add `-moz-appearance:none`.
 - **Empty state is left-aligned** — the §5a "Nothing selected" tile/title/body stack is left-aligned (matches the rest of the inspector padding); center it if the design intended a centered empty state.
 
+## From Phase 13 (flow walkthrough rev-4 rework)
+
+- ~~double-click-add guard still excluded `.transport`~~ — **FIXED** in 47d393b (repointed to `.stepbar`/`.stepcard` after the rename, so double-clicking the caption card / Back-Next during a walkthrough no longer pops the Add-entity menu).
+- **Step-to-step 180ms opacity crossfade** — §Transitions calls for a 180ms opacity crossfade on the affected canvas elements when the step changes; not implemented (the dim/highlight swaps instantly). Add `transition: opacity 180ms` to the flow-ghost/active rules if desired.
+- **Caption card `aria-live="polite"` re-announces every step** — fine, but may be chatty for screen readers; revisit in an a11y polish pass.
+- **elementSummary format** — the caption card's element summary joins the step's chip labels with ` · ` (the handoff's `User → Traefik` is illustrative). Refine to a source→target format if a specific style is wanted.
+- **Unreachable `i === currentStep` marker** in FlowsTab's non-selected step branch — dead but harmless (the current step always renders via the `is-sel` branch in play mode); trim in a cleanup sweep.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
