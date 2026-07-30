@@ -37,7 +37,8 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
-import { FlowPanel } from './FlowPanel'
+import { RightRail } from './RightRail'
+import { FlowsPane } from './FlowsPane'
 import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { CanvasPill } from './CanvasPill'
@@ -228,7 +229,8 @@ function Flow({
   // ReactFlow snap-to-grid behavior. Client-only, never persisted.
   const [showLegend, setShowLegend] = useState(true)
   const [showMinimap, setShowMinimap] = useState(true)
-  const [showInspector, setShowInspector] = useState(true)
+  const [railVisible, setRailVisible] = useState(true)
+  const [railTab, setRailTab] = useState<'inspector' | 'flows'>('inspector')
   const [snapToGrid, setSnapToGrid] = useState(false)
   const [layoutEngine, setLayoutEngine] = useState<'elk' | 'graphviz'>(
     () => (localStorage.getItem('homelab-layout-engine') as 'elk' | 'graphviz') || 'elk',
@@ -250,6 +252,25 @@ function Flow({
     flow: { x: number; y: number }
   } | null>(null)
   const rf = useReactFlow()
+  // Right rail (Inspector | Flows) visibility + active tab. showRailTab always
+  // reveals the rail on the requested tab; toggleRailTab collapses the rail
+  // when that tab is already the one showing (⌘I / ⌘⇧F / View-menu behavior).
+  const showRailTab = useCallback((t: 'inspector' | 'flows') => {
+    setRailTab(t)
+    setRailVisible(true)
+  }, [])
+  const toggleRailTab = useCallback(
+    (t: 'inspector' | 'flows') => {
+      setRailVisible((v) => !(v && railTab === t))
+      setRailTab(t)
+    },
+    [railTab],
+  )
+  // Re-center the canvas whenever the rail is shown/hidden — its width change
+  // shifts the available viewport.
+  useEffect(() => {
+    rf.fitView({ padding: 0.2 })
+  }, [railVisible, rf])
   const fileRef = useRef<HTMLInputElement>(null)
   const loaded = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
@@ -974,18 +995,17 @@ function Flow({
       { id: 'zoom-actual', label: 'Actual size', shortcut: '⌘0' },
       { id: 'legend', label: 'Legend', checked: showLegend, separatorBefore: true },
       { id: 'minimap', label: 'Minimap', checked: showMinimap },
-      { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: showInspector },
+      { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: railVisible && railTab === 'inspector' },
       { id: 'snap', label: 'Snap to grid', checked: snapToGrid },
       {
         id: 'flows-panel',
         label: 'Flows panel',
         shortcut: '⌘⇧F',
-        checked: false,
-        disabled: true,
+        checked: railVisible && railTab === 'flows',
         separatorBefore: true,
       },
     ],
-    [showLegend, showMinimap, showInspector, snapToGrid],
+    [showLegend, showMinimap, snapToGrid, railVisible, railTab],
   )
 
   const hasSelection = selNode != null || selEdge != null
@@ -1044,9 +1064,9 @@ function Flow({
         else if (itemId === 'zoom-actual') rf.zoomTo(1)
         else if (itemId === 'legend') setShowLegend((v) => !v)
         else if (itemId === 'minimap') setShowMinimap((v) => !v)
-        else if (itemId === 'inspector') setShowInspector((v) => !v)
+        else if (itemId === 'inspector') toggleRailTab('inspector')
         else if (itemId === 'snap') setSnapToGrid((v) => !v)
-        // flows-panel is disabled — never dispatched
+        else if (itemId === 'flows-panel') toggleRailTab('flows')
         return
       }
       if (menuId !== 'file') return
@@ -1092,6 +1112,7 @@ function Flow({
       doRedo,
       deleteSelected,
       rf,
+      toggleRailTab,
     ],
   )
 
@@ -1179,11 +1200,12 @@ function Flow({
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
       else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
       else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
-      else if (key === 'i' && !e.shiftKey && !e.altKey) { e.preventDefault(); setShowInspector((v) => !v) }
+      else if (key === 'i' && !e.shiftKey && !e.altKey) { e.preventDefault(); toggleRailTab('inspector') }
+      else if (key === 'f' && e.shiftKey) { e.preventDefault(); toggleRailTab('flows') }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [doUndo, doRedo, tidy])
+  }, [doUndo, doRedo, tidy, toggleRailTab])
 
   // Keyboard: arrow-key stepping through the active flow in Play mode.
   // Right/Down advance, Left/Up go back; both preventDefault so React Flow
@@ -1338,10 +1360,11 @@ function Flow({
           </div>
         </div>
       ) : (
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
       <div
         ref={wrapperRef}
         className={groupEditing ? 'group-editing' : undefined}
-        style={{ width: '100vw', flex: 1, minHeight: 0 }}
+        style={{ flex: 1, minWidth: 0, minHeight: 0 }}
         onMouseMove={(e) => {
           pointer.current = { x: e.clientX, y: e.clientY }
         }}
@@ -1394,69 +1417,7 @@ function Flow({
           <div className="panel toolbar">
             <button onClick={() => addGroup()}>+ Group</button>
             <button onClick={() => addNote()}>+ Note</button>
-            <label className="edgestyle">
-              Flow:
-              <select
-                value={currentFlowId ?? ''}
-                onChange={(e) => selectFlow(e.target.value || null)}
-              >
-                <option value="">(none)</option>
-                {(active?.flows ?? []).map((f) => (
-                  <option key={f.id} value={f.id}>
-                    {f.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button onClick={createFlow}>+ Flow</button>
-            <button
-              onClick={() => setFlowMode(flowMode === 'edit' ? 'none' : 'edit')}
-              disabled={!currentFlow}
-              className={flowMode === 'edit' ? 'active' : ''}
-            >
-              Edit
-            </button>
-            <button
-              onClick={() => setFlowMode(flowMode === 'play' ? 'none' : 'play')}
-              disabled={!currentFlow}
-              className={flowMode === 'play' ? 'active' : ''}
-            >
-              Play
-            </button>
-            <button onClick={() => currentFlowId && renameFlowById(currentFlowId)} disabled={!currentFlow}>
-              Rename
-            </button>
-            <button onClick={() => currentFlowId && deleteFlowById(currentFlowId)} disabled={!currentFlow}>
-              Delete
-            </button>
           </div>
-          {flowMode !== 'none' && currentFlow ? (
-            <FlowPanel
-              flow={currentFlow}
-              mode={flowMode === 'edit' ? 'edit' : 'play'}
-              selStep={flowMode === 'edit' ? selStep : currentStep}
-              onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
-              onChange={(steps) => activeId && setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))}
-              onExit={() => setFlowMode('none')}
-            />
-          ) : (
-            showInspector && (
-              <Inspector
-                node={selectedNode}
-                edge={selectedEdge}
-                groups={groupParentOptions}
-                onNodeData={updateNodeData}
-                onNodeParent={reparent}
-                onEdge={updateEdge}
-                onShrink={shrinkGroup}
-                onGroupSize={setGroupSize}
-                onDelete={deleteSelected}
-                fields={inspectorFields}
-                onFieldShow={onFieldShow}
-                diagramColors={diagramColors}
-              />
-            )
-          )}
         </Panel>
 
         <Panel position="top-left" className="stack-tl">
@@ -1490,6 +1451,53 @@ function Flow({
           onAddGroup={() => addGroup(addMenu.flow)}
           onAddNote={() => addNote(addMenu.flow)}
           onClose={() => setAddMenu(null)}
+        />
+      )}
+      </div>
+      {railVisible && (
+        <RightRail
+          tab={railTab}
+          onTab={setRailTab}
+          flowCount={active?.flows?.length ?? 0}
+          inspector={
+            <Inspector
+              node={selectedNode}
+              edge={selectedEdge}
+              groups={groupParentOptions}
+              onNodeData={updateNodeData}
+              onNodeParent={reparent}
+              onEdge={updateEdge}
+              onShrink={shrinkGroup}
+              onGroupSize={setGroupSize}
+              onDelete={deleteSelected}
+              fields={inspectorFields}
+              onFieldShow={onFieldShow}
+              diagramColors={diagramColors}
+            />
+          }
+          flows={
+            <FlowsPane
+              flows={active?.flows ?? []}
+              currentFlowId={currentFlowId}
+              onSelectFlow={selectFlow}
+              onCreateFlow={createFlow}
+              flowMode={flowMode}
+              onSetMode={(m) => {
+                setFlowMode(m)
+                if (m !== 'none') showRailTab('flows')
+              }}
+              currentFlow={currentFlow}
+              selStep={selStep}
+              currentStep={currentStep}
+              onSelStep={(i) => (flowMode === 'edit' ? setSelStep(i) : setCurrentStep(i))}
+              onStepsChange={(steps) =>
+                activeId && setModel((m) => M.updateFlow(m, activeId, currentFlow!.id, { steps }))
+              }
+              onExit={() => setFlowMode('none')}
+              onRenameFlow={renameFlowById}
+              onDeleteFlow={deleteFlowById}
+            />
+          }
         />
       )}
       </div>
