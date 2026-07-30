@@ -960,15 +960,31 @@ function Flow({
     [layoutEngine, edgeStyle],
   )
 
-  // Edit/View open with empty item lists this phase — File and Arrange are wired.
+  const hasSelection = selNode != null || selEdge != null
+  const editMenuItems: MenuItem[] = useMemo(
+    () => [
+      { id: 'undo', label: 'Undo', shortcut: '⌘Z', disabled: !undoFlags.canUndo },
+      { id: 'redo', label: 'Redo', shortcut: '⇧⌘Z', disabled: !undoFlags.canRedo },
+      { id: 'cut', label: 'Cut', shortcut: '⌘X', disabled: true, separatorBefore: true },
+      { id: 'copy', label: 'Copy', shortcut: '⌘C', disabled: true },
+      { id: 'paste', label: 'Paste', shortcut: '⌘V', disabled: true },
+      { id: 'duplicate', label: 'Duplicate', shortcut: '⌘D', disabled: true },
+      { id: 'delete', label: 'Delete', shortcut: '⌫', disabled: !hasSelection },
+      { id: 'select-all', label: 'Select all', shortcut: '⌘A', disabled: true, separatorBefore: true },
+      { id: 'deselect', label: 'Deselect', shortcut: 'Esc', disabled: true },
+    ],
+    [undoFlags.canUndo, undoFlags.canRedo, hasSelection],
+  )
+
+  // View opens with an empty item list this phase — File, Edit, and Arrange are wired.
   const menus = useMemo(
     () => [
       { id: 'file' as const, title: 'File', items: fileMenuItems },
-      { id: 'edit' as const, title: 'Edit', items: [] },
+      { id: 'edit' as const, title: 'Edit', items: editMenuItems },
       { id: 'view' as const, title: 'View', items: [] },
       { id: 'arrange' as const, title: 'Arrange', items: arrangeMenuItems },
     ],
-    [fileMenuItems, arrangeMenuItems],
+    [fileMenuItems, editMenuItems, arrangeMenuItems],
   )
 
   const onMenuItem = useCallback(
@@ -985,6 +1001,13 @@ function Flow({
         else if (itemId === 'edge-smoothstep') applyEdgeStyle('smoothstep')
         else if (itemId === 'edge-straight') applyEdgeStyle('straight')
         // group / ungroup / bring-front / send-back are disabled — never dispatched
+        return
+      }
+      if (menuId === 'edit') {
+        if (itemId === 'undo') doUndo()
+        else if (itemId === 'redo') doRedo()
+        else if (itemId === 'delete') deleteSelected()
+        // cut/copy/paste/duplicate/select-all/deselect are disabled — never dispatched
         return
       }
       if (menuId !== 'file') return
@@ -1026,6 +1049,9 @@ function Flow({
       tidy,
       chooseEngine,
       applyEdgeStyle,
+      doUndo,
+      doRedo,
+      deleteSelected,
     ],
   )
 
