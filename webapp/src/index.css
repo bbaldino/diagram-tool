@@ -420,11 +420,11 @@ input, textarea, [contenteditable="true"] {
   from { opacity: 0; transform: translateY(2px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.menu, .pill__menu, .transport__speedmenu, .flowstab__menu, .addmenu {
+.menu, .pill__menu, .flowstab__menu, .addmenu {
   animation: menuIn 120ms ease-out;
 }
 @media (prefers-reduced-motion: reduce) {
-  .menu, .pill__menu, .transport__speedmenu, .flowstab__menu, .addmenu {
+  .menu, .pill__menu, .flowstab__menu, .addmenu {
     animation: none;
   }
 }
@@ -762,8 +762,8 @@ input, textarea, [contenteditable="true"] {
 .flowstab__empty-title { font-size: 13px; font-weight: 600; }
 .flowstab__empty-body { font-size: 12px; line-height: 1.55; color: #64748b; }
 
-/* ---- Flow playback transport bar (chrome §5) ---- */
-.transport {
+/* ---- Flow step bar (chrome §5, rev 4 — manual stepping, no auto-play) ---- */
+.stepbar {
   position: absolute;
   left: 0;
   right: 0;
@@ -779,60 +779,39 @@ input, textarea, [contenteditable="true"] {
   color: #fff;
   font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
-.transport__buttons { display: flex; align-items: center; gap: 2px; }
-.transport__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
+.stepbar__buttons { display: flex; align-items: center; gap: 7px; }
+.stepbar__back,
+.stepbar__next {
   height: 30px;
-  padding: 0;
-  border: none;
   border-radius: 7px;
-  background: transparent;
-  color: #cbd5e1;
-  font-size: 13px;
-  line-height: 1;
+  font-size: 12.5px;
   cursor: pointer;
 }
-.transport__btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.08); }
-.transport__btn:disabled { opacity: 0.4; cursor: default; }
-.transport__btn--play {
-  width: 34px;
-  height: 30px;
+.stepbar__back {
+  padding: 0 12px;
+  border: 1px solid #3d4b60;
+  background: transparent;
+  color: #cbd5e1;
+  font-weight: 550;
+}
+.stepbar__back:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); }
+.stepbar__back:disabled { color: #6b7a90; border-color: #2b3546; cursor: default; }
+.stepbar__next {
+  padding: 0 14px;
+  border: none;
   background: #4f46e5;
   color: #fff;
-}
-.transport__btn--play:hover:not(:disabled) { background: #4338ca; }
-
-.transport__label {
-  min-width: 190px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: hidden;
-}
-.transport__name {
-  font-size: 13px;
   font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-.transport__sub {
-  font-size: 11.5px;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+.stepbar__next:hover { background: #4338ca; }
+.stepbar__counter {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: #cbd5e1;
+  min-width: 42px;
 }
-
-.transport__scrub { display: flex; gap: 6px; flex: 1; min-width: 0; }
-/* Visual bar stays 5px tall (the border-box height minus the transparent
-   top/bottom padding); background-clip: content-box keeps the painted band
-   confined to that 5px strip while the clickable button itself is ~16px
-   tall — a bigger scrub target without changing how thin the bar looks. */
-.transport__bar {
+.stepbar__scrub { display: flex; gap: 6px; flex: 1; min-width: 0; }
+.stepbar__bar {
   flex: 1;
   height: 16px;
   padding: 5.5px 0;
@@ -842,48 +821,8 @@ input, textarea, [contenteditable="true"] {
   background-clip: content-box;
   cursor: pointer;
 }
-.transport__bar.is-on { background: #4f46e5; background-clip: content-box; }
-
-.transport__right { display: flex; align-items: center; gap: 8px; }
-.transport__speedwrap { position: relative; }
-.transport__speed {
-  height: 28px;
-  padding: 0 10px;
-  border: 1px solid #3d4b60;
-  border-radius: 7px;
-  background: transparent;
-  color: #cbd5e1;
-  font-size: 12px;
-  cursor: pointer;
-}
-.transport__speed:hover { background: rgba(255, 255, 255, 0.06); }
-.transport__speedmenu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% + 6px);
-  min-width: 72px;
-  padding: 4px;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-  background: #1e293b;
-  border: 1px solid #3d4b60;
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.3);
-}
-.transport__speeditem {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 5px;
-  background: transparent;
-  color: #cbd5e1;
-  font-size: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-.transport__speeditem:hover { background: rgba(255, 255, 255, 0.08); }
-.transport__speeditem.is-active { color: #fff; font-weight: 600; }
-.transport__exit {
+.stepbar__bar.is-on { background: #4f46e5; background-clip: content-box; }
+.stepbar__exit {
   height: 28px;
   padding: 0 11px;
   border: 1px solid #3d4b60;
@@ -894,7 +833,49 @@ input, textarea, [contenteditable="true"] {
   font-weight: 550;
   cursor: pointer;
 }
-.transport__exit:hover { background: rgba(255, 255, 255, 0.06); }
+.stepbar__exit:hover { background: rgba(255, 255, 255, 0.06); }
+
+/* ---- Step caption card (chrome §5, rev 4) ---- */
+.stepcard {
+  position: absolute;
+  bottom: 68px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 7;
+  width: 720px;
+  max-width: calc(100% - 32px);
+  box-sizing: border-box;
+  padding: 18px 22px 20px;
+  background: #1e293b;
+  border-radius: 12px;
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.28);
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.stepcard__meta { display: flex; align-items: center; gap: 9px; }
+.stepcard__pill {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  color: #fff;
+  background: #4f46e5;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+.stepcard__flow { font-size: 11.5px; color: #8593a8; }
+.stepcard__summary { margin-left: auto; font-size: 11.5px; color: #8593a8; }
+.stepcard__desc {
+  font-size: 21px;
+  font-weight: 650;
+  line-height: 1.35;
+  letter-spacing: -0.015em;
+  text-wrap: pretty;
+  color: #fff;
+}
 
 /* ---- §5 canvas treatment during flow playback ---- */
 /* Non-current elements dim to 0.4 (play mode only; edit-mode ghost stays 0.18). */
