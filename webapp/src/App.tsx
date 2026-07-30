@@ -38,8 +38,8 @@ import { buildDiagramGraph } from './buildGraph'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
 import { FlowsTab } from './FlowsTab'
-import { TransportBar } from './TransportBar'
-import { advanceStep, stepIntervalMs, PLAYBACK_SPEEDS } from './flowPlayback'
+import { StepBar } from './StepBar'
+import { StepCaptionCard } from './StepCaptionCard'
 import { DiagramTabs } from './DiagramTabs'
 import { CanvasAddMenu } from './CanvasAddMenu'
 import { CanvasPill } from './CanvasPill'
@@ -248,10 +248,6 @@ function Flow({
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null)
   const [currentStep, setCurrentStep] = useState(0)
   const [selStep, setSelStep] = useState(0)
-  // Transport-bar playback: whether auto-advance is running, and its speed
-  // multiplier. Only meaningful while flowMode === 'play'.
-  const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1)
   // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
   // for popup placement, flow = flow coords for the new node.
   const [addMenu, setAddMenu] = useState<{
@@ -403,7 +399,6 @@ function Flow({
       setFlowMode('none')
       setCurrentFlowId(null)
       setCurrentStep(0)
-      setPlaying(false)
     }
     // Newly placed/created entity: select it + center so it's obvious it landed.
     if (sel) {
@@ -1357,43 +1352,17 @@ function Flow({
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
         e.preventDefault()
-        setPlaying(false)
         setCurrentStep((s) => Math.min(s + 1, (currentFlow?.steps.length ?? 1) - 1))
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
         e.preventDefault()
-        setPlaying(false)
         setCurrentStep((s) => Math.max(0, s - 1))
-      } else if (e.key === ' ' || e.key === 'Spacebar') {
-        e.preventDefault()
-        setPlaying((p) => !p)
       } else if (e.key === 'Escape') {
-        setPlaying(false)
         setFlowMode('edit')
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [flowMode, currentFlow])
-
-  // Auto-advance: while playing in a flow, step forward on an interval scaled
-  // by `speed`. Stops (pauses) when it reaches the last step. Cleared whenever
-  // play/pause, speed, mode, or the flow changes.
-  useEffect(() => {
-    if (flowMode !== 'play' || !playing) return
-    const count = currentFlow?.steps.length ?? 0
-    if (count <= 1) {
-      setPlaying(false)
-      return
-    }
-    const t = setInterval(() => {
-      setCurrentStep((s) => {
-        const { index, atEnd } = advanceStep(s, count)
-        if (atEnd) setPlaying(false)
-        return index
-      })
-    }, stepIntervalMs(speed))
-    return () => clearInterval(t)
-  }, [flowMode, playing, speed, currentFlow])
 
   // Clamp currentStep into range whenever the active flow (or mode) changes,
   // e.g. switching to a flow with fewer steps than the previous currentStep.
@@ -1622,33 +1591,25 @@ function Flow({
       )}
 
       {flowMode === 'play' && currentFlow && currentFlow.steps.length > 0 && (
-        <TransportBar
-          flowName={currentFlow.name}
-          stepIndex={currentStep}
-          stepCount={currentFlow.steps.length}
-          caption={currentFlow.steps[currentStep]?.caption}
-          playing={playing}
-          speed={speed}
-          speeds={PLAYBACK_SPEEDS}
-          onPrev={() => {
-            setPlaying(false)
-            setCurrentStep((s) => Math.max(0, s - 1))
-          }}
-          onNext={() => {
-            setPlaying(false)
-            setCurrentStep((s) => Math.min(s + 1, currentFlow.steps.length - 1))
-          }}
-          onTogglePlay={() => setPlaying((p) => !p)}
-          onScrub={(i) => {
-            setPlaying(false)
-            setCurrentStep(i)
-          }}
-          onSetSpeed={setSpeed}
-          onExit={() => {
-            setPlaying(false)
-            setFlowMode('edit')
-          }}
-        />
+        <>
+          <StepCaptionCard
+            stepIndex={currentStep}
+            stepCount={currentFlow.steps.length}
+            flowName={currentFlow.name}
+            elementSummary={(currentFlow.steps[currentStep]?.elementIds ?? [])
+              .map(chipLabel)
+              .join(' · ')}
+            description={currentFlow.steps[currentStep]?.caption ?? ''}
+          />
+          <StepBar
+            stepIndex={currentStep}
+            stepCount={currentFlow.steps.length}
+            onBack={() => setCurrentStep((s) => Math.max(0, s - 1))}
+            onNext={() => setCurrentStep((s) => Math.min(s + 1, currentFlow.steps.length - 1))}
+            onExit={() => setFlowMode('edit')}
+            onScrub={(i) => setCurrentStep(i)}
+          />
+        </>
       )}
 
       {isEmptyCanvas && (
@@ -1686,9 +1647,8 @@ function Flow({
               currentStep={currentStep}
               onSelStep={(i) => {
                 if (flowMode === 'play') {
-                  // Clicking a step in the rail during playback jumps to it and
-                  // pauses auto-advance — same as the transport scrubber.
-                  setPlaying(false)
+                  // Clicking a step in the rail during playback jumps to it —
+                  // same as the step-bar scrubber.
                   setCurrentStep(i)
                 } else {
                   setSelStep(i)
@@ -1705,13 +1665,9 @@ function Flow({
               newStepId={newId}
               onPlay={() => {
                 setCurrentStep(0)
-                setPlaying(true)
                 setFlowMode('play')
               }}
-              onStop={() => {
-                setPlaying(false)
-                setFlowMode('edit')
-              }}
+              onStop={() => setFlowMode('edit')}
               chipLabel={chipLabel}
             />
           }
