@@ -844,27 +844,45 @@ function Flow({
 
   // Double-click on empty canvas opens the Add menu at the cursor. Ignore
   // double-clicks that land on a node/edge/handle — only the pane counts.
-  const onCanvasDoubleClick = useCallback(
+  // Detect a double-click on the empty canvas ourselves rather than relying on
+  // the native `dblclick` event. Browsers only emit `dblclick` when the two
+  // clicks land at essentially the same pixel, so a few pixels of hand-drift
+  // between clicks silently suppressed it — the intermittent "double-click
+  // doesn't add an entity". Two clicks within 500ms and ~12px of each other,
+  // both on the empty canvas surface, count as a double-click here.
+  const lastCanvasClick = useRef<{ t: number; x: number; y: number } | null>(null)
+  const onCanvasClick = useCallback(
     (e: React.MouseEvent) => {
-      // Add on the empty canvas surface. The old check required the target to be
-      // EXACTLY `.react-flow__pane`, so the double-click silently no-op'd whenever
-      // anything else sat under the cursor — React Flow's selection overlay laid
-      // over the pane when nodes are selected, or a stray non-pane layer. Invert
-      // it: fire unless the double-click landed on something that owns its own
-      // interaction — a node/edge/handle, a floating panel (pill, legend,
-      // toolbar, controls, minimap are all `.react-flow__panel`), the add-menu
-      // popover, or the playback transport bar.
       const t = e.target as HTMLElement
+      // Only clicks on the empty canvas surface pair into an add. Anything that
+      // owns its own interaction — a node/edge/handle, a floating panel (pill,
+      // legend, toolbar, controls, minimap are all `.react-flow__panel`), the
+      // add-menu popover, or the playback transport bar — resets the pairing so
+      // a click on a control can't combine with a later canvas click.
       if (
         t.closest(
           '.react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__panel, .addmenu, .transport',
         )
-      )
+      ) {
+        lastCanvasClick.current = null
         return
-      const flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY })
-      const sx = Math.min(e.clientX, window.innerWidth - 240)
-      const sy = Math.min(e.clientY, window.innerHeight - 260)
-      setAddMenu({ sx, sy, flow })
+      }
+      const now = e.timeStamp
+      const prev = lastCanvasClick.current
+      if (
+        prev &&
+        now - prev.t < 500 &&
+        Math.abs(e.clientX - prev.x) <= 12 &&
+        Math.abs(e.clientY - prev.y) <= 12
+      ) {
+        lastCanvasClick.current = null
+        const flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY })
+        const sx = Math.min(e.clientX, window.innerWidth - 240)
+        const sy = Math.min(e.clientY, window.innerHeight - 260)
+        setAddMenu({ sx, sy, flow })
+        return
+      }
+      lastCanvasClick.current = { t: now, x: e.clientX, y: e.clientY }
     },
     [rf],
   )
@@ -1507,7 +1525,7 @@ function Flow({
         onMouseMove={(e) => {
           pointer.current = { x: e.clientX, y: e.clientY }
         }}
-        onDoubleClick={onCanvasDoubleClick}
+        onClick={onCanvasClick}
       >
       <ReactFlow
         className={flowMode === 'play' ? 'is-flow-play' : undefined}
