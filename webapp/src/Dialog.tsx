@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { DialogShell } from './DialogShell'
 
 // In-app modal dialogs — a native-looking replacement for window.prompt/confirm.
 // Use the hook: const { showPrompt, showConfirm } = useDialogs()
@@ -13,6 +14,7 @@ interface PromptOpts {
   defaultValue?: string
   confirmText?: string
   cancelText?: string
+  helperText?: string
 }
 interface ConfirmOpts {
   title: string
@@ -94,52 +96,46 @@ function DialogModal({ state, close }: { state: State; close: () => void }) {
     close()
   }, [state, value, close])
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault()
-        cancel()
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        confirm()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [cancel, confirm])
-
   const opts = state.opts
   const danger = state.kind === 'confirm' && (state.opts as ConfirmOpts).danger
+  const primaryLabel = opts.confirmText ?? (isPrompt ? 'OK' : danger ? 'Delete' : 'Confirm')
 
   return (
-    <div className="dialog__overlay" onMouseDown={cancel}>
-      <div className="dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}>
-        <h3 className="dialog__title">{opts.title}</h3>
-        {opts.message && <p className="dialog__message">{opts.message}</p>}
-        {isPrompt && (
-          <label className="dialog__field">
-            {(opts as PromptOpts).label && <span>{(opts as PromptOpts).label}</span>}
-            <input
-              ref={inputRef}
-              value={value}
-              placeholder={(opts as PromptOpts).placeholder}
-              onChange={(e) => setValue(e.target.value)}
-            />
-          </label>
-        )}
-        <div className="dialog__actions">
-          <button className="dialog__btn" onClick={cancel}>
+    <DialogShell
+      title={opts.title}
+      danger={danger}
+      onCancel={cancel}
+      onSubmit={confirm}
+      footer={
+        <>
+          <button className="dlgshell__btn" onClick={cancel}>
             {opts.cancelText ?? 'Cancel'}
           </button>
           <button
             ref={okRef}
-            className={`dialog__btn dialog__btn--primary${danger ? ' dialog__btn--danger' : ''}`}
+            className={`dlgshell__btn dlgshell__btn--primary${danger ? ' dlgshell__btn--danger' : ''}`}
             onClick={confirm}
           >
-            {opts.confirmText ?? (isPrompt ? 'OK' : danger ? 'Delete' : 'Confirm')}
+            {primaryLabel}
           </button>
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {opts.message && <p className="dlgshell__message">{opts.message}</p>}
+      {isPrompt && (
+        <label className="dlgshell__field">
+          {(opts as PromptOpts).label && <span>{(opts as PromptOpts).label}</span>}
+          <input
+            ref={inputRef}
+            value={value}
+            placeholder={(opts as PromptOpts).placeholder}
+            onChange={(e) => setValue(e.target.value)}
+          />
+          {(opts as PromptOpts).helperText && (
+            <span className="dlgshell__helper">{(opts as PromptOpts).helperText}</span>
+          )}
+        </label>
+      )}
+    </DialogShell>
   )
 }

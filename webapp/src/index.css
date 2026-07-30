@@ -903,3 +903,74 @@ input, textarea, [contenteditable="true"] {
   line-height: 1.2;
   pointer-events: none;
 }
+
+/* ---- Shared §6 dialog shell ---- */
+.dlgshell__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(15, 23, 42, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dlgshell {
+  max-width: calc(100vw - 32px);
+  background: #fff;
+  border: 1px solid #d7dce4;
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(15, 23, 42, 0.14);
+  overflow: hidden;
+  font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+.dlgshell__title { padding: 15px 18px 0; font-size: 15.5px; font-weight: 700; color: #1e293b; }
+.dlgshell__body { padding: 12px 18px 16px; }
+.dlgshell__message { margin: 0; font-size: 13px; line-height: 1.5; color: #475569; }
+.dlgshell__field { display: flex; flex-direction: column; gap: 5px; }
+.dlgshell__field > span:first-child { font-size: 11.5px; color: #64748b; }
+.dlgshell__field input {
+  padding: 9px 11px;
+  border: 1px solid #dfe3ea;
+  border-radius: 8px;
+  font-size: 13.5px;
+  box-sizing: border-box;
+  width: 100%;
+}
+.dlgshell__field input:focus {
+  outline: none;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.13);
+}
+.dlgshell__helper { font-size: 11.5px; color: #94a3b8; }
+.dlgshell__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 11px 14px;
+  border-top: 1px solid #eceff3;
+  background: #fbfbfc;
+}
+.dlgshell__btn {
+  padding: 7px 13px;
+  border: 1px solid #dfe3ea;
+  border-radius: 7px;
+  background: #fff;
+  color: #475569;
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.dlgshell__btn:hover { background: #f1f2f4; }
+.dlgshell__btn--primary {
+  border-color: transparent;
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 600;
+  padding: 7px 15px;
+}
+.dlgshell__btn--primary:hover { background: #4338ca; }
+.dlgshell__btn--primary:disabled { background: #c7cdfa; cursor: default; }
+.dlgshell__btn--danger { background: #b91c1c; }
+.dlgshell__btn--danger:hover { background: #991b1b; }
+/* footer-left slot: a secondary action group pinned left (used by Open/Import) */
+.dlgshell__footer-left { margin-right: auto; display: flex; gap: 8px; align-items: center; }

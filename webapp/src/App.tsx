@@ -955,7 +955,12 @@ function Flow({
     if (!activeId) return
     const cur = model?.diagrams.find((d) => d.id === activeId)
     const name = (
-      await showPrompt({ title: 'Rename diagram', label: 'Name', defaultValue: cur?.name })
+      await showPrompt({
+        title: 'Rename diagram',
+        label: 'Name',
+        defaultValue: cur?.name,
+        helperText: 'Saved to model.json on confirm.',
+      })
     )?.trim()
     if (name) renameDiagramById(activeId, name)
   }, [showPrompt, model, activeId, renameDiagramById])
