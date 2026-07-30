@@ -429,6 +429,7 @@ input, textarea, [contenteditable="true"] {
   -webkit-user-select: none; user-select: none;
 }
 .tabstrip__tabs { display: flex; align-items: flex-end; gap: 3px; }
+.tabstrip__tablist { display: flex; align-items: flex-end; gap: 3px; }
 .tab {
   display: flex; align-items: center; gap: 6px; height: 25px;
   border-radius: 7px 7px 0 0; font-size: 13px; color: #475569; cursor: pointer;
