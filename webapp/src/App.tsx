@@ -401,6 +401,7 @@ function Flow({
       setFlowMode('none')
       setCurrentFlowId(null)
       setCurrentStep(0)
+      setPlaying(false)
     }
     // Newly placed/created entity: select it + center so it's obvious it landed.
     if (sel) {
@@ -1576,7 +1577,16 @@ function Flow({
               mode={flowMode}
               selStep={selStep}
               currentStep={currentStep}
-              onSelStep={(i) => (flowMode === 'play' ? setCurrentStep(i) : setSelStep(i))}
+              onSelStep={(i) => {
+                if (flowMode === 'play') {
+                  // Clicking a step in the rail during playback jumps to it and
+                  // pauses auto-advance — same as the transport scrubber.
+                  setPlaying(false)
+                  setCurrentStep(i)
+                } else {
+                  setSelStep(i)
+                }
+              }}
               onSelectFlow={selectFlow}
               onCreateFlow={createFlow}
               onRenameFlow={renameFlowById}
