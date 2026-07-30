@@ -1045,10 +1045,10 @@ function Flow({
 
   const viewMenuItems: MenuItem[] = useMemo(
     () => [
-      { id: 'zoom-in', label: 'Zoom in', shortcut: '⌘+' },
-      { id: 'zoom-out', label: 'Zoom out', shortcut: '⌘−' },
-      { id: 'zoom-fit', label: 'Zoom to fit', shortcut: '⇧1' },
-      { id: 'zoom-actual', label: 'Actual size', shortcut: '⌘0' },
+      { id: 'zoom-in', label: 'Zoom in' },
+      { id: 'zoom-out', label: 'Zoom out' },
+      { id: 'zoom-fit', label: 'Zoom to fit' },
+      { id: 'zoom-actual', label: 'Actual size' },
       { id: 'legend', label: 'Legend', checked: showLegend, separatorBefore: true },
       { id: 'minimap', label: 'Minimap', checked: showMinimap },
       { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: railVisible && railTab === 'inspector' },
@@ -1260,10 +1260,12 @@ function Flow({
       else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
       else if (key === 'i' && !e.shiftKey && !e.altKey) { e.preventDefault(); toggleRailTab('inspector') }
       else if (key === 'f' && e.shiftKey) { e.preventDefault(); toggleRailTab('flows') }
+      else if (key === 'g' && !e.shiftKey) { e.preventDefault(); if (canGroup) groupSelection() }
+      else if (key === 'g' && e.shiftKey) { e.preventDefault(); if (canUngroup) ungroupSelection() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [doUndo, doRedo, tidy, toggleRailTab])
+  }, [doUndo, doRedo, tidy, toggleRailTab, canGroup, groupSelection, canUngroup, ungroupSelection])
 
   // Keyboard: arrow-key stepping through the active flow in Play mode.
   // Right/Down advance, Left/Up go back; both preventDefault so React Flow
