@@ -46,6 +46,7 @@ import { CanvasAddMenu } from './CanvasAddMenu'
 import { CanvasPill } from './CanvasPill'
 import { MenuBar } from './MenuBar'
 import { OpenDiagramDialog } from './OpenDiagramDialog'
+import { DestructiveDialog } from './DestructiveDialog'
 import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -487,6 +488,8 @@ function Flow({
 
   // ---- tab-strip handlers (chrome redesign phase 2) ----
   const [openDialog, setOpenDialog] = useState(false)
+  // Reset/Delete/Import destructive-confirm dialog (chrome redesign phase 9).
+  const [dialog, setDialog] = useState<'reset' | 'delete' | 'import' | null>(null)
 
   // Opening a not-yet-open diagram: add it to the tab strip, then switch to it
   // (selectDiagram already flushes the outgoing canvas + sets the active id).
@@ -926,12 +929,15 @@ function Flow({
   )
 
   const reset = useCallback(() => {
-    const s = buildSeed()
-    setNodes(s.nodes)
-    setEdges(s.edges)
-    // The debounced write-back persists the reset canvas into the model.
+    if (!activeId) return
+    // Clear the live canvas and the model's content for this diagram (flows too,
+    // which never live on the canvas). The debounced write-back persists the now
+    // empty canvas; clearDiagram drops the flows immediately.
+    setNodes([])
+    setEdges([])
+    setModel((m) => (m ? M.clearDiagram(m, activeId) : m))
     setTimeout(() => rf.fitView({ padding: 0.2 }), 40)
-  }, [rf, setNodes, setEdges])
+  }, [activeId, setNodes, setEdges, setModel, rf])
 
   // ---- menu bar: File menu model + dispatch ----
   // The prompt-then-mutate flows below reproduce what the removed DiagramBar
@@ -964,16 +970,6 @@ function Flow({
     )?.trim()
     if (name) renameDiagramById(activeId, name)
   }, [showPrompt, model, activeId, renameDiagramById])
-
-  const confirmDeleteDiagram = useCallback(async () => {
-    if (!activeId) return
-    const ok = await showConfirm({
-      title: 'Delete this diagram?',
-      message: 'This removes the diagram and everything on it.',
-      danger: true,
-    })
-    if (ok) deleteActiveDiagram(activeId)
-  }, [showConfirm, activeId, deleteActiveDiagram])
 
   const fileMenuItems: MenuItem[] = useMemo(
     () => [
@@ -1127,10 +1123,10 @@ function Flow({
           exportJson()
           break
         case 'reset':
-          reset()
+          setDialog('reset')
           break
         case 'delete':
-          void confirmDeleteDiagram()
+          setDialog('delete')
           break
         // 'duplicate', 'export-png-view', 'export-png-all', 'export-svg' are
         // disabled items — MenuBar never dispatches clicks on them.
@@ -1142,8 +1138,6 @@ function Flow({
       promptNewDiagram,
       promptRenameDiagram,
       exportJson,
-      reset,
-      confirmDeleteDiagram,
       onRetrySave,
       tidy,
       chooseEngine,
@@ -1634,6 +1628,32 @@ function Flow({
             fileRef.current?.click()
           }}
           onClose={() => setOpenDialog(false)}
+        />
+      )}
+      {dialog === 'reset' && active && (
+        <DestructiveDialog
+          mode="reset"
+          diagramName={active.name}
+          countsText={M.describeCounts(M.diagramCounts(active))}
+          onCancel={() => setDialog(null)}
+          onConfirm={(backup) => {
+            if (backup) exportJson()
+            reset()
+            setDialog(null)
+          }}
+        />
+      )}
+      {dialog === 'delete' && active && activeId && (
+        <DestructiveDialog
+          mode="delete"
+          diagramName={active.name}
+          countsText={M.describeCounts(M.diagramCounts(active))}
+          onCancel={() => setDialog(null)}
+          onConfirm={(backup) => {
+            if (backup) exportJson()
+            deleteActiveDiagram(activeId)
+            setDialog(null)
+          }}
         />
       )}
       <input

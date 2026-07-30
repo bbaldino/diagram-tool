@@ -974,3 +974,15 @@ input, textarea, [contenteditable="true"] {
 .dlgshell__btn--danger:hover { background: #991b1b; }
 /* footer-left slot: a secondary action group pinned left (used by Open/Import) */
 .dlgshell__footer-left { margin-right: auto; display: flex; gap: 8px; align-items: center; }
+
+/* ---- Destructive confirm (Reset / Delete) ---- */
+.destructive__check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #475569;
+  cursor: pointer;
+}
+.destructive__check input { width: 15px; height: 15px; accent-color: #4f46e5; }
