@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { Flow, FlowStep } from './model'
 
 type FlowMenuTarget = { flowId: string; x: number; y: number } | null
@@ -26,6 +26,21 @@ function FlowMenu({
   onDelete: () => void
   onClose: () => void
 }) {
+  // The panel is 160px wide (see .flowstab__menu) and, left unflipped, opens
+  // rightward from the trigger's left edge — fine for rows near the left of
+  // the rail, but this rail is docked at the right of the viewport, so most
+  // triggers sit close enough to the right edge that the panel would run off
+  // screen. Measure once on open and flip to right-edge anchoring (opens
+  // leftward) when there isn't roughly the panel's own width of room left.
+  const [flipLeft, setFlipLeft] = useState(false)
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const MENU_WIDTH = 160
+    setFlipLeft(window.innerWidth - rect.left < MENU_WIDTH)
+  }, [containerRef])
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -46,7 +61,7 @@ function FlowMenu({
 
   return (
     <div
-      className="menu flowstab__menu"
+      className={`menu flowstab__menu${flipLeft ? ' flowstab__menu--left' : ''}`}
       role="menu"
       // Stops item clicks from bubbling into an ancestor row's onClick (which
       // would otherwise also fire onSelectFlow as a side effect of choosing
@@ -241,24 +256,39 @@ export function FlowsTab({
       <div className="flowstab__steps">
         <div className="flowstab__steps-head">
           <span className="flowstab__steps-label">Steps · {currentFlow.name}</span>
-          <span className="flowstab__reorder" onClick={() => setReorderMode((r) => !r)}>
-            Reorder
-          </span>
+          {/* Editing affordance only — locked out during Play (see mode-gated
+              reorder controls below). */}
+          {mode === 'edit' && (
+            <span className="flowstab__reorder" onClick={() => setReorderMode((r) => !r)}>
+              Reorder
+            </span>
+          )}
         </div>
         <div className="flowstab__steplist">
           {steps.map((s, i) => {
             const isSel = i === activeStep
+            // Step editing (caption input, chip removal, reorder) is locked
+            // during Play — the step list stays navigable (onSelStep still
+            // fires below) but nothing here is mutable while a flow is
+            // running.
+            const canEdit = mode === 'edit'
             return isSel ? (
               <div key={s.id} className="flowstab__step is-sel">
                 <div className="flowstab__step-head">
                   <span className="flowstab__step-idx">{i + 1}</span>
-                  <input
-                    className="flowstab__step-title"
-                    value={s.caption ?? ''}
-                    placeholder="caption…"
-                    onChange={(e) => setStep(i, { caption: e.target.value })}
-                  />
-                  {reorderMode && (
+                  {canEdit ? (
+                    <input
+                      className="flowstab__step-title"
+                      value={s.caption ?? ''}
+                      placeholder="caption…"
+                      onChange={(e) => setStep(i, { caption: e.target.value })}
+                    />
+                  ) : (
+                    <span className="flowstab__step-title-view">
+                      {s.caption || '(no caption)'}
+                    </span>
+                  )}
+                  {canEdit && reorderMode && (
                     <span className="flowstab__step-reorder">
                       <button
                         disabled={i === 0}
@@ -286,12 +316,14 @@ export function FlowsTab({
                   {s.elementIds.map((id) => (
                     <span key={id} className="flowstab__chip">
                       {chipLabel(id)}
-                      <button className="flowstab__chip-x" onClick={() => removeChip(i, id)}>
-                        ×
-                      </button>
+                      {canEdit && (
+                        <button className="flowstab__chip-x" onClick={() => removeChip(i, id)}>
+                          ×
+                        </button>
+                      )}
                     </span>
                   ))}
-                  <span className="flowstab__addchip">+ click canvas</span>
+                  {canEdit && <span className="flowstab__addchip">+ click canvas</span>}
                 </div>
               </div>
             ) : (
@@ -304,7 +336,7 @@ export function FlowsTab({
                 <span className="flowstab__step-title-view">
                   {s.caption || '(no caption)'}
                 </span>
-                {reorderMode && (
+                {canEdit && reorderMode && (
                   <span className="flowstab__step-reorder">
                     <button
                       disabled={i === 0}
@@ -329,9 +361,11 @@ export function FlowsTab({
               </div>
             )
           })}
-          <div className="flowstab__addstep" onClick={addStep}>
-            + Add step
-          </div>
+          {mode === 'edit' && (
+            <div className="flowstab__addstep" onClick={addStep}>
+              + Add step
+            </div>
+          )}
         </div>
       </div>
       <div className="flowstab__footer">
