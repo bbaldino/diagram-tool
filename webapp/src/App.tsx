@@ -859,7 +859,7 @@ function Flow({
       // a control can't combine with a later canvas press.
       if (
         t.closest(
-          '.react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__panel, .addmenu, .transport',
+          '.react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__panel, .addmenu, .stepbar, .stepcard',
         )
       ) {
         lastDown = null
