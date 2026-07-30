@@ -49,6 +49,15 @@ Each was reviewed and judged safe to defer at the time.
 - **Footer `⋯` popover can open off the right viewport edge** — the flow row/footer `⋯` menu opens at a fixed offset and can extend past the right edge of the rail/viewport; it should flip to open inward (leftward) when near the edge.
 - **Steps block stays fully editable during Play mode** — in `mode === 'play'` the caption input, chip `×`, "+ Add step", and Reorder ↑/↓ still render and mutate the model via `M.updateFlow`. Acceptable for the minimal-play cut, but odd; gate step edits to `mode === 'edit'` when the transport-bar phase lands.
 
+## From Phase 8 (flow playback transport bar)
+
+- ~~`playing` not reset on diagram switch~~ — **FIXED** in 6f47f19 (added `setPlaying(false)` to the re-seed reset).
+- ~~Rail step-click doesn't pause auto-advance in play mode~~ — **FIXED** in 6f47f19 (rail `onSelStep` now pauses + jumps, matching the transport scrubber).
+- **`setPlaying(false)` inside the `setCurrentStep` updater** (auto-advance effect) — works and batches, but a setter inside another setter's updater isn't pure and runs twice under React StrictMode. Cosmetic; could hoist the `atEnd` decision out of the reducer.
+- **Selecting a different flow while playing** keeps `playing` true and auto-plays the newly selected flow from the clamped step, with no explicit pause. Acceptable but undecided — make it a deliberate product choice (pause on flow-switch vs. keep rolling).
+- **Periodic no-op write-back during playback** — each auto-advance step churns node data → schedules a 400ms `flushCanvasInto`→`setModel` that is a structural no-op (badge/flowState aren't persisted, so `diffToOps` yields zero ops) but still toggles `skipReseed` each cycle, marginally widening the pre-existing race where a concurrent external re-seed could be swallowed. Pre-existing mechanism, not introduced here; a fast-follow could skip write-back scheduling when nothing geometric changed.
+- **Scrubber bars are a 5px hit target** — the transport step bars are only 5px tall; fine with a mouse but a small target. Consider a taller invisible hit area. (Also why the browser smoke exercised jump via arrows/next rather than a direct bar click.)
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
