@@ -23,6 +23,14 @@ Each was reviewed and judged safe to defer at the time.
 - **Tab meta count staleness** — tab/Open-dialog entity counts read from debounce-flushed `model.diagrams`, so the active diagram's counts can be transiently stale until the next autosave flush (inherited architecture; consistent across both readers).
 - **`.tab` CSS redundancy** — inactive-tab padding is inferred (README only specs the active tab) and duplicated across `.is-active`/`:not(.is-active)`; could hoist to base `.tab`.
 
+## From Phase 3 (canvas pill)
+
+- **Pill vs old toolbar overlap at narrow widths** — below ~1725px the top-center pill's right edge visually overlaps the still-wide old top-right toolbar's `+Group`/`+Note`. The pill stays clickable (Panel `zIndex:6`); this resolves automatically as later phases move controls off that toolbar. Cosmetic/transitional.
+- **Unchecked engine-id cast** — `onChooseEngine={(id) => chooseEngine(id as 'elk' | 'graphviz')}` casts a `string` to the engine union with no runtime guard. Safe today (the `engines` array is a hardcoded 2-element literal); becomes a latent bug only if an engine is added to that array that `setLayoutEngine` doesn't accept.
+- **Dead `.pill__text:disabled` CSS** — no disabled state is wired for the pill's Tidy / Auto-layout buttons yet; the rule is inert (ready for future use).
+- **`role="menuitem"` on pill dropdown items** — the pill sets it; MenuBar's `.menu__item`s don't. Not a regression (the pill is arguably more correct); align them in an a11y pass.
+- **Tidy vs Re-run layout both call `tidy()`** — the design nominally separates Arrange ▸ Tidy up (⌘⇧T) from Auto-layout ▸ Re-run layout (⌘⇧L); collapsed onto one `/api/layout` call for now. Revisit when the Arrange menu / ⌘⇧T land.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
