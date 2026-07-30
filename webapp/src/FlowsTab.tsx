@@ -6,18 +6,26 @@ type FlowMenuTarget = { flowId: string; x: number; y: number } | null
 // Small in-app "⋯" popover offering Rename/Duplicate/Delete for a single flow.
 // Reused for both the per-row menu (flow list) and the footer menu (current flow).
 function FlowMenu({
+  containerRef,
   onRename,
   onDuplicate,
   onDelete,
   onClose,
 }: {
+  // Ref to the wrapper that contains BOTH the "⋯" trigger button and this
+  // popover (mirrors MenuBar.tsx's rootRef shape). Anchoring outside-click
+  // detection to that wider wrapper — rather than to this popover alone —
+  // means a re-click on the trigger itself counts as "inside": the capture
+  // mousedown listener below leaves the menu open, and the trigger's own
+  // onClick toggle is what closes it. Without this, the mousedown listener
+  // would close the menu first (since the button is outside the popover),
+  // and then the button's click would immediately reopen it.
+  containerRef: React.RefObject<HTMLElement | null>
   onRename: () => void
   onDuplicate: () => void
   onDelete: () => void
   onClose: () => void
 }) {
-  const ref = useRef<HTMLDivElement>(null)
-
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -26,7 +34,7 @@ function FlowMenu({
     // this also closes when the click lands on the React Flow pane (d3-zoom
     // stops propagation on the pane's mousedown before a bubble listener runs).
     const onDown = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) onClose()
     }
     window.addEventListener('keydown', onKey)
     window.addEventListener('mousedown', onDown, true)
@@ -34,10 +42,18 @@ function FlowMenu({
       window.removeEventListener('keydown', onKey)
       window.removeEventListener('mousedown', onDown, true)
     }
-  }, [onClose])
+  }, [containerRef, onClose])
 
   return (
-    <div ref={ref} className="menu flowstab__menu" role="menu">
+    <div
+      className="menu flowstab__menu"
+      role="menu"
+      // Stops item clicks from bubbling into an ancestor row's onClick (which
+      // would otherwise also fire onSelectFlow as a side effect of choosing
+      // Rename/Duplicate/Delete on a non-active row). Harmless for the footer
+      // menu, which has no clickable ancestor to guard against.
+      onClick={(e) => e.stopPropagation()}
+    >
       <div
         className="menu__item"
         onClick={() => {
@@ -75,7 +91,7 @@ export function FlowsTab({
   currentFlow,
   mode,
   selStep,
-  currentStep: _currentStep,
+  currentStep,
   onSelStep,
   onSelectFlow,
   onCreateFlow,
@@ -110,8 +126,19 @@ export function FlowsTab({
   const [footerMenuOpen, setFooterMenuOpen] = useState(false)
   const [reorderMode, setReorderMode] = useState(false)
   const [hoverRow, setHoverRow] = useState<string | null>(null)
+  // Only one row/footer menu can be open at a time, so a single shared ref
+  // per trigger kind is enough — it's attached to whichever wrapper is
+  // currently rendered with its menu open.
+  const rowMenuWrapRef = useRef<HTMLDivElement>(null)
+  const footerMenuWrapRef = useRef<HTMLDivElement>(null)
 
   const steps = currentFlow?.steps ?? []
+  // During playback the app advances `currentStep` (arrow-key stepping),
+  // not `selStep` (which only moves via explicit edit-mode clicks) — so the
+  // expanded/selected step card must track whichever index is live for the
+  // current mode, matching App's existing `mode === 'edit' ? selStep : currentStep`
+  // convention.
+  const activeStep = mode === 'play' ? currentStep : selStep
 
   const setStep = (i: number, patch: Partial<FlowStep>) => {
     onStepsChange(steps.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
@@ -136,6 +163,7 @@ export function FlowsTab({
 
   const renderFlowRow = (f: Flow) => {
     const isActive = f.id === currentFlowId
+    const menuOpen = rowMenu?.flowId === f.id
     return (
       <div
         key={f.id}
@@ -147,24 +175,30 @@ export function FlowsTab({
         <span className={`flowstab__row-arrow${isActive ? ' is-active' : ''}`}>▶</span>
         <span className="flowstab__row-name">{f.name}</span>
         <span className="flowstab__row-count">{f.steps.length} steps</span>
-        {(hoverRow === f.id || rowMenu?.flowId === f.id) && (
-          <button
-            className="flowstab__row-more"
-            onClick={(e) => {
-              e.stopPropagation()
-              setRowMenu((cur) => (cur?.flowId === f.id ? null : { flowId: f.id, x: 0, y: 0 }))
-            }}
-          >
-            ⋯
-          </button>
-        )}
-        {rowMenu?.flowId === f.id && (
-          <FlowMenu
-            onRename={() => onRenameFlow(f.id)}
-            onDuplicate={() => onDuplicateFlow(f.id)}
-            onDelete={() => onDeleteFlow(f.id)}
-            onClose={() => setRowMenu(null)}
-          />
+        {(hoverRow === f.id || menuOpen) && (
+          // Wraps both the trigger and its popover so outside-click detection
+          // (inside FlowMenu) treats the trigger as "inside" — see FlowMenu's
+          // containerRef doc comment.
+          <div className="flowstab__morewrap" ref={menuOpen ? rowMenuWrapRef : undefined}>
+            <button
+              className="flowstab__row-more"
+              onClick={(e) => {
+                e.stopPropagation()
+                setRowMenu((cur) => (cur?.flowId === f.id ? null : { flowId: f.id, x: 0, y: 0 }))
+              }}
+            >
+              ⋯
+            </button>
+            {menuOpen && (
+              <FlowMenu
+                containerRef={rowMenuWrapRef}
+                onRename={() => onRenameFlow(f.id)}
+                onDuplicate={() => onDuplicateFlow(f.id)}
+                onDelete={() => onDeleteFlow(f.id)}
+                onClose={() => setRowMenu(null)}
+              />
+            )}
+          </div>
         )}
       </div>
     )
@@ -208,7 +242,7 @@ export function FlowsTab({
         </div>
         <div className="flowstab__steplist">
           {steps.map((s, i) => {
-            const isSel = i === selStep
+            const isSel = i === activeStep
             return isSel ? (
               <div key={s.id} className="flowstab__step is-sel">
                 <div className="flowstab__step-head">
@@ -219,6 +253,28 @@ export function FlowsTab({
                     placeholder="caption…"
                     onChange={(e) => setStep(i, { caption: e.target.value })}
                   />
+                  {reorderMode && (
+                    <span className="flowstab__step-reorder">
+                      <button
+                        disabled={i === 0}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          moveStep(i, -1)
+                        }}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        disabled={i === steps.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          moveStep(i, 1)
+                        }}
+                      >
+                        ↓
+                      </button>
+                    </span>
+                  )}
                   <span className="flowstab__step-drag">⋮</span>
                 </div>
                 <div className="flowstab__step-body">
@@ -283,7 +339,7 @@ export function FlowsTab({
             ▶ Play flow
           </button>
         )}
-        <div className="flowstab__morewrap">
+        <div className="flowstab__morewrap" ref={footerMenuOpen ? footerMenuWrapRef : undefined}>
           <button
             className="flowstab__more"
             onClick={() => setFooterMenuOpen((v) => !v)}
@@ -292,6 +348,7 @@ export function FlowsTab({
           </button>
           {footerMenuOpen && currentFlowId && (
             <FlowMenu
+              containerRef={footerMenuWrapRef}
               onRename={() => onRenameFlow(currentFlowId)}
               onDuplicate={() => onDuplicateFlow(currentFlowId)}
               onDelete={() => onDeleteFlow(currentFlowId)}
