@@ -199,7 +199,8 @@ input, textarea, [contenteditable="true"] {
 }
 .insp__action:hover { background: #f1f5f9; }
 .insp__row2 { display: flex; gap: 8px; }
-.insp__row2 .insp__field { flex: 1; }
+.insp__row2 .insp__field { flex: 1; min-width: 0; }
+.insp__row2 input { width: 100%; box-sizing: border-box; }
 .insp__dir { display: flex; gap: 4px; }
 .insp__dir button {
   flex: 1; font: inherit; font-size: 15px; line-height: 1; cursor: pointer;
