@@ -986,3 +986,36 @@ input, textarea, [contenteditable="true"] {
   cursor: pointer;
 }
 .destructive__check input { width: 15px; height: 15px; accent-color: #4f46e5; }
+
+/* ---- Import JSON dialog ---- */
+.importdlg__drop {
+  padding: 20px 0;
+  text-align: center;
+  border: 1px dashed #cbd5e1;
+  border-radius: 9px;
+  cursor: pointer;
+}
+.importdlg__drop.is-over { border-color: #4f46e5; background: #f5f6ff; }
+.importdlg__drop-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+.importdlg__drop-sub { font-size: 11.5px; color: #64748b; margin-top: 2px; }
+.importdlg__drop-file { font-size: 11.5px; color: #4f46e5; margin-top: 8px; }
+.importdlg__error {
+  margin-top: 12px;
+  padding: 10px 11px;
+  border: 1px solid #f0d2d2;
+  background: #fdf3f3;
+  border-radius: 8px;
+}
+.importdlg__error-title { font-size: 12.5px; font-weight: 600; color: #b91c1c; }
+.importdlg__error-bang { color: #b91c1c; font-weight: 700; }
+.importdlg__error-body { font-size: 11.5px; line-height: 1.45; color: #7f2d2d; margin-top: 3px; }
+.importdlg__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #475569;
+  cursor: pointer;
+}
+.importdlg__toggle input { width: 15px; height: 15px; accent-color: #4f46e5; }

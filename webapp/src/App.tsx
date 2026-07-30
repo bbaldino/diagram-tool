@@ -47,6 +47,7 @@ import { CanvasPill } from './CanvasPill'
 import { MenuBar } from './MenuBar'
 import { OpenDiagramDialog } from './OpenDiagramDialog'
 import { DestructiveDialog } from './DestructiveDialog'
+import { ImportDialog } from './ImportDialog'
 import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -274,7 +275,6 @@ function Flow({
   useEffect(() => {
     rf.fitView({ padding: 0.2 })
   }, [railVisible, rf])
-  const fileRef = useRef<HTMLInputElement>(null)
   const loaded = useRef(false)
   const wrapperRef = useRef<HTMLDivElement>(null)
   const pointer = useRef({ x: 0, y: 0 })
@@ -832,28 +832,6 @@ function Flow({
     URL.revokeObjectURL(url)
   }, [model, activeId, nodes, edges])
 
-  const onImport = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const f = e.target.files?.[0]
-      if (!f) return
-      f.text().then((t) => {
-        try {
-          const parsed = JSON.parse(t)
-          // normalizeModel resets old catalog-shaped (pre-migration) files to
-          // an empty model instead of importing incompatible data.
-          const next = M.normalizeModel(parsed)
-          setModel(next)
-          const nextId = next.diagrams[0]?.id
-          if (nextId) setActiveId(nextId)
-        } catch {
-          /* ignore bad file */
-        }
-      })
-      e.target.value = ''
-    },
-    [],
-  )
-
   const doUndo = useCallback(() => {
     if (!activeId) return
     void undoReq(activeId).catch(() => {})
@@ -1117,7 +1095,7 @@ function Flow({
           void promptRenameDiagram()
           break
         case 'import':
-          fileRef.current?.click()
+          setDialog('import')
           break
         case 'export-json':
           exportJson()
@@ -1625,7 +1603,7 @@ function Flow({
           }}
           onImport={() => {
             setOpenDialog(false)
-            fileRef.current?.click()
+            setDialog('import')
           }}
           onClose={() => setOpenDialog(false)}
         />
@@ -1656,13 +1634,30 @@ function Flow({
           }}
         />
       )}
-      <input
-        ref={fileRef}
-        type="file"
-        accept="application/json"
-        style={{ display: 'none' }}
-        onChange={onImport}
-      />
+      {dialog === 'import' && (
+        <ImportDialog
+          onCancel={() => setDialog(null)}
+          onImport={(imported, asNew) => {
+            if (asNew) {
+              setModel((m) => {
+                if (!m) return imported
+                const { model: merged, firstId } = M.mergeModel(m, imported)
+                if (firstId) {
+                  setActiveId(firstId)
+                  setOpenTabs((t) => addTab(t, firstId))
+                }
+                return merged
+              })
+            } else {
+              setModel(imported)
+              const nextId = imported.diagrams[0]?.id ?? null
+              setActiveId(nextId)
+              if (nextId) setOpenTabs((t) => addTab(t, nextId))
+            }
+            setDialog(null)
+          }}
+        />
+      )}
     </div>
   )
 }
