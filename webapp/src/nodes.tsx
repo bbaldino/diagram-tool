@@ -61,6 +61,9 @@ export function ServiceNode({ data, selected }: NodeProps) {
         </div>
       )}
       {(d as any).note ? <div className="node__note">{(d as any).note}</div> : null}
+      {(d as any).flowBadge ? (
+        <div className="node__flow-badge">{(d as any).flowBadge}</div>
+      ) : null}
     </div>
   )
 }

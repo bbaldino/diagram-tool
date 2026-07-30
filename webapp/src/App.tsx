@@ -342,7 +342,14 @@ function Flow({
   // clears the class (normal rendering) otherwise. Maps the existing
   // nodes/edges in place — no re-seed from the model.
   useEffect(() => {
-    setNodes((ns) => ns.map((n) => ({ ...n, className: flowClassOf(n.id) })))
+    setNodes((ns) =>
+      ns.map((n) => {
+        const cls = flowClassOf(n.id)
+        const flowBadge =
+          flowMode === 'play' && cls === 'flow-active' ? currentStep + 1 : undefined
+        return { ...n, className: cls, data: { ...n.data, flowBadge } }
+      }),
+    )
     setEdges((es) =>
       es.map((e) => {
         const fc = flowClassOf(e.id)
@@ -351,7 +358,7 @@ function Flow({
         return { ...e, className: fc, data: { ...e.data, flowState: fc } }
       }),
     )
-  }, [flowClassOf, setNodes, setEdges])
+  }, [flowClassOf, setNodes, setEdges, flowMode, currentStep])
 
   // Re-seed the live canvas from the model whenever the active diagram changes
   // or the model is loaded/replaced externally. Skips model updates that came
@@ -1426,6 +1433,7 @@ function Flow({
         onDoubleClick={onCanvasDoubleClick}
       >
       <ReactFlow
+        className={flowMode === 'play' ? 'is-flow-play' : undefined}
         nodes={nodes}
         edges={flowEdges}
         onNodesChange={handleNodesChange}
