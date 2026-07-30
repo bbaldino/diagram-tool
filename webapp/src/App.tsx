@@ -846,7 +846,21 @@ function Flow({
   // double-clicks that land on a node/edge/handle — only the pane counts.
   const onCanvasDoubleClick = useCallback(
     (e: React.MouseEvent) => {
-      if (!(e.target as HTMLElement).classList.contains('react-flow__pane')) return
+      // Add on the empty canvas surface. The old check required the target to be
+      // EXACTLY `.react-flow__pane`, so the double-click silently no-op'd whenever
+      // anything else sat under the cursor — React Flow's selection overlay laid
+      // over the pane when nodes are selected, or a stray non-pane layer. Invert
+      // it: fire unless the double-click landed on something that owns its own
+      // interaction — a node/edge/handle, a floating panel (pill, legend,
+      // toolbar, controls, minimap are all `.react-flow__panel`), the add-menu
+      // popover, or the playback transport bar.
+      const t = e.target as HTMLElement
+      if (
+        t.closest(
+          '.react-flow__node, .react-flow__edge, .react-flow__handle, .react-flow__panel, .addmenu, .transport',
+        )
+      )
+        return
       const flow = rf.screenToFlowPosition({ x: e.clientX, y: e.clientY })
       const sx = Math.min(e.clientX, window.innerWidth - 240)
       const sy = Math.min(e.clientY, window.innerHeight - 260)
