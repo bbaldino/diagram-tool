@@ -690,48 +690,85 @@ function Flow({
 
   const reparent = useCallback(
     (parentId: string) => {
-      if (!selNode) return
-      // Cycle guard: a node/group can't be parented to itself or to one of
-      // its own descendants (only relevant for group-in-group nesting — leaf
-      // nodes/notes have no descendants, so this is always a no-op for them).
-      if (parentId) {
-        if (parentId === selNode) return
-        if (descendantsOf(selNode, nodes).has(parentId)) return
-      }
       setNodes((ns) => {
-        // Non-overlapping starting position: every previously-nested child
-        // landed at the same fixed (GROUP_PAD, GROUP_NEST_TOP_PAD), so
-        // nesting a second thing (e.g. a note and a group) into the same
-        // parent stacked them exactly on top of each other. Instead, place
-        // the incoming child relative to whatever's already in the target
-        // group. Final extent/parent-size are still set below by
-        // reflowGroups, which also grows this (and every ancestor) group to
-        // actually contain it, so a nested child can never coincide with its
-        // parent's box (the group-title-overlap bug) — placeInGroup's own
-        // top clearance (GROUP_NEST_TOP_PAD, not GROUP_PAD) keeps the
-        // child's OWN .group__label from colliding with the parent's, which
-        // sits in that same strip just above the parent.
-        const child = ns.find((n) => n.id === selNode)
-        const siblings = parentId
-          ? ns
-              .filter((n) => n.parentId === parentId && n.id !== selNode)
-              .map((n) => ({ position: n.position, size: liveFootprint(n) }))
-          : []
-        const pos = placeInGroup(child ? liveFootprint(child) : { width: 0, height: 0 }, siblings)
-        const reparented = groupsFirst(
-          ns.map((n) => {
-            if (n.id !== selNode) return n
-            if (!parentId) {
+        // Multi-select aware: reparent EVERY selected node, not just the one the
+        // inspector happens to be showing (selNode). Fall back to selNode when
+        // nothing is flagged selected (defensive — onSelectionChange keeps them
+        // in sync). This is what makes "select several entities, pick a group"
+        // assign all of them, not only the first.
+        const selectedIds = ns.filter((n) => n.selected).map((n) => n.id)
+        const baseIds = selectedIds.length ? selectedIds : selNode ? [selNode] : []
+        // Cycle guard per node: a node/group can't be parented to itself or to
+        // one of its own descendants (only relevant for group-in-group nesting).
+        const ids = parentId
+          ? baseIds.filter((id) => id !== parentId && !descendantsOf(id, ns).has(parentId))
+          : baseIds
+        if (!ids.length) return ns
+        const idSet = new Set(ids)
+
+        if (!parentId) {
+          // Un-parent all selected: strip parentId + drag extent.
+          return groupsFirst(
+            ns.map((n) => {
+              if (!idSet.has(n.id)) return n
               const { parentId: _p, extent: _e, ...rest } = n as any
               return { ...rest }
-            }
-            return { ...n, parentId, position: pos }
-          }),
+            }),
+          )
+        }
+
+        // liveFootprint returns 0×0 for service (entity) nodes, which would make
+        // placeInGroup stack them 16px apart (overlapping). Use the live measured
+        // size, falling back to a typical entity footprint, so the row spreads.
+        const sizeOf = (n: any) => {
+          const f = liveFootprint(n)
+          if (f.width && f.height) return f
+          const m = n.measured
+          if (m?.width && m?.height) return { width: Number(m.width), height: Number(m.height) }
+          return { width: 180, height: 72 }
+        }
+        // Lay each incoming node out left-to-right after the group's existing
+        // children; seed the sibling list and append each placement so the next
+        // one clears it (single-select behavior is unchanged — one node still
+        // lands at GROUP_PAD/GROUP_NEST_TOP_PAD). reflowGroups then grows this
+        // group (and ancestors) to contain the new row and recomputes extents.
+        const siblings = ns
+          .filter((n) => n.parentId === parentId && !idSet.has(n.id))
+          .map((n) => ({ position: n.position, size: sizeOf(n) }))
+        const posById = new Map<string, { x: number; y: number }>()
+        for (const id of ids) {
+          const child = ns.find((n) => n.id === id)
+          const size = child ? sizeOf(child) : { width: 0, height: 0 }
+          const pos = placeInGroup(size, siblings)
+          posById.set(id, pos)
+          siblings.push({ position: pos, size })
+        }
+        const reparented = groupsFirst(
+          ns.map((n) => (idSet.has(n.id) ? { ...n, parentId, position: posById.get(n.id)! } : n)),
         )
-        return parentId ? reflowGroups(reparented) : reparented
+        // reflowGroups grows a group via requiredGroupSize, which reads child
+        // `size` — 0 for entity nodes — so it under-sizes a group that gains a
+        // row of entities (they'd stick out the right edge). Grow the target
+        // group here from the same measured/estimated footprints so it contains
+        // the new row; reflowGroups then only ever grows further (never shrinks)
+        // and fixes ancestors + child extents.
+        const sized = reparented.map((n) => {
+          if (n.id !== parentId) return n
+          const kids = reparented.filter((c) => c.parentId === parentId)
+          if (!kids.length) return n
+          const farX = Math.max(...kids.map((c) => c.position.x + sizeOf(c).width))
+          const farY = Math.max(...kids.map((c) => c.position.y + sizeOf(c).height))
+          const g = n as any
+          const curW = Number(g.width) || Number(g.style?.width) || 0
+          const curH = Number(g.height) || Number(g.style?.height) || 0
+          const width = Math.max(curW, farX + 16)
+          const height = Math.max(curH, farY + 16)
+          return { ...n, width, height, style: { ...n.style, width, height } }
+        })
+        return reflowGroups(sized)
       })
     },
-    [selNode, nodes, setNodes],
+    [selNode, setNodes],
   )
 
   const updateEdge = useCallback(
