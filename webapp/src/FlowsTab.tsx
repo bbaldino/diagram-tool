@@ -233,6 +233,16 @@ export function FlowsTab({
     </div>
   )
 
+  const walkHeader = currentFlow && (
+    <div className="flowstab__walkhead">
+      <span className="flowstab__walkhead-arrow">▶</span>
+      <span className="flowstab__walkhead-name">{currentFlow.name}</span>
+      <span className="flowstab__walkhead-chip">
+        Step {currentStep + 1} / {steps.length}
+      </span>
+    </div>
+  )
+
   if (!currentFlow) {
     return (
       <div className="flowstab">
@@ -252,18 +262,20 @@ export function FlowsTab({
 
   return (
     <div className="flowstab">
-      {flowList}
+      {mode === 'play' ? walkHeader : flowList}
       <div className="flowstab__steps">
-        <div className="flowstab__steps-head">
-          <span className="flowstab__steps-label">Steps · {currentFlow.name}</span>
-          {/* Editing affordance only — locked out during Play (see mode-gated
-              reorder controls below). */}
-          {mode === 'edit' && (
-            <span className="flowstab__reorder" onClick={() => setReorderMode((r) => !r)}>
-              Reorder
-            </span>
-          )}
-        </div>
+        {mode !== 'play' && (
+          <div className="flowstab__steps-head">
+            <span className="flowstab__steps-label">Steps · {currentFlow.name}</span>
+            {/* Editing affordance only — locked out during Play (see mode-gated
+                reorder controls below). */}
+            {mode === 'edit' && (
+              <span className="flowstab__reorder" onClick={() => setReorderMode((r) => !r)}>
+                Reorder
+              </span>
+            )}
+          </div>
+        )}
         <div className="flowstab__steplist">
           {steps.map((s, i) => {
             const isSel = i === activeStep
@@ -272,6 +284,7 @@ export function FlowsTab({
             // fires below) but nothing here is mutable while a flow is
             // running.
             const canEdit = mode === 'edit'
+            const done = mode === 'play' && i < currentStep
             return isSel ? (
               <div key={s.id} className="flowstab__step is-sel">
                 <div className="flowstab__step-head">
@@ -311,6 +324,9 @@ export function FlowsTab({
                     </span>
                   )}
                   <span className="flowstab__step-drag">⋮</span>
+                  {mode === 'play' && i === currentStep && (
+                    <span className="flowstab__step-now">▶</span>
+                  )}
                 </div>
                 <div className="flowstab__step-body">
                   {s.elementIds.map((id) => (
@@ -329,13 +345,19 @@ export function FlowsTab({
             ) : (
               <div
                 key={s.id}
-                className="flowstab__step"
+                className={`flowstab__step${done ? ' is-done' : ''}`}
                 onClick={() => onSelStep(i)}
               >
                 <span className="flowstab__step-idx flowstab__step-idx--muted">{i + 1}</span>
                 <span className="flowstab__step-title-view">
                   {s.caption || '(no caption)'}
                 </span>
+                {mode === 'play' && i < currentStep && (
+                  <span className="flowstab__step-check">✓</span>
+                )}
+                {mode === 'play' && i === currentStep && (
+                  <span className="flowstab__step-now">▶</span>
+                )}
                 {canEdit && reorderMode && (
                   <span className="flowstab__step-reorder">
                     <button
@@ -370,31 +392,52 @@ export function FlowsTab({
       </div>
       <div className="flowstab__footer">
         {mode === 'play' ? (
-          <button className="flowstab__play" onClick={onStop}>
-            Stop
-          </button>
+          <>
+            <button
+              className="flowstab__walk-back"
+              disabled={currentStep <= 0}
+              onClick={() => onSelStep(Math.max(0, currentStep - 1))}
+            >
+              ← Back
+            </button>
+            <button
+              className="flowstab__walk-next"
+              onClick={() =>
+                currentStep >= steps.length - 1
+                  ? onStop()
+                  : onSelStep(Math.min(steps.length - 1, currentStep + 1))
+              }
+            >
+              {currentStep >= steps.length - 1 ? 'Finish' : 'Next →'}
+            </button>
+            <button className="flowstab__walk-exit" onClick={onStop}>
+              Exit
+            </button>
+          </>
         ) : (
-          <button className="flowstab__play" onClick={onPlay}>
-            ▶ Play flow
-          </button>
+          <>
+            <button className="flowstab__play" onClick={onPlay}>
+              ▶ Walk through
+            </button>
+            <div className="flowstab__morewrap" ref={footerMenuOpen ? footerMenuWrapRef : undefined}>
+              <button
+                className="flowstab__more"
+                onClick={() => setFooterMenuOpen((v) => !v)}
+              >
+                ⋯
+              </button>
+              {footerMenuOpen && currentFlowId && (
+                <FlowMenu
+                  containerRef={footerMenuWrapRef}
+                  onRename={() => onRenameFlow(currentFlowId)}
+                  onDuplicate={() => onDuplicateFlow(currentFlowId)}
+                  onDelete={() => onDeleteFlow(currentFlowId)}
+                  onClose={() => setFooterMenuOpen(false)}
+                />
+              )}
+            </div>
+          </>
         )}
-        <div className="flowstab__morewrap" ref={footerMenuOpen ? footerMenuWrapRef : undefined}>
-          <button
-            className="flowstab__more"
-            onClick={() => setFooterMenuOpen((v) => !v)}
-          >
-            ⋯
-          </button>
-          {footerMenuOpen && currentFlowId && (
-            <FlowMenu
-              containerRef={footerMenuWrapRef}
-              onRename={() => onRenameFlow(currentFlowId)}
-              onDuplicate={() => onDuplicateFlow(currentFlowId)}
-              onDelete={() => onDeleteFlow(currentFlowId)}
-              onClose={() => setFooterMenuOpen(false)}
-            />
-          )}
-        </div>
       </div>
     </div>
   )
