@@ -291,3 +291,65 @@ export function deleteTemplate(model: Model, id: string): Model {
     })),
   }
 }
+
+export interface DiagramCounts {
+  entities: number
+  groups: number
+  edges: number
+  flows: number
+  notes: number
+}
+
+export function diagramCounts(d: Diagram): DiagramCounts {
+  return {
+    entities: d.nodes.length,
+    groups: d.groups.length,
+    edges: d.edges.length,
+    flows: d.flows.length,
+    notes: d.notes.length,
+  }
+}
+
+// Human copy for destructive-confirm bodies: "12 entities, 3 groups, 9 edges and
+// 2 flows". Lists only non-zero categories (entities/groups/edges/flows — notes
+// are not surfaced), pluralizes, and joins with commas + a trailing "and".
+// Returns "no content" when everything is zero.
+export function describeCounts(c: DiagramCounts): string {
+  const parts: string[] = []
+  const push = (n: number, one: string, many: string) => {
+    if (n > 0) parts.push(`${n} ${n === 1 ? one : many}`)
+  }
+  push(c.entities, 'entity', 'entities')
+  push(c.groups, 'group', 'groups')
+  push(c.edges, 'edge', 'edges')
+  push(c.flows, 'flow', 'flows')
+  if (parts.length === 0) return 'no content'
+  if (parts.length === 1) return parts[0]
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
+}
+
+// Clear a diagram's content but keep the diagram row (id/name/title/type).
+// patchDiagram's patch type excludes `flows`, so this uses mapDiagram directly.
+export function clearDiagram(model: Model, id: string): Model {
+  return mapDiagram(model, id, (d) => ({ ...d, nodes: [], groups: [], notes: [], edges: [], flows: [] }))
+}
+
+// Merge an imported model into this one as NEW diagrams: each imported diagram
+// keeps its content but gets a collision-free id; imported templates are unioned
+// by id. Returns the new model and the id of the first imported diagram (or null
+// when the import has no diagrams).
+export function mergeModel(model: Model, imported: Model): { model: Model; firstId: string | null } {
+  const existing = new Set(model.diagrams.map((d) => d.id))
+  const added: Diagram[] = []
+  let firstId: string | null = null
+  for (const d of imported.diagrams) {
+    let id = d.id
+    for (let n = 2; existing.has(id); n++) id = `${d.id}-${n}`
+    existing.add(id)
+    added.push({ ...d, id })
+    if (firstId === null) firstId = id
+  }
+  const seenT = new Set(model.templates.map((t) => t.id))
+  const templates = [...model.templates, ...imported.templates.filter((t) => !seenT.has(t.id))]
+  return { model: { ...model, diagrams: [...model.diagrams, ...added], templates }, firstId }
+}

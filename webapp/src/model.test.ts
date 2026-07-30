@@ -28,6 +28,10 @@ import {
   diagramContent,
   nodesById,
   patchDiagram,
+  diagramCounts,
+  describeCounts,
+  clearDiagram,
+  mergeModel,
   type Model,
   type Diagram,
   type Node,
@@ -281,5 +285,68 @@ describe('patchDiagram', () => {
     expect(d.name).toBe('Patched')
     expect(d.notes).toHaveLength(1)
     expect(getDiagram(baseModel, 'logical')!.notes).toHaveLength(0) // original untouched
+  })
+})
+
+function d(over: Partial<Diagram> = {}): Diagram {
+  return { id: 'd1', name: 'D1', title: 'D1', type: 'canvas', nodes: [], groups: [], notes: [], edges: [], flows: [], ...over }
+}
+function m(diagrams: Diagram[], templates: Model['templates'] = []): Model {
+  return { version: 2, diagrams, templates }
+}
+
+describe('diagramCounts / describeCounts', () => {
+  it('counts each category', () => {
+    const c = diagramCounts(d({
+      nodes: [{}, {}, {}] as any,
+      groups: [{}] as any,
+      edges: [{}, {}] as any,
+      flows: [{}] as any,
+      notes: [{}, {}] as any,
+    }))
+    expect(c).toEqual({ entities: 3, groups: 1, edges: 2, flows: 1, notes: 2 })
+  })
+
+  it('describes non-zero categories, pluralized, with a trailing "and"', () => {
+    expect(describeCounts({ entities: 12, groups: 3, edges: 9, flows: 2, notes: 0 }))
+      .toBe('12 entities, 3 groups, 9 edges and 2 flows')
+    expect(describeCounts({ entities: 1, groups: 0, edges: 1, flows: 0, notes: 0 }))
+      .toBe('1 entity and 1 edge')
+    expect(describeCounts({ entities: 5, groups: 0, edges: 0, flows: 0, notes: 0 }))
+      .toBe('5 entities')
+    expect(describeCounts({ entities: 0, groups: 0, edges: 0, flows: 0, notes: 0 }))
+      .toBe('no content')
+  })
+})
+
+describe('clearDiagram', () => {
+  it('empties content but keeps the diagram row', () => {
+    const before = m([d({ id: 'a', name: 'Keep', nodes: [{}] as any, flows: [{}] as any }), d({ id: 'b' })])
+    const after = clearDiagram(before, 'a')
+    const a = after.diagrams.find((x) => x.id === 'a')!
+    expect(a.name).toBe('Keep')
+    expect(a).toMatchObject({ nodes: [], groups: [], notes: [], edges: [], flows: [] })
+    // other diagrams untouched, referential-ish integrity
+    expect(after.diagrams.find((x) => x.id === 'b')).toBe(before.diagrams.find((x) => x.id === 'b'))
+  })
+})
+
+describe('mergeModel', () => {
+  it('adds imported diagrams with collision-free ids and returns the first', () => {
+    const base = m([d({ id: 'd-x', name: 'X' })])
+    const imported = m([d({ id: 'd-x', name: 'X import' }), d({ id: 'd-y', name: 'Y' })])
+    const { model, firstId } = mergeModel(base, imported)
+    expect(model.diagrams.map((x) => x.id)).toEqual(['d-x', 'd-x-2', 'd-y'])
+    expect(firstId).toBe('d-x-2')
+    // content preserved on the added copy
+    expect(model.diagrams.find((x) => x.id === 'd-x-2')!.name).toBe('X import')
+  })
+
+  it('unions templates by id and handles an empty import', () => {
+    const base = m([d()], [{ id: 't1', name: 'T1', fields: [] }])
+    const imported = m([], [{ id: 't1', name: 'dup', fields: [] }, { id: 't2', name: 'T2', fields: [] }])
+    const { model, firstId } = mergeModel(base, imported)
+    expect(model.templates.map((t) => t.id)).toEqual(['t1', 't2'])
+    expect(firstId).toBeNull()
   })
 })
