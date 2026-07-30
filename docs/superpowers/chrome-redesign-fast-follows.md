@@ -84,6 +84,13 @@ Most Phase-1→10 fast-follows above were CLEARED in this sweep: dead `.dialog*`
 - **Open dialog not focus-managed** — `OpenDiagramDialog` uses its own `role="dialog"` (not `DialogShell`), so it doesn't inherit the new initial-focus + Tab-trap. Fold in when the Open dialog migrates onto `DialogShell`.
 - **Scrubber 5px bar corners squared** — the taller hit-area (`background-clip: content-box`) left the painted band with square corners (was a rounded pill). Cosmetic.
 
+## From Phase 12 (Inspector §5a restyle)
+
+- ~~header `h4` margin misaligned in `.insp__header`~~ and ~~dead `.insp--empty .insp__hint`~~ — **FIXED** in 03b5096.
+- **§5a screens needing infra (deferred):** the **multi-select Inspector** (app has no multi-selection state — `selNode` is single), the group **member-chip list** + **Collapse group** toggle (new features), the **Diagram read-only block** with "Last edited" (model has no timestamp), and the §5a header **icon tile** (cosmetic; the entity chip carries the type). Build these when the underlying state/model support lands.
+- **Select `▾` on Firefox** — the custom chevron uses `appearance:none` + `-webkit-appearance:none` but not `-moz-appearance:none`; older Firefox may show a faint native arrow. Add `-moz-appearance:none`.
+- **Empty state is left-aligned** — the §5a "Nothing selected" tile/title/body stack is left-aligned (matches the rest of the inspector padding); center it if the design intended a centered empty state.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
