@@ -75,6 +75,15 @@ Each was reviewed and judged safe to defer at the time.
 - **Group + Ungroup can both enable at once** when the selection holds a top-level group AND 2+ top-level non-group nodes; `groupSelection` groups the non-group members and ignores the selected group. Coherent but slightly surprising — consider making the two mutually exclusive.
 - **Read-only / sample mode deferred.** No read-only flag exists on the model and nothing marks a diagram read-only; the §5b read-only chrome (muted status + disabled mutating controls) is deferred until there's a product trigger for it.
 
+## From Phase 11 (merge-readiness polish sweep)
+
+Most Phase-1→10 fast-follows above were CLEARED in this sweep: dead `.dialog*` CSS + `buildSeed` removed; meta pluralization; ⌘O guard; engine-id guard; `.rightrail` flex-shrink; fitView rAF; group/ungroup mutual exclusion; ⌘G/⇧⌘G wired + zoom hints dropped; tab-strip + dialog + menu a11y; menu 120ms transition; play-mode step lock; footer `⋯` edge-flip; scrubber hit area. Residual items:
+
+- ~~`ACTORS`/`EDGES`/`interface E` orphaned by `buildSeed` removal~~ — **FIXED** in 67bf354 (removed; `N`/`G`/`GROUPS` retained).
+- **Redundant `.tabstrip__tabs` vs `.tabstrip__tablist` CSS** — after the a11y wrapper split the two rules are byte-identical (`display:flex; align-items:flex-end; gap:3px`); collapse into one.
+- **Open dialog not focus-managed** — `OpenDiagramDialog` uses its own `role="dialog"` (not `DialogShell`), so it doesn't inherit the new initial-focus + Tab-trap. Fold in when the Open dialog migrates onto `DialogShell`.
+- **Scrubber 5px bar corners squared** — the taller hit-area (`background-clip: content-box`) left the painted band with square corners (was a rounded pill). Cosmetic.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
