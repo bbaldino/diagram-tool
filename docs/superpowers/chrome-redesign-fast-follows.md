@@ -58,6 +58,14 @@ Each was reviewed and judged safe to defer at the time.
 - **Periodic no-op write-back during playback** — each auto-advance step churns node data → schedules a 400ms `flushCanvasInto`→`setModel` that is a structural no-op (badge/flowState aren't persisted, so `diffToOps` yields zero ops) but still toggles `skipReseed` each cycle, marginally widening the pre-existing race where a concurrent external re-seed could be swallowed. Pre-existing mechanism, not introduced here; a fast-follow could skip write-back scheduling when nothing geometric changed.
 - **Scrubber bars are a 5px hit target** — the transport step bars are only 5px tall; fine with a mouse but a small target. Consider a taller invisible hit area. (Also why the browser smoke exercised jump via arrows/next rather than a direct bar click.)
 
+## From Phase 9 (dialog restyle → shared §6 shell)
+
+- ~~Import silent-wipe footgun~~ — **FIXED** in 5453840 (a valid-JSON-but-not-a-model / old catalog-shaped file normalizes to 0 diagrams; that now shows an import error and keeps Import disabled, so the replace-toggle-off path can't wipe the model with nothing).
+- **New dialogs lack initial focus (a11y).** `DestructiveDialog` and `ImportDialog` don't autofocus a control; and `DialogShell`'s Enter-fires-primary fires the (possibly destructive) primary regardless of which control has focus. Fold into a dialog focus-trap / tab-cycling a11y pass (also covers the prompt/confirm dialogs).
+- **Dead dialog CSS.** The old `.dialog*` block (index.css ~262-291) is unused after the shell refactor, and `.dialog` is still listed in the shared panel selector (index.css:119). Remove both in a cleanup sweep.
+- **Open dialog not on the shared shell.** `OpenDiagramDialog` keeps its own `.opendlg*` markup + `.opendlg__scrim` (z-index 1000 vs the shared shell's 100). Harmless (mutually exclusive) but unify onto `DialogShell` when the Open dialog's deferred niceties (All/Recent/Open-tabs sub-tabs, real thumbnails, "edited Xm ago") are built.
+- **`buildSeed` now dead in graph.ts.** Reset no longer reseeds the demo graph, so `buildSeed` (graph.ts:509) and the module-level `GROUPS` seed it uses may be fully unused — remove in a cleanup sweep after confirming no other caller.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
