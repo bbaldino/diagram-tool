@@ -73,14 +73,6 @@ interface G {
   color: string
   nodes: N[]
 }
-interface E {
-  from: string
-  to: string
-  type: RelType
-  label?: string
-  inferred?: boolean
-}
-
 // ---- Groups + service nodes (status from Unraid docker state) ----
 const GROUPS: G[] = [
   {
@@ -175,70 +167,6 @@ const GROUPS: G[] = [
       { id: 'integrations', label: 'Cloud integrations', sub: 'Rachio / UniFi / …' },
     ],
   },
-]
-
-const ACTORS: N[] = [
-  { id: 'users', label: 'Internet users', kind: 'actor' },
-  { id: 'claude', label: 'You / Claude', kind: 'actor' },
-]
-
-// ---- Edges (relationship-typed). inferred = dashed = a guess to confirm ----
-const EDGES: E[] = [
-  // external entry / auth
-  { from: 'users', to: 'npm', type: 'via', label: 'HTTPS' },
-  { from: 'npm', to: 'authelia', type: 'via', label: 'forward-auth' },
-  { from: 'npm', to: 'media', type: 'proxies', label: 'reverse proxy' },
-  { from: 'npm', to: 'hass', type: 'proxies' },
-  { from: 'npm', to: 'ollama', type: 'proxies' },
-  { from: 'npm', to: 'openwebui', type: 'proxies' },
-  { from: 'npm', to: 'apps', type: 'proxies' },
-  { from: 'npm', to: 'frigate', type: 'proxies' },
-  // media pipeline
-  { from: 'sonarr', to: 'hydra', type: 'talks-to', label: 'search indexers' },
-  { from: 'radarr', to: 'hydra', type: 'talks-to', label: 'search indexers' },
-  { from: 'sonarr', to: 'sab', type: 'talks-to', label: 'send download' },
-  { from: 'radarr', to: 'sab', type: 'talks-to', label: 'send download' },
-  { from: 'sab', to: 'library', type: 'writes-to', label: 'downloads' },
-  { from: 'sonarr', to: 'library', type: 'writes-to', label: 'import' },
-  { from: 'radarr', to: 'library', type: 'writes-to', label: 'import' },
-  { from: 'plex', to: 'library', type: 'reads-from', label: 'streams' },
-  { from: 'recyclarr', to: 'sonarr', type: 'writes-to', label: 'sync config' },
-  { from: 'recyclarr', to: 'radarr', type: 'writes-to', label: 'sync config' },
-  { from: 'handbrake', to: 'library', type: 'writes-to', label: 'transcode', inferred: true },
-  // voice pipeline
-  { from: 'hass', to: 'whisper', type: 'talks-to', label: 'STT' },
-  { from: 'hass', to: 'piper', type: 'talks-to', label: 'TTS' },
-  { from: 'hass', to: 'kokoro', type: 'talks-to', label: 'TTS', inferred: true },
-  { from: 'hass', to: 'ollama', type: 'talks-to', label: 'conversation' },
-  { from: 'ttsproxy', to: 'piper', type: 'talks-to', label: 'pronunciation', inferred: true },
-  { from: 'pipermgr', to: 'piper', type: 'writes-to', label: 'manages voices', inferred: true },
-  { from: 'openwebui', to: 'ollama', type: 'talks-to', label: 'chat UI' },
-  // home automation hub
-  { from: 'zwave', to: 'hass', type: 'talks-to', label: 'Z-Wave JS' },
-  { from: 'mqtt', to: 'hass', type: 'talks-to', label: 'MQTT' },
-  { from: 'ma', to: 'hass', type: 'talks-to', label: 'media control' },
-  { from: 'frigate', to: 'hass', type: 'talks-to', label: 'camera events' },
-  { from: 'frigate', to: 'mqtt', type: 'writes-to', label: 'detections' },
-  { from: 'zwave_dev', to: 'zwave', type: 'talks-to' },
-  { from: 'cameras', to: 'frigate', type: 'talks-to' },
-  { from: 'mqtt_dev', to: 'mqtt', type: 'talks-to' },
-  { from: 'integrations', to: 'hass', type: 'talks-to' },
-  // apps wiring (mostly inferred)
-  { from: 'mealie', to: 'postgres', type: 'talks-to', label: 'database', inferred: true },
-  { from: 'dashboard', to: 'hass', type: 'reads-from', label: 'entities', inferred: true },
-  { from: 'dashboard', to: 'postgres', type: 'talks-to', label: 'database', inferred: true },
-  { from: 'authelia', to: 'postgres', type: 'talks-to', label: 'session store', inferred: true },
-  { from: 'health', to: 'mcpunraid', type: 'monitors', label: 'host status', inferred: true },
-  // MCP bridges (what Claude talks to)
-  { from: 'claude', to: 'mcparr', type: 'talks-to' },
-  { from: 'claude', to: 'mcpplex', type: 'talks-to' },
-  { from: 'claude', to: 'mcpunraid', type: 'talks-to' },
-  { from: 'claude', to: 'npmmcp', type: 'talks-to' },
-  { from: 'mcparr', to: 'sonarr', type: 'reads-from' },
-  { from: 'mcparr', to: 'radarr', type: 'reads-from' },
-  { from: 'mcpplex', to: 'plex', type: 'reads-from' },
-  { from: 'npmmcp', to: 'npm', type: 'reads-from' },
-  { from: 'camproxy', to: 'cameras', type: 'reads-from', label: 'streams', inferred: true },
 ]
 
 // group color lookup (used by the minimap)
