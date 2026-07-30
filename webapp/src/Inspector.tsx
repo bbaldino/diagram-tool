@@ -2,6 +2,7 @@ import { type Node, type Edge } from '@xyflow/react'
 import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { IconInput } from './IconInput'
+import { Switch } from './Switch'
 
 interface Props {
   node: Node | null
@@ -55,7 +56,10 @@ export function Inspector({
     ]
     return (
       <div className="panel insp">
-        <h4>Edit edge</h4>
+        <div className="insp__header">
+          <h4>Edit edge</h4>
+          <span className="insp__chip">Edge</span>
+        </div>
         <div className="insp__sub">
           {String(edge.source)} → {String(edge.target)}
         </div>
@@ -91,14 +95,7 @@ export function Inspector({
             onChange={(e) => onEdge({ label: e.target.value })}
           />
         </Field>
-        <label className="insp__check">
-          <input
-            type="checkbox"
-            checked={!!d.inferred}
-            onChange={(e) => onEdge({ inferred: e.target.checked })}
-          />
-          <span>inferred (dashed guess)</span>
-        </label>
+        <Switch checked={!!d.inferred} onChange={(v) => onEdge({ inferred: v })} label="Inferred (dashed)" />
         <button className="insp__delete" onClick={onDelete}>
           Delete edge
         </button>
@@ -114,7 +111,10 @@ export function Inspector({
     const curH = Math.round(Number(g.measured?.height) || Number(g.style?.height) || Number(g.height) || 0)
     return (
       <div className="panel insp">
-        <h4>Edit group</h4>
+        <div className="insp__header">
+          <h4>Edit group</h4>
+          <span className="insp__chip">Group</span>
+        </div>
         <Field label="Label">
           <input value={d.label ?? ''} onChange={(e) => onNodeData({ label: e.target.value })} />
         </Field>
@@ -175,7 +175,10 @@ export function Inspector({
   if (node && node.type === 'note') {
     return (
       <div className="panel insp">
-        <h4>Edit note</h4>
+        <div className="insp__header">
+          <h4>Edit note</h4>
+          <span className="insp__chip">Note</span>
+        </div>
         <div className="insp__hint">Edit the text directly on the note.</div>
         <Field label="Group">
           <select value={node.parentId ?? ''} onChange={(e) => onNodeParent(e.target.value)}>
@@ -199,7 +202,10 @@ export function Inspector({
     const d = node.data as any
     return (
       <div className="panel insp">
-        <h4>Edit node</h4>
+        <div className="insp__header">
+          <h4>Edit node</h4>
+          <span className="insp__chip">Entity</span>
+        </div>
         <Field label="Label">
           <input value={d.label ?? ''} onChange={(e) => onNodeData({ label: e.target.value })} />
         </Field>
@@ -279,8 +285,9 @@ export function Inspector({
   // ----- nothing selected -----
   return (
     <div className="panel insp insp--empty">
-      <h4>Inspector</h4>
-      <div className="insp__hint">
+      <div className="insp__empty-tile">◇</div>
+      <div className="insp__empty-title">Nothing selected</div>
+      <div className="insp__empty-body">
         Select a node, group, or edge to edit its fields. Double-click the canvas and choose{' '}
         <b>Add → Entity</b> to create one; use <b>+ Group</b> / <b>+ Note</b> for diagram structure.
       </div>
