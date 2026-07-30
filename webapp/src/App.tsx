@@ -931,21 +931,60 @@ function Flow({
     [],
   )
 
-  // Edit/View/Arrange open with empty item lists this phase — only File is wired.
+  const arrangeMenuItems: MenuItem[] = useMemo(
+    () => [
+      { id: 'tidy-up', label: 'Tidy up', shortcut: '⌘⇧T' },
+      {
+        id: 'auto-layout',
+        label: 'Auto-layout',
+        submenu: [
+          { id: 'engine-graphviz', label: 'Graphviz', checked: layoutEngine === 'graphviz' },
+          { id: 'engine-elk', label: 'elkjs', checked: layoutEngine === 'elk' },
+          { id: 'rerun-layout', label: 'Re-run layout', shortcut: '⌘⇧L', separatorBefore: true },
+        ],
+      },
+      {
+        id: 'edge-style',
+        label: 'Edge style',
+        submenu: [
+          { id: 'edge-default', label: 'Curved', checked: edgeStyle === 'default' },
+          { id: 'edge-smoothstep', label: 'Angular', checked: edgeStyle === 'smoothstep' },
+          { id: 'edge-straight', label: 'Straight', checked: edgeStyle === 'straight' },
+        ],
+      },
+      { id: 'group', label: 'Group selection', shortcut: '⌘G', disabled: true, separatorBefore: true },
+      { id: 'ungroup', label: 'Ungroup', shortcut: '⇧⌘G', disabled: true },
+      { id: 'bring-front', label: 'Bring to front', disabled: true, separatorBefore: true },
+      { id: 'send-back', label: 'Send to back', disabled: true },
+    ],
+    [layoutEngine, edgeStyle],
+  )
+
+  // Edit/View open with empty item lists this phase — File and Arrange are wired.
   const menus = useMemo(
     () => [
       { id: 'file' as const, title: 'File', items: fileMenuItems },
       { id: 'edit' as const, title: 'Edit', items: [] },
       { id: 'view' as const, title: 'View', items: [] },
-      { id: 'arrange' as const, title: 'Arrange', items: [] },
+      { id: 'arrange' as const, title: 'Arrange', items: arrangeMenuItems },
     ],
-    [fileMenuItems],
+    [fileMenuItems, arrangeMenuItems],
   )
 
   const onMenuItem = useCallback(
     (menuId: string, itemId: string) => {
       if (menuId === '_save') {
         if (itemId === 'retry') onRetrySave()
+        return
+      }
+      if (menuId === 'arrange') {
+        if (itemId === 'tidy-up' || itemId === 'rerun-layout') tidy()
+        else if (itemId === 'engine-graphviz') chooseEngine('graphviz')
+        else if (itemId === 'engine-elk') chooseEngine('elk')
+        else if (itemId === 'edge-default') applyEdgeStyle('default')
+        else if (itemId === 'edge-smoothstep') applyEdgeStyle('smoothstep')
+        else if (itemId === 'edge-straight') applyEdgeStyle('straight')
+        // group / ungroup / bring-front / send-back are disabled — never dispatched
         return
       }
       if (menuId !== 'file') return
@@ -977,7 +1016,17 @@ function Flow({
           break
       }
     },
-    [promptNewDiagram, promptRenameDiagram, exportJson, reset, confirmDeleteDiagram, onRetrySave],
+    [
+      promptNewDiagram,
+      promptRenameDiagram,
+      exportJson,
+      reset,
+      confirmDeleteDiagram,
+      onRetrySave,
+      tidy,
+      chooseEngine,
+      applyEdgeStyle,
+    ],
   )
 
   // Minimal File-menu keyboard shortcuts: ⌘/Ctrl+N (new), ⌘/Ctrl+Shift+E
@@ -1063,6 +1112,7 @@ function Flow({
       if (key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo() }
       else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
       else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
+      else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -1310,14 +1360,6 @@ function Flow({
             <button onClick={() => currentFlowId && deleteFlowById(currentFlowId)} disabled={!currentFlow}>
               Delete
             </button>
-            <label className="edgestyle">
-              Edges:
-              <select value={edgeStyle} onChange={(e) => applyEdgeStyle(e.target.value as any)}>
-                <option value="default">Curved</option>
-                <option value="smoothstep">Angular</option>
-                <option value="straight">Straight</option>
-              </select>
-            </label>
           </div>
           {flowMode !== 'none' && currentFlow ? (
             <FlowPanel
