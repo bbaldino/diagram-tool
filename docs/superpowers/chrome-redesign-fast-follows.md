@@ -44,6 +44,11 @@ Each was reviewed and judged safe to defer at the time.
 - **Flows tab is the relocated (old) flow UI, not the handoff's redesign** — the §3a from-scratch Flows-tab (flow-list rows + steps block + ⋯ menus) was deferred; the existing flow select/+Flow/Edit/Play/Rename/Delete + FlowPanel were moved in as-is.
 - **Inspector fields not restyled to §5a** — the Inspector's internal markup was kept as-is (just hosted in the rail); the pixel-perfect rail field styling (labels/inputs/toggles/chips) is a later restyle pass.
 
+## From Phase 7 (Flows-tab redesign)
+
+- **Footer `⋯` popover can open off the right viewport edge** — the flow row/footer `⋯` menu opens at a fixed offset and can extend past the right edge of the rail/viewport; it should flip to open inward (leftward) when near the edge.
+- **Steps block stays fully editable during Play mode** — in `mode === 'play'` the caption input, chip `×`, "+ Add step", and Reorder ↑/↓ still render and mutate the model via `M.updateFlow`. Acceptable for the minimal-play cut, but odd; gate step edits to `mode === 'edit'` when the transport-bar phase lands.
+
 ## Explicitly deferred by scope decision (not defects — planned later phases)
 
 - Tab strip: **drag-to-reorder** and the **overflow "+N more" picker chip**.
