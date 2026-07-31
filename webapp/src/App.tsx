@@ -230,7 +230,8 @@ function Flow({
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
   // View menu toggles — gate the Legend/Minimap/Inspector renders and the
-  // ReactFlow snap-to-grid behavior. Client-only, never persisted.
+  // ReactFlow snap-to-grid behavior. Client-only and transient, except
+  // noteSpellcheck which persists to localStorage (key: 'homelab-note-spellcheck').
   const [showLegend, setShowLegend] = useState(true)
   const [showMinimap, setShowMinimap] = useState(true)
   const [railVisible, setRailVisible] = useState(true)
