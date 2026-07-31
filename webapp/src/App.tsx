@@ -103,8 +103,11 @@ function nodesToDiagramParts(
         position: n.position,
         parentId: n.parentId ?? undefined,
         size: {
-          width: Number((n.style as any)?.width) || 320,
-          height: Number((n.style as any)?.height) || 200,
+          // Read the LIVE size (width → measured → style). A NodeResizer resize
+          // updates top-level width/height + measured but NOT style, so reading
+          // style alone here dropped every resize (see liveFootprint's note).
+          width: liveFootprint(n).width || 320,
+          height: liveFootprint(n).height || 200,
         },
       })
     } else if (n.type === 'note') {
@@ -115,8 +118,10 @@ function nodesToDiagramParts(
         position: n.position,
         parentId: n.parentId ?? undefined,
         size: {
-          width: Number((n.style as any)?.width) || 190,
-          height: Number((n.style as any)?.height) || 110,
+          // Live size (width → measured → style) so note resizes persist —
+          // NodeResizer writes width/measured, never style. Same fix as groups.
+          width: liveFootprint(n).width || 190,
+          height: liveFootprint(n).height || 110,
         },
       })
     } else if (n.type === 'service') {

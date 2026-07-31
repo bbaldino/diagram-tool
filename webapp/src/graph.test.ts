@@ -10,6 +10,7 @@ import {
   shrinkGroupToChildren,
   reflowGroups,
   recomputeChildExtents,
+  liveFootprint,
   GROUP_PAD,
   GROUP_MIN,
   GROUP_NEST_TOP_PAD,
@@ -456,5 +457,31 @@ describe('shrinkGroupToChildren', () => {
     // node's far edges are at x=270 / y=264 — the group must contain them (+pad).
     expect(g1.width).toBeGreaterThanOrEqual(100 + 170 + GROUP_PAD)
     expect(g1.height).toBeGreaterThanOrEqual(200 + 64 + GROUP_PAD)
+  })
+})
+
+describe('liveFootprint', () => {
+  const mk = (o: any) => o as unknown as Node
+  it('prefers live top-level width/height over stale style (post-resize)', () => {
+    // A NodeResizer corner-drag writes top-level width/height (+measured) but
+    // leaves style stale — the live size must win so a resize persists.
+    expect(
+      liveFootprint(mk({ type: 'note', width: 300, height: 220, style: { width: 160, height: 90 } })),
+    ).toEqual({ width: 300, height: 220 })
+    expect(
+      liveFootprint(mk({ type: 'group', width: 500, height: 400, style: { width: 320, height: 200 } })),
+    ).toEqual({ width: 500, height: 400 })
+  })
+  it('falls back to measured when there is no top-level size, then to style', () => {
+    expect(
+      liveFootprint(mk({ type: 'note', measured: { width: 240, height: 130 }, style: { width: 160, height: 90 } })),
+    ).toEqual({ width: 240, height: 130 })
+    expect(liveFootprint(mk({ type: 'note', style: { width: 160, height: 90 } }))).toEqual({
+      width: 160,
+      height: 90,
+    })
+  })
+  it('treats service (entity) nodes as zero-footprint', () => {
+    expect(liveFootprint(mk({ type: 'service', width: 180, height: 72 }))).toEqual({ width: 0, height: 0 })
   })
 })
