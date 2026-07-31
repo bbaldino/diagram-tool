@@ -159,10 +159,10 @@ input, textarea, [contenteditable="true"] {
 .react-flow__resize-control.handle.bottom.left { margin: 0 0 -7px -7px; }
 .react-flow__resize-control.handle.bottom.right { margin: 0 -7px -7px 0; }
 .react-flow__resize-control.line { z-index: 11; }
-.react-flow__resize-control.line.top { margin-top: -6px; }
-.react-flow__resize-control.line.bottom { margin-bottom: -6px; }
-.react-flow__resize-control.line.left { margin-left: -6px; }
-.react-flow__resize-control.line.right { margin-right: -6px; }
+.react-flow__resize-control.line.top { height: 14px; margin-top: -7px; }
+.react-flow__resize-control.line.bottom { height: 14px; margin-bottom: -7px; }
+.react-flow__resize-control.line.left { width: 14px; margin-left: -7px; }
+.react-flow__resize-control.line.right { width: 14px; margin-right: -7px; }
 
 /* While a group is selected, edges stop competing with its resize handles for clicks. */
 .group-editing .react-flow__edge path { pointer-events: none !important; }
