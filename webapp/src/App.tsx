@@ -16,7 +16,7 @@ import {
   type Connection,
   type NodeChange,
 } from '@xyflow/react'
-import { nodeTypes } from './nodes'
+import { NoteSpellcheckContext, nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
 import {
   makeEdge,
@@ -236,6 +236,12 @@ function Flow({
   const [railVisible, setRailVisible] = useState(true)
   const [railTab, setRailTab] = useState<'inspector' | 'flows'>('inspector')
   const [snapToGrid, setSnapToGrid] = useState(false)
+  const [noteSpellcheck, setNoteSpellcheck] = useState<boolean>(
+    () => localStorage.getItem('homelab-note-spellcheck') === 'true',
+  )
+  useEffect(() => {
+    localStorage.setItem('homelab-note-spellcheck', String(noteSpellcheck))
+  }, [noteSpellcheck])
   const [layoutEngine, setLayoutEngine] = useState<'elk' | 'graphviz'>(
     () => (localStorage.getItem('homelab-layout-engine') as 'elk' | 'graphviz') || 'elk',
   )
@@ -1137,6 +1143,7 @@ function Flow({
       { id: 'minimap', label: 'Minimap', checked: showMinimap },
       { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: railVisible && railTab === 'inspector' },
       { id: 'snap', label: 'Snap to grid', checked: snapToGrid },
+      { id: 'note-spellcheck', label: 'Spellcheck notes', checked: noteSpellcheck },
       {
         id: 'flows-panel',
         label: 'Flows panel',
@@ -1145,7 +1152,7 @@ function Flow({
         separatorBefore: true,
       },
     ],
-    [showLegend, showMinimap, snapToGrid, railVisible, railTab],
+    [showLegend, showMinimap, snapToGrid, noteSpellcheck, railVisible, railTab],
   )
 
   const hasSelection = selNode != null || selEdge != null
@@ -1208,6 +1215,7 @@ function Flow({
         else if (itemId === 'minimap') setShowMinimap((v) => !v)
         else if (itemId === 'inspector') toggleRailTab('inspector')
         else if (itemId === 'snap') setSnapToGrid((v) => !v)
+        else if (itemId === 'note-spellcheck') setNoteSpellcheck((v) => !v)
         else if (itemId === 'flows-panel') toggleRailTab('flows')
         return
       }
@@ -1515,80 +1523,82 @@ function Flow({
           pointer.current = { x: e.clientX, y: e.clientY }
         }}
       >
-      <ReactFlow
-        className={flowMode === 'play' ? 'is-flow-play' : undefined}
-        nodes={nodes}
-        edges={flowEdges}
-        onNodesChange={handleNodesChange}
-        onNodeDragStop={flushNow}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        onReconnect={onReconnect}
-        edgesReconnectable={false}
-        elevateEdgesOnSelect
-        onSelectionChange={onSelectionChange}
-        onNodeClick={(_, n) => toggleInStep(n.id)}
-        onEdgeClick={(_, e) => toggleInStep(e.id)}
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.15}
-        deleteKeyCode={['Backspace', 'Delete']}
-        connectionMode={ConnectionMode.Loose}
-        zoomOnDoubleClick={false}
-        proOptions={{ hideAttribution: true }}
-        snapToGrid={snapToGrid}
-        snapGrid={[16, 16]}
-      >
-        <Background gap={22} color="#e2e8f0" />
-        <Controls />
-        {showMinimap && <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />}
+      <NoteSpellcheckContext.Provider value={noteSpellcheck}>
+        <ReactFlow
+          className={flowMode === 'play' ? 'is-flow-play' : undefined}
+          nodes={nodes}
+          edges={flowEdges}
+          onNodesChange={handleNodesChange}
+          onNodeDragStop={flushNow}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onReconnect={onReconnect}
+          edgesReconnectable={false}
+          elevateEdgesOnSelect
+          onSelectionChange={onSelectionChange}
+          onNodeClick={(_, n) => toggleInStep(n.id)}
+          onEdgeClick={(_, e) => toggleInStep(e.id)}
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          fitView
+          fitViewOptions={{ padding: 0.2 }}
+          minZoom={0.15}
+          deleteKeyCode={['Backspace', 'Delete']}
+          connectionMode={ConnectionMode.Loose}
+          zoomOnDoubleClick={false}
+          proOptions={{ hideAttribution: true }}
+          snapToGrid={snapToGrid}
+          snapGrid={[16, 16]}
+        >
+          <Background gap={22} color="#e2e8f0" />
+          <Controls />
+          {showMinimap && <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />}
 
-        <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
-          <CanvasPill
-            canUndo={undoFlags.canUndo}
-            canRedo={undoFlags.canRedo}
-            onUndo={doUndo}
-            onRedo={doRedo}
-            onTidy={tidy}
-            engine={layoutEngine}
-            engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
-            onChooseEngine={(id) => { if (id === 'elk' || id === 'graphviz') chooseEngine(id) }}
-            onReRun={tidy}
-            canTidy={canTidy}
-          />
-        </Panel>
+          <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
+            <CanvasPill
+              canUndo={undoFlags.canUndo}
+              canRedo={undoFlags.canRedo}
+              onUndo={doUndo}
+              onRedo={doRedo}
+              onTidy={tidy}
+              engine={layoutEngine}
+              engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
+              onChooseEngine={(id) => { if (id === 'elk' || id === 'graphviz') chooseEngine(id) }}
+              onReRun={tidy}
+              canTidy={canTidy}
+            />
+          </Panel>
 
-        <Panel position="top-right" className="stack-tr">
-          <div className="panel toolbar">
-            <button onClick={() => addGroup()}>+ Group</button>
-            <button onClick={() => addNote()}>+ Note</button>
-          </div>
-        </Panel>
-
-        <Panel position="top-left" className="stack-tl">
-          {showLegend && (
-            <div className="panel">
-              <h4>Legend</h4>
-              <div className="legend__row">
-                <span
-                  className="legend__line"
-                  style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
-                />
-                <span>dashed = inferred (guess)</span>
-              </div>
-              <h4 style={{ marginTop: 10 }}>Status</h4>
-              <div className="legend__row">
-                <span className="legend__dot status-up" /> up
-              </div>
-              <div className="legend__row">
-                <span className="legend__dot status-idle" /> on-demand / idle
-              </div>
+          <Panel position="top-right" className="stack-tr">
+            <div className="panel toolbar">
+              <button onClick={() => addGroup()}>+ Group</button>
+              <button onClick={() => addNote()}>+ Note</button>
             </div>
-          )}
-        </Panel>
-      </ReactFlow>
+          </Panel>
+
+          <Panel position="top-left" className="stack-tl">
+            {showLegend && (
+              <div className="panel">
+                <h4>Legend</h4>
+                <div className="legend__row">
+                  <span
+                    className="legend__line"
+                    style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+                  />
+                  <span>dashed = inferred (guess)</span>
+                </div>
+                <h4 style={{ marginTop: 10 }}>Status</h4>
+                <div className="legend__row">
+                  <span className="legend__dot status-up" /> up
+                </div>
+                <div className="legend__row">
+                  <span className="legend__dot status-idle" /> on-demand / idle
+                </div>
+              </div>
+            )}
+          </Panel>
+        </ReactFlow>
+      </NoteSpellcheckContext.Provider>
 
       {addMenu && (
         <CanvasAddMenu

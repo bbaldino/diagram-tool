@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import {
   Handle,
   Position,
@@ -7,6 +7,10 @@ import {
   type NodeProps,
 } from '@xyflow/react'
 import { ICON_BASE } from './graph'
+
+// Global toggle for the browser's native spellcheck on note textareas.
+// Provided by App from a persisted view preference; default off = clean viewing.
+export const NoteSpellcheckContext = createContext(false)
 
 // Connection points on all four sides, each with a stable id so edges remember
 // which side they attach to. connectionMode="loose" (set on ReactFlow) lets any
@@ -82,11 +86,13 @@ export function ServiceNode({ data, selected }: NodeProps) {
 export function NoteNode({ id, data, selected }: NodeProps) {
   const { setNodes } = useReactFlow()
   const d = data as any
+  const noteSpellcheck = useContext(NoteSpellcheckContext)
   return (
     <div className="note">
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       <textarea
+        spellCheck={noteSpellcheck}
         value={d.text ?? ''}
         placeholder="note…"
         onChange={(e) =>
