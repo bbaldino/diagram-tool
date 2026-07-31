@@ -1,0 +1,21 @@
+name: release-please
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          # NOT the default GITHUB_TOKEN: tags it creates do not trigger
+          # publish-image.yml, so the release would silently produce no image.
+          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
