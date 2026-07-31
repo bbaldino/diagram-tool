@@ -1,6 +1,7 @@
 node_modules/
 webapp/node_modules/
 webapp/dist/
+webapp/build/
 .playwright-mcp/
 *.log
 webapp/model.json
