@@ -16,7 +16,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Gate: a red main must not cut a release PR either.
+  test:
+    uses: ./.github/workflows/test.yml
+
   release-please:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - id: release

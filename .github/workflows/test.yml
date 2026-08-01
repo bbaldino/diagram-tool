@@ -1,0 +1,33 @@
+name: test
+
+# Reusable gate. Both publish-image.yml and release-please.yml `uses:` this so a
+# red main blocks both — no image AND no release PR. Ownership lives here so the
+# two callers can't drift.
+on:
+  workflow_call:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: webapp
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: webapp/package-lock.json
+      - name: Install
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Format check
+        run: npm run format:check
+      - name: Lint
+        run: npm run lint --if-present
+      - name: Test
+        run: npm test
