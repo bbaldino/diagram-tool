@@ -36,7 +36,11 @@ function diffById<T extends { id: string }>(
   return ops
 }
 
-export function diffDiagramContents(diagramId: string, prev: DiagramContent, next: DiagramContent): Op[] {
+export function diffDiagramContents(
+  diagramId: string,
+  prev: DiagramContent,
+  next: DiagramContent,
+): Op[] {
   const ops: Op[] = []
   ops.push(
     ...diffById<Node>(
@@ -130,7 +134,14 @@ export function diffToOps(prev: Model, next: Model): Op[] {
   // diagrams diff against an empty shell so their initial nodes/groups/notes/edges
   // still get emitted (diagram.add only creates an empty diagram).
   for (const d of next.diagrams) {
-    const before = prevDiagrams.get(d.id) ?? { ...d, nodes: [], groups: [], edges: [], notes: [], flows: [] }
+    const before = prevDiagrams.get(d.id) ?? {
+      ...d,
+      nodes: [],
+      groups: [],
+      edges: [],
+      notes: [],
+      flows: [],
+    }
     ops.push(...diffDiagramContents(d.id, diagramContent(before), diagramContent(d)))
   }
 

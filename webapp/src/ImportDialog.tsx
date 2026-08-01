@@ -102,9 +102,7 @@ export function ImportDialog(props: {
           <div className="importdlg__error-title">
             <span className="importdlg__error-bang">!</span> Couldn't import {parsed.fileName}
           </div>
-          <div className="importdlg__error-body">
-            {parsed.error}. Nothing was imported.
-          </div>
+          <div className="importdlg__error-body">{parsed.error}. Nothing was imported.</div>
         </div>
       )}
       <label className="importdlg__toggle">

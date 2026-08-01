@@ -15,12 +15,7 @@ export function StepBar(props: {
   return (
     <div className="stepbar" role="group" aria-label="Flow walkthrough">
       <div className="stepbar__buttons">
-        <button
-          type="button"
-          className="stepbar__back"
-          onClick={onBack}
-          disabled={atStart}
-        >
+        <button type="button" className="stepbar__back" onClick={onBack} disabled={atStart}>
           ← Back
         </button>
         <button

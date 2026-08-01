@@ -67,7 +67,9 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
 
 function DialogModal({ state, close }: { state: State; close: () => void }) {
   const isPrompt = state.kind === 'prompt'
-  const [value, setValue] = useState(isPrompt ? (state.opts as PromptOpts).defaultValue ?? '' : '')
+  const [value, setValue] = useState(
+    isPrompt ? ((state.opts as PromptOpts).defaultValue ?? '') : '',
+  )
   const inputRef = useRef<HTMLInputElement>(null)
   const okRef = useRef<HTMLButtonElement>(null)
 

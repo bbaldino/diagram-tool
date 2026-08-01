@@ -3,26 +3,53 @@ import { createStore } from './store'
 
 // A model with one canvas diagram 'd' holding a single node at x=0.
 const seedModelWithDiagram = () => ({
-  version: 2, templates: [],
-  diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
-    nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }],
-    groups: [], edges: [], notes: [], flows: [] }],
+  version: 2,
+  templates: [],
+  diagrams: [
+    {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'canvas',
+      nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }],
+      groups: [],
+      edges: [],
+      notes: [],
+      flows: [],
+    },
+  ],
 })
 
 // A model with one empty canvas diagram 'd' (no nodes yet).
 const seedModelWithEmptyDiagram = () => ({
-  version: 2, templates: [],
-  diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
-    nodes: [], groups: [], edges: [], notes: [], flows: [] }],
+  version: 2,
+  templates: [],
+  diagrams: [
+    {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'canvas',
+      nodes: [],
+      groups: [],
+      edges: [],
+      notes: [],
+      flows: [],
+    },
+  ],
 })
 
 const addOp = (id: string) => ({
-  t: 'node.add' as const, diagramId: 'd',
+  t: 'node.add' as const,
+  diagramId: 'd',
   node: { id, label: 'E', fields: [], position: { x: 0, y: 0 } },
 })
 
 const moveOp = (x: number) => ({
-  t: 'node.update' as const, diagramId: 'd', id: 'e1', patch: { position: { x, y: 0 } },
+  t: 'node.update' as const,
+  diagramId: 'd',
+  id: 'e1',
+  patch: { position: { x, y: 0 } },
 })
 
 describe('createStore', () => {
@@ -102,12 +129,16 @@ describe('createStore', () => {
     expect(empty.rev).toBe(0)
 
     // Update setting a field to the value it already has: byte-identical model.
-    const same = store.apply([{ t: 'node.update', diagramId: 'd', id: 'e1', patch: { label: 'E' } }])
+    const same = store.apply([
+      { t: 'node.update', diagramId: 'd', id: 'e1', patch: { label: 'E' } },
+    ])
     expect(same.rev).toBe(0)
     expect(seen).toEqual([])
 
     // A real change bumps rev and notifies.
-    const changed = store.apply([{ t: 'node.update', diagramId: 'd', id: 'e1', patch: { label: 'E2' } }])
+    const changed = store.apply([
+      { t: 'node.update', diagramId: 'd', id: 'e1', patch: { label: 'E2' } },
+    ])
     expect(changed.rev).toBe(1)
     expect(seen).toEqual([1])
   })
@@ -134,14 +165,18 @@ describe('createStore', () => {
 describe('store history', () => {
   it('getState exposes an undo map; a fresh diagram cannot undo/redo', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     expect(store.getState().undo).toEqual({ d: { canUndo: false, canRedo: false } })
   })
 
   it('each applied op-batch records one history entry per changed diagram', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     store.apply([moveOp(10)])
     store.apply([moveOp(20)])
@@ -150,7 +185,9 @@ describe('store history', () => {
 
   it('undo restores the previous content and enables redo', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     store.apply([moveOp(10)]) // x: 0 -> 10
     const before = store.getState().rev
@@ -163,7 +200,9 @@ describe('store history', () => {
 
   it('undo does not itself create a new history entry (redo returns forward)', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     store.apply([moveOp(10)])
     store.undo('d')
@@ -175,7 +214,9 @@ describe('store history', () => {
 
   it('undo with nothing to undo is a no-op (no rev bump)', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     const rev = store.getState().rev
     const s = store.undo('d')
@@ -184,7 +225,9 @@ describe('store history', () => {
 
   it('a new edit after undo truncates redo', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     store.apply([moveOp(10)])
     store.undo('d') // back to 0, redo available
@@ -194,7 +237,9 @@ describe('store history', () => {
 
   it('the no-op apply guard does not push a history entry', async () => {
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
     })
     store.apply([moveOp(0)]) // identical to current -> no-op
     expect(store.getState().undo.d).toEqual({ canUndo: false, canRedo: false })
@@ -207,8 +252,20 @@ describe('store history persistence', () => {
       d: {
         pointer: 1,
         entries: [
-          { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-          { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
         ],
       },
     }
@@ -216,9 +273,21 @@ describe('store history persistence', () => {
     const store = await createStore({
       file: 'x',
       load: async () => ({
-        version: 2, templates: [],
-        diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
-          nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] }],
+        version: 2,
+        templates: [],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }],
+            groups: [],
+            edges: [],
+            notes: [],
+            flows: [],
+          },
+        ],
       }),
       save: async () => {},
       loadHistory: async () => persisted,
@@ -233,9 +302,18 @@ describe('store history persistence', () => {
     // The persisted entry (x=999) is a real prior state; the model drifted to x=0.
     // Reconcile keeps x=999 as an undo target rather than wiping the stack.
     const drifted = {
-      d: { pointer: 0, entries: [
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 999, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-      ] },
+      d: {
+        pointer: 0,
+        entries: [
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 999, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+        ],
+      },
     }
     const store = await createStore({
       file: 'x',
@@ -254,18 +332,51 @@ describe('store history persistence', () => {
     // The exact failure that wiped undo: history has [x0, x10, x20] but the model
     // advanced to x30 without that edit being recorded (a save lost to a restart).
     const persisted = {
-      d: { pointer: 2, entries: [
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 20, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-      ] },
+      d: {
+        pointer: 2,
+        entries: [
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 20, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+        ],
+      },
     }
     const store = await createStore({
       file: 'x',
       load: async () => ({
-        version: 2, templates: [],
-        diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
-          nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 30, y: 0 } }], groups: [], edges: [], notes: [], flows: [] }],
+        version: 2,
+        templates: [],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 30, y: 0 } }],
+            groups: [],
+            edges: [],
+            notes: [],
+            flows: [],
+          },
+        ],
       }),
       save: async () => {},
       loadHistory: async () => persisted,
@@ -280,19 +391,52 @@ describe('store history persistence', () => {
 
   it('model behind history is realigned losslessly (undo AND redo preserved)', async () => {
     const persisted = {
-      d: { pointer: 2, entries: [
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-        { nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 20, y: 0 } }], groups: [], notes: [], edges: [], flows: [] },
-      ] },
+      d: {
+        pointer: 2,
+        entries: [
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 0, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+          {
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 20, y: 0 } }],
+            groups: [],
+            notes: [],
+            edges: [],
+            flows: [],
+          },
+        ],
+      },
     }
     const store = await createStore({
       file: 'x',
       // model on disk is x=10 (an earlier entry) — history persisted ahead of the model
       load: async () => ({
-        version: 2, templates: [],
-        diagrams: [{ id: 'd', name: 'D', title: 'D', type: 'canvas',
-          nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }], groups: [], edges: [], notes: [], flows: [] }],
+        version: 2,
+        templates: [],
+        diagrams: [
+          {
+            id: 'd',
+            name: 'D',
+            title: 'D',
+            type: 'canvas',
+            nodes: [{ id: 'e1', label: 'E', fields: [], position: { x: 10, y: 0 } }],
+            groups: [],
+            edges: [],
+            notes: [],
+            flows: [],
+          },
+        ],
       }),
       save: async () => {},
       loadHistory: async () => persisted,
@@ -308,9 +452,13 @@ describe('store history persistence', () => {
     const store = await createStore({
       file: 'x',
       load: async () => seedModelWithDiagram(),
-      save: async () => { order.push('model') },
+      save: async () => {
+        order.push('model')
+      },
       loadHistory: async () => ({}),
-      saveHistory: async () => { order.push('history') },
+      saveHistory: async () => {
+        order.push('history')
+      },
     })
     store.apply([moveOp(10)])
     await new Promise((r) => setTimeout(r, 300))
@@ -320,8 +468,13 @@ describe('store history persistence', () => {
   it('persists history (debounced) on apply', async () => {
     let savedHistory: any = null
     const store = await createStore({
-      file: 'x', load: async () => seedModelWithDiagram(), save: async () => {},
-      loadHistory: async () => ({}), saveHistory: async (h) => { savedHistory = h },
+      file: 'x',
+      load: async () => seedModelWithDiagram(),
+      save: async () => {},
+      loadHistory: async () => ({}),
+      saveHistory: async (h) => {
+        savedHistory = h
+      },
     })
     store.apply([moveOp(10)])
     await new Promise((r) => setTimeout(r, 300))

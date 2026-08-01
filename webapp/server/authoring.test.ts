@@ -33,7 +33,7 @@ describe('authorDiagramOps', () => {
         name: 'X',
         nodes: ['Plex'],
         edges: [['plex', 'ghost', {}]],
-      })
+      }),
     ).rejects.toThrow(/unknown node ref "ghost"/)
   })
 
@@ -43,7 +43,7 @@ describe('authorDiagramOps', () => {
         name: 'X',
         nodes: ['Plex'],
         groups: [{ label: 'Media', members: ['plex', 'ghost'] }],
-      })
+      }),
     ).rejects.toThrow(/group "Media" references unknown node ref "ghost"/)
   })
 

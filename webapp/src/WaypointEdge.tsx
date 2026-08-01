@@ -70,30 +70,68 @@ function edgePath(
 ): [string, number, number] {
   if (points.length) {
     const chain: Pt[] = [{ x: sx, y: sy }, ...points, { x: tx, y: ty }]
-    const d = shape === 'default' ? catmull(chain) : 'M ' + chain.map((p) => `${p.x} ${p.y}`).join(' L ')
+    const d =
+      shape === 'default' ? catmull(chain) : 'M ' + chain.map((p) => `${p.x} ${p.y}`).join(' L ')
     const m = Math.floor((chain.length - 1) / 2)
     const a = chain[m]
     const b = chain[m + 1] || a
     return [d, (a.x + b.x) / 2, (a.y + b.y) / 2]
   }
   if (shape === 'smoothstep') {
-    const [d, lx, ly] = getSmoothStepPath({ sourceX: sx, sourceY: sy, sourcePosition: sPos, targetX: tx, targetY: ty, targetPosition: tPos })
+    const [d, lx, ly] = getSmoothStepPath({
+      sourceX: sx,
+      sourceY: sy,
+      sourcePosition: sPos,
+      targetX: tx,
+      targetY: ty,
+      targetPosition: tPos,
+    })
     return [d, lx, ly]
   }
   if (shape === 'straight') {
     const [d, lx, ly] = getStraightPath({ sourceX: sx, sourceY: sy, targetX: tx, targetY: ty })
     return [d, lx, ly]
   }
-  const [d, lx, ly] = getBezierPath({ sourceX: sx, sourceY: sy, sourcePosition: sPos, targetX: tx, targetY: ty, targetPosition: tPos })
+  const [d, lx, ly] = getBezierPath({
+    sourceX: sx,
+    sourceY: sy,
+    sourcePosition: sPos,
+    targetX: tx,
+    targetY: ty,
+    targetPosition: tPos,
+  })
   return [d, lx, ly]
 }
 
 export function WaypointEdge(props: EdgeProps) {
-  const { id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data, markerStart, markerEnd, style, label, selected } = props
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    data,
+    markerStart,
+    markerEnd,
+    style,
+    label,
+    selected,
+  } = props
   const { setEdges, screenToFlowPosition, getZoom } = useReactFlow()
   const shape = (data?.shape as string) || 'default'
   const points = (data?.points as Pt[]) || []
-  const [d, labelX, labelY] = edgePath(shape, sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition, points)
+  const [d, labelX, labelY] = edgePath(
+    shape,
+    sourceX,
+    sourceY,
+    sourcePosition,
+    targetX,
+    targetY,
+    targetPosition,
+    points,
+  )
   const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
 
   const labelPos = Math.max(0, Math.min(1, (data?.labelPos as number) ?? 0.5))
@@ -105,7 +143,10 @@ export function WaypointEdge(props: EdgeProps) {
     const path = measureRef.current
     if (!path) return
     const total = path.getTotalLength()
-    if (!total) { setLabelPt(null); return }
+    if (!total) {
+      setLabelPt(null)
+      return
+    }
     const p = path.getPointAtLength(labelPos * total)
     setLabelPt({ x: p.x, y: p.y })
   }, [d, labelPos])
@@ -114,12 +155,23 @@ export function WaypointEdge(props: EdgeProps) {
 
   const setPoints = (updater: (pts: Pt[]) => Pt[]) =>
     setEdges((es) =>
-      es.map((e) => (e.id === id ? { ...e, data: { ...e.data, points: updater((e.data?.points as Pt[]) || []) } } : e)),
+      es.map((e) =>
+        e.id === id
+          ? { ...e, data: { ...e.data, points: updater((e.data?.points as Pt[]) || []) } }
+          : e,
+      ),
     )
 
   const addAt = (clientX: number, clientY: number) => {
     const p = screenToFlowPosition({ x: clientX, y: clientY })
-    setPoints((pts) => insertNearest(pts, { x: p.x, y: p.y }, { x: sourceX, y: sourceY }, { x: targetX, y: targetY }))
+    setPoints((pts) =>
+      insertNearest(
+        pts,
+        { x: p.x, y: p.y },
+        { x: sourceX, y: sourceY },
+        { x: targetX, y: targetY },
+      ),
+    )
   }
 
   const dragging = useRef(false)
@@ -171,7 +223,11 @@ export function WaypointEdge(props: EdgeProps) {
     e.stopPropagation()
     dragging.current = true
     const el = e.currentTarget
-    try { el.setPointerCapture(e.pointerId) } catch { /* synthetic event */ }
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      /* synthetic event */
+    }
     const move = (ev: PointerEvent) => {
       const path = measureRef.current
       if (!path) return
@@ -187,14 +243,19 @@ export function WaypointEdge(props: EdgeProps) {
         const dx = q.x - p.x
         const dy = q.y - p.y
         const dd = dx * dx + dy * dy
-        if (dd < bestDist) { bestDist = dd; best = i }
+        if (dd < bestDist) {
+          bestDist = dd
+          best = i
+        }
       }
       setLabelPos(best / N)
     }
     const up = () => {
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
-      setTimeout(() => { dragging.current = false }, 60)
+      setTimeout(() => {
+        dragging.current = false
+      }, 60)
     }
     el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up)
@@ -202,16 +263,33 @@ export function WaypointEdge(props: EdgeProps) {
 
   return (
     <>
-      <BaseEdge id={id} path={d} markerStart={markerStart} markerEnd={markerEnd} style={style} interactionWidth={26} />
+      <BaseEdge
+        id={id}
+        path={d}
+        markerStart={markerStart}
+        markerEnd={markerEnd}
+        style={style}
+        interactionWidth={26}
+      />
       {label ? (
         <>
           {/* hidden measurement path (same geometry as the visible edge) for
               label placement — only present when there IS a label, so labelless
               edges skip the getTotalLength/getPointAtLength work entirely. */}
-          <path ref={measureRef} d={d} fill="none" stroke="none" style={{ pointerEvents: 'none' }} />
+          <path
+            ref={measureRef}
+            d={d}
+            fill="none"
+            stroke="none"
+            style={{ pointerEvents: 'none' }}
+          />
           <EdgeLabelRenderer>
             <div
-              className={['wp-label', selected ? 'nopan nodrag' : '', (data?.flowState as string) || '']
+              className={[
+                'wp-label',
+                selected ? 'nopan nodrag' : '',
+                (data?.flowState as string) || '',
+              ]
                 .filter(Boolean)
                 .join(' ')}
               style={{

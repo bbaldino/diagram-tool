@@ -10,7 +10,13 @@ interface Props {
   groups: { id: string; label: string }[]
   onNodeData: (patch: Record<string, unknown>) => void
   onNodeParent: (parentId: string) => void
-  onEdge: (patch: { type?: RelType; label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => void
+  onEdge: (patch: {
+    type?: RelType
+    label?: string
+    inferred?: boolean
+    dir?: EdgeDir
+    color?: string
+  }) => void
   diagramColors: string[]
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
@@ -95,7 +101,11 @@ export function Inspector({
             onChange={(e) => onEdge({ label: e.target.value })}
           />
         </Field>
-        <Switch checked={!!d.inferred} onChange={(v) => onEdge({ inferred: v })} label="Inferred (dashed)" />
+        <Switch
+          checked={!!d.inferred}
+          onChange={(v) => onEdge({ inferred: v })}
+          label="Inferred (dashed)"
+        />
         <button className="insp__delete" onClick={onDelete}>
           Delete edge
         </button>
@@ -107,8 +117,12 @@ export function Inspector({
   if (node && node.type === 'group') {
     const d = node.data as any
     const g = node as any
-    const curW = Math.round(Number(g.measured?.width) || Number(g.style?.width) || Number(g.width) || 0)
-    const curH = Math.round(Number(g.measured?.height) || Number(g.style?.height) || Number(g.height) || 0)
+    const curW = Math.round(
+      Number(g.measured?.width) || Number(g.style?.width) || Number(g.width) || 0,
+    )
+    const curH = Math.round(
+      Number(g.measured?.height) || Number(g.style?.height) || Number(g.height) || 0,
+    )
     return (
       <div className="panel insp">
         <div className="insp__header">
@@ -224,7 +238,10 @@ export function Inspector({
           />
         </Field>
         <Field label="Status">
-          <select value={d.status ?? ''} onChange={(e) => onNodeData({ status: e.target.value || undefined })}>
+          <select
+            value={d.status ?? ''}
+            onChange={(e) => onNodeData({ status: e.target.value || undefined })}
+          >
             <option value="">(none)</option>
             <option value="up">up</option>
             <option value="down">down</option>

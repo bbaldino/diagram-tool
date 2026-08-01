@@ -1,11 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import { flowStates } from './flowState'
 
-const flow = { id: 'f', name: 'F', steps: [
-  { id: 's1', elementIds: ['a'] },
-  { id: 's2', elementIds: ['b', 'e1'] },
-  { id: 's3', elementIds: ['c'] },
-] }
+const flow = {
+  id: 'f',
+  name: 'F',
+  steps: [
+    { id: 's1', elementIds: ['a'] },
+    { id: 's2', elementIds: ['b', 'e1'] },
+    { id: 's3', elementIds: ['c'] },
+  ],
+}
 
 describe('flowStates', () => {
   it('step 0: only the first set is active', () => {
@@ -23,7 +27,14 @@ describe('flowStates', () => {
     expect(flowStates({ id: 'x', name: 'x', steps: [] }, 0)).toEqual({})
   })
   it('an id appearing in two steps keeps its earliest-lit status but is active if in the current step', () => {
-    const f2 = { id: 'f', name: 'F', steps: [{ id: 's1', elementIds: ['a'] }, { id: 's2', elementIds: ['a'] }] }
+    const f2 = {
+      id: 'f',
+      name: 'F',
+      steps: [
+        { id: 's1', elementIds: ['a'] },
+        { id: 's2', elementIds: ['a'] },
+      ],
+    }
     expect(flowStates(f2, 1)).toEqual({ a: 'active' })
   })
 })

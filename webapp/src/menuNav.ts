@@ -27,11 +27,7 @@ export function lastEnabledIndex(items: MenuItem[]): number {
   return -1
 }
 
-export function moveMenuHighlight(
-  items: MenuItem[],
-  current: number,
-  delta: 1 | -1
-): number {
+export function moveMenuHighlight(items: MenuItem[], current: number, delta: 1 | -1): number {
   // Get all enabled indices
   const enabledIndices: number[] = []
   for (let i = 0; i < items.length; i++) {

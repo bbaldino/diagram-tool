@@ -8,7 +8,7 @@ export function addTab(openTabs: string[], id: string): string[] {
 export function sanitizeOpenTabs(
   openTabs: string[],
   diagramIds: string[],
-  activeId: string | null
+  activeId: string | null,
 ): string[] {
   const known = new Set(diagramIds)
   const seen = new Set<string>()
@@ -33,7 +33,7 @@ export function sanitizeOpenTabs(
 export function closeTab(
   openTabs: string[],
   activeId: string | null,
-  closeId: string
+  closeId: string,
 ): { openTabs: string[]; activeId: string | null } {
   const idx = openTabs.indexOf(closeId)
   const next = openTabs.filter((id) => id !== closeId)

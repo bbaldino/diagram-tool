@@ -59,7 +59,9 @@ async function navigate(kind: 'undo' | 'redo', diagramId: string) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ diagramId }),
   })
-  return res.json() as Promise<{ rev: number; canUndo: boolean; canRedo: boolean } | { error: string }>
+  return res.json() as Promise<
+    { rev: number; canUndo: boolean; canRedo: boolean } | { error: string }
+  >
 }
 export const undo = (diagramId: string) => navigate('undo', diagramId)
 export const redo = (diagramId: string) => navigate('redo', diagramId)

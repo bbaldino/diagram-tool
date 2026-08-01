@@ -29,7 +29,10 @@ export function DestructiveDialog(props: {
           <button className="dlgshell__btn" onClick={onCancel}>
             Cancel
           </button>
-          <button className="dlgshell__btn dlgshell__btn--primary dlgshell__btn--danger" onClick={submit}>
+          <button
+            className="dlgshell__btn dlgshell__btn--primary dlgshell__btn--danger"
+            onClick={submit}
+          >
             {verb} diagram
           </button>
         </>

@@ -1,7 +1,17 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { EdgeDir } from '../src/graph'
-import type { Diagram, DiagramType, Edge, EdgeOrientation, Field, Group, Node, Note, Status } from '../src/model'
+import type {
+  Diagram,
+  DiagramType,
+  Edge,
+  EdgeOrientation,
+  Field,
+  Group,
+  Node,
+  Note,
+  Status,
+} from '../src/model'
 import { addDiagram, getDiagram } from '../src/model'
 import { newId } from '../src/ids'
 import { applyOps, type Op } from '../src/ops'
@@ -18,7 +28,7 @@ const ICON_FIELD_DESC =
   'OPTIONAL icon slug from the dashboard-icons set (github.com/homarr-labs/dashboard-icons), ' +
   'e.g. "traefik", "plex", "postgresql", "nginx", "home-assistant", "grafana". Set this ONLY to a ' +
   'slug you are confident exists in that set — do NOT guess, invent, or derive one from the label. ' +
-  'When unsure, omit it: the node then shows the entity name\'s initials, which looks better than a ' +
+  "When unsure, omit it: the node then shows the entity name's initials, which looks better than a " +
   'missing icon.'
 
 // ---------------------------------------------------------------------------
@@ -124,7 +134,10 @@ function applyWithReflow(store: Store, diagramId: string, ops: Op[]): void {
   const stepped = applyOps(before, ops)
   const d = getDiagram(stepped, diagramId)
   const reflowed = d
-    ? { ...stepped, diagrams: stepped.diagrams.map((x) => (x.id === diagramId ? reflowContainment(x) : x)) }
+    ? {
+        ...stepped,
+        diagrams: stepped.diagrams.map((x) => (x.id === diagramId ? reflowContainment(x) : x)),
+      }
     : stepped
   store.apply(diffToOps(before, reflowed), 'mcp')
 }
@@ -142,10 +155,15 @@ function positionInGroup(
   childId: string,
   childSize: { width: number; height: number },
 ): { x: number; y: number } {
-  const siblingsOf = <T extends { id: string; parentId?: string; position: { x: number; y: number } }>(
+  const siblingsOf = <
+    T extends { id: string; parentId?: string; position: { x: number; y: number } },
+  >(
     items: T[],
     sizeOf: (item: T) => { width: number; height: number },
-  ) => items.filter((x) => x.parentId === groupId && x.id !== childId).map((x) => ({ position: x.position, size: sizeOf(x) }))
+  ) =>
+    items
+      .filter((x) => x.parentId === groupId && x.id !== childId)
+      .map((x) => ({ position: x.position, size: sizeOf(x) }))
   const siblings = [
     ...siblingsOf(diagram.nodes, () => NODE_EST_SIZE),
     ...siblingsOf(diagram.groups, (g) => g.size),
@@ -203,7 +221,10 @@ export function resolveElementRef(diagram: Diagram, ref: ElementRef): string {
 // ---------------------------------------------------------------------------
 
 export const handlers = {
-  listNodes(store: Store, diagramId: string): { id: string; label: string; icon?: string; status?: string }[] | ErrorResult {
+  listNodes(
+    store: Store,
+    diagramId: string,
+  ): { id: string; label: string; icon?: string; status?: string }[] | ErrorResult {
     const diagram = getDiagram(store.getState().model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
     return diagram.nodes.map((n) => ({ id: n.id, label: n.label, icon: n.icon, status: n.status }))
@@ -242,7 +263,10 @@ export const handlers = {
     return { ok: true }
   },
 
-  async authorDiagram(store: Store, spec: AuthorSpec): Promise<{ diagramId: string; nodeIds: string[] } | ErrorResult> {
+  async authorDiagram(
+    store: Store,
+    spec: AuthorSpec,
+  ): Promise<{ diagramId: string; nodeIds: string[] } | ErrorResult> {
     const model = store.getState().model
     let built: { ops: Op[]; diagramId: string; nodeIds: string[] }
     try {
@@ -261,12 +285,18 @@ export const handlers = {
     if (typeof a.parentId === 'string' && !diagram.groups.some((grp) => grp.id === a.parentId)) {
       return err(`unknown group id "${a.parentId}"`)
     }
-    const node: Node = { id: newId(), label: a.label, fields: [], position: a.position ?? { x: 0, y: 0 } }
+    const node: Node = {
+      id: newId(),
+      label: a.label,
+      fields: [],
+      position: a.position ?? { x: 0, y: 0 },
+    }
     if (a.icon !== undefined) node.icon = a.icon
     if (a.status !== undefined) node.status = a.status
     if (a.parentId) {
       node.parentId = a.parentId
-      if (a.position === undefined) node.position = positionInGroup(diagram, a.parentId, node.id, NODE_EST_SIZE)
+      if (a.position === undefined)
+        node.position = positionInGroup(diagram, a.parentId, node.id, NODE_EST_SIZE)
       applyWithReflow(store, a.diagramId, [{ t: 'node.add', diagramId: a.diagramId, node }])
       return { id: node.id }
     }
@@ -320,7 +350,8 @@ export const handlers = {
     }
     if (a.parentId) {
       note.parentId = a.parentId
-      if (a.position === undefined) note.position = positionInGroup(diagram, a.parentId, note.id, note.size)
+      if (a.position === undefined)
+        note.position = positionInGroup(diagram, a.parentId, note.id, note.size)
       applyWithReflow(store, a.diagramId, [{ t: 'note.add', diagramId: a.diagramId, note }])
       return { id: note.id }
     }
@@ -344,7 +375,8 @@ export const handlers = {
     const patch: Partial<Omit<Note, 'id'>> = { ...rest }
     if (touchesContainment) {
       patch.parentId = parentId ?? undefined
-      if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? note.size)
+      if (parentId != null)
+        patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? note.size)
     }
     const op: Op = { t: 'note.update', diagramId: a.diagramId, id: a.id, patch }
     if (touchesContainment) applyWithReflow(store, a.diagramId, [op])
@@ -363,7 +395,8 @@ export const handlers = {
       ops.push({ t: 'edge.remove', diagramId: a.diagramId, id: a.edgeId })
     }
     if (a.groupId !== undefined) {
-      if (!diagram.groups.some((g) => g.id === a.groupId)) return err(`unknown group "${a.groupId}"`)
+      if (!diagram.groups.some((g) => g.id === a.groupId))
+        return err(`unknown group "${a.groupId}"`)
       ops.push({ t: 'group.remove', diagramId: a.diagramId, id: a.groupId })
     }
     if (a.noteId !== undefined) {
@@ -384,7 +417,8 @@ export const handlers = {
   editNode(store: Store, a: EditNodeArgs): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!diagram.nodes.some((n) => n.id === a.id)) return err(`unknown node "${a.id}" in diagram "${a.diagramId}"`)
+    if (!diagram.nodes.some((n) => n.id === a.id))
+      return err(`unknown node "${a.id}" in diagram "${a.diagramId}"`)
     if (a.patch.parentId != null && !diagram.groups.some((g) => g.id === a.patch.parentId)) {
       return err(`unknown group "${a.patch.parentId}"`)
     }
@@ -416,7 +450,8 @@ export const handlers = {
     }
     if (a.parentId) {
       group.parentId = a.parentId
-      if (a.position === undefined) group.position = positionInGroup(diagram, a.parentId, group.id, group.size)
+      if (a.position === undefined)
+        group.position = positionInGroup(diagram, a.parentId, group.id, group.size)
     }
     applyWithReflow(store, a.diagramId, [{ t: 'group.add', diagramId: a.diagramId, group }])
     return { id: group.id }
@@ -428,7 +463,8 @@ export const handlers = {
     const group = diagram.groups.find((g) => g.id === a.id)
     if (!group) return err(`unknown group "${a.id}" in diagram "${a.diagramId}"`)
     if (a.patch.parentId != null) {
-      if (!diagram.groups.some((g) => g.id === a.patch.parentId)) return err(`unknown group "${a.patch.parentId}"`)
+      if (!diagram.groups.some((g) => g.id === a.patch.parentId))
+        return err(`unknown group "${a.patch.parentId}"`)
       if (a.patch.parentId === a.id || groupDescendants(diagram, a.id).has(a.patch.parentId)) {
         return err('cannot parent a group into itself or a descendant')
       }
@@ -438,18 +474,31 @@ export const handlers = {
     const patch: Partial<Omit<Group, 'id'>> = { ...rest }
     if (touchesParent) {
       patch.parentId = parentId ?? undefined
-      if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? group.size)
+      if (parentId != null)
+        patch.position = positionInGroup(diagram, parentId, a.id, a.patch.size ?? group.size)
     }
-    applyWithReflow(store, a.diagramId, [{ t: 'group.update', diagramId: a.diagramId, id: a.id, patch }])
+    applyWithReflow(store, a.diagramId, [
+      { t: 'group.update', diagramId: a.diagramId, id: a.id, patch },
+    ])
     return { ok: true }
   },
 
-  async layout(store: Store, diagramId: string, engine: LayoutEngine = DEFAULT_ENGINE): Promise<OkResult | ErrorResult> {
+  async layout(
+    store: Store,
+    diagramId: string,
+    engine: LayoutEngine = DEFAULT_ENGINE,
+  ): Promise<OkResult | ErrorResult> {
     const model = store.getState().model
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
     const laid = await layoutDiagram(diagram, engine)
-    const nextDiagram: Diagram = { ...diagram, nodes: laid.nodes, groups: laid.groups, notes: laid.notes, edges: laid.edges }
+    const nextDiagram: Diagram = {
+      ...diagram,
+      nodes: laid.nodes,
+      groups: laid.groups,
+      notes: laid.notes,
+      edges: laid.edges,
+    }
     const nextModel = {
       ...model,
       diagrams: model.diagrams.map((d) => (d.id === diagramId ? nextDiagram : d)),
@@ -475,13 +524,22 @@ export const handlers = {
       return err(e instanceof Error ? e.message : String(e))
     }
     const flowId = `flow-${Date.now().toString(36)}`
-    store.apply([{ t: 'flow.add', diagramId: a.diagramId, flow: { id: flowId, name: a.name, steps } }], 'mcp')
+    store.apply(
+      [{ t: 'flow.add', diagramId: a.diagramId, flow: { id: flowId, name: a.name, steps } }],
+      'mcp',
+    )
     return { flowId }
   },
 
   addFlowStep(
     store: Store,
-    a: { diagramId: string; flowId: string; elements: ElementRef[]; caption?: string; index?: number },
+    a: {
+      diagramId: string
+      flowId: string
+      elements: ElementRef[]
+      caption?: string
+      index?: number
+    },
   ): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
@@ -496,13 +554,21 @@ export const handlers = {
     const step = { id: `step-${Date.now().toString(36)}`, elementIds, caption: a.caption }
     const steps = flow.steps.slice()
     steps.splice(a.index ?? steps.length, 0, step)
-    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }], 'mcp')
+    store.apply(
+      [{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }],
+      'mcp',
+    )
     return { ok: true }
   },
 
   setFlowStep(
     store: Store,
-    a: { diagramId: string; flowId: string; stepId: string; patch: { elements?: ElementRef[]; caption?: string } },
+    a: {
+      diagramId: string
+      flowId: string
+      stepId: string
+      patch: { elements?: ElementRef[]; caption?: string }
+    },
   ): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
@@ -524,28 +590,47 @@ export const handlers = {
             ...(a.patch.caption !== undefined ? { caption: a.patch.caption } : {}),
           },
     )
-    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }], 'mcp')
+    store.apply(
+      [{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps } }],
+      'mcp',
+    )
     return { ok: true }
   },
 
-  removeFlowStep(store: Store, a: { diagramId: string; flowId: string; stepId: string }): OkResult | ErrorResult {
+  removeFlowStep(
+    store: Store,
+    a: { diagramId: string; flowId: string; stepId: string },
+  ): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
     const flow = diagram.flows?.find((f) => f.id === a.flowId)
     if (!flow) return err(`unknown flow "${a.flowId}"`)
     if (!flow.steps.some((s) => s.id === a.stepId)) return err(`unknown step "${a.stepId}"`)
     store.apply(
-      [{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { steps: flow.steps.filter((s) => s.id !== a.stepId) } }],
+      [
+        {
+          t: 'flow.update',
+          diagramId: a.diagramId,
+          id: a.flowId,
+          patch: { steps: flow.steps.filter((s) => s.id !== a.stepId) },
+        },
+      ],
       'mcp',
     )
     return { ok: true }
   },
 
-  renameFlow(store: Store, a: { diagramId: string; flowId: string; name: string }): OkResult | ErrorResult {
+  renameFlow(
+    store: Store,
+    a: { diagramId: string; flowId: string; name: string },
+  ): OkResult | ErrorResult {
     const diagram = getDiagram(store.getState().model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
     if (!diagram.flows?.some((f) => f.id === a.flowId)) return err(`unknown flow "${a.flowId}"`)
-    store.apply([{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { name: a.name } }], 'mcp')
+    store.apply(
+      [{ t: 'flow.update', diagramId: a.diagramId, id: a.flowId, patch: { name: a.name } }],
+      'mcp',
+    )
     return { ok: true }
   },
 
@@ -596,15 +681,7 @@ const authorSpecShape = {
       z.object({ label: z.string(), icon: z.string().optional().describe(ICON_FIELD_DESC) }),
     ]),
   ),
-  edges: z
-    .array(
-      z.tuple([
-        z.string(),
-        z.string(),
-        z.object(edgeAttrsShape).optional(),
-      ]),
-    )
-    .optional(),
+  edges: z.array(z.tuple([z.string(), z.string(), z.object(edgeAttrsShape).optional()])).optional(),
   groups: z.array(z.object({ label: z.string(), members: z.array(z.string()) })).optional(),
   positions: z.record(z.string(), positionShape).optional(),
 }
@@ -634,14 +711,20 @@ export function createMcpServer(store: Store): McpServer {
     'new_diagram',
     {
       description: 'Create a new, empty diagram. Returns the created diagram id.',
-      inputSchema: { name: z.string(), type: z.enum(['canvas', 'topology', 'call-flow']).optional() },
+      inputSchema: {
+        name: z.string(),
+        type: z.enum(['canvas', 'topology', 'call-flow']).optional(),
+      },
     },
     (args) => wrap(handlers.newDiagram(store, args)),
   )
 
   server.registerTool(
     'rename_diagram',
-    { description: 'Rename an existing diagram.', inputSchema: { id: z.string(), name: z.string() } },
+    {
+      description: 'Rename an existing diagram.',
+      inputSchema: { id: z.string(), name: z.string() },
+    },
     (args) => wrap(handlers.renameDiagram(store, args)),
   )
 
@@ -765,7 +848,9 @@ export function createMcpServer(store: Store): McpServer {
     sub: z.string().optional(),
     status: z.enum(['up', 'down', 'idle']).optional(),
     actor: z.boolean().optional(),
-    fields: z.array(z.object({ key: z.string(), value: z.string(), showOnNode: z.boolean().optional() })).optional(),
+    fields: z
+      .array(z.object({ key: z.string(), value: z.string(), showOnNode: z.boolean().optional() }))
+      .optional(),
     parentId: z
       .string()
       .nullable()
@@ -777,7 +862,7 @@ export function createMcpServer(store: Store): McpServer {
     'edit_node',
     {
       description:
-        'Update an existing node\'s label/icon/sub/status/actor/fields, and/or move it into or out of a group via parentId. Reparenting also reflows the target group\'s size/padding so the change lands like a human edit.',
+        "Update an existing node's label/icon/sub/status/actor/fields, and/or move it into or out of a group via parentId. Reparenting also reflows the target group's size/padding so the change lands like a human edit.",
       inputSchema: {
         diagramId: z.string(),
         id: z.string(),
@@ -790,7 +875,8 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'add_group',
     {
-      description: 'Create a new group (a visual container for nodes/notes/groups) on a diagram. Returns the created group id.',
+      description:
+        'Create a new group (a visual container for nodes/notes/groups) on a diagram. Returns the created group id.',
       inputSchema: {
         diagramId: z.string(),
         label: z.string(),
@@ -807,7 +893,7 @@ export function createMcpServer(store: Store): McpServer {
     'edit_group',
     {
       description:
-        'Update an existing group\'s label/color/size, and/or nest it into or out of another group via parentId. Reflows containment (padding/sizing) afterward so the change lands like a human edit.',
+        "Update an existing group's label/color/size, and/or nest it into or out of another group via parentId. Reflows containment (padding/sizing) afterward so the change lands like a human edit.",
       inputSchema: {
         diagramId: z.string(),
         id: z.string(),
@@ -828,7 +914,10 @@ export function createMcpServer(store: Store): McpServer {
 
   server.registerTool(
     'layout',
-    { description: 'Re-run automatic layout on a diagram.', inputSchema: { diagramId: z.string() } },
+    {
+      description: 'Re-run automatic layout on a diagram.',
+      inputSchema: { diagramId: z.string() },
+    },
     async (args) => wrap(await handlers.layout(store, args.diagramId)),
   )
 
@@ -842,7 +931,9 @@ export function createMcpServer(store: Store): McpServer {
         name: z.string(),
         steps: z.array(
           z.object({
-            elements: z.array(z.union([z.string(), z.object({ from: z.string(), to: z.string() })])),
+            elements: z.array(
+              z.union([z.string(), z.object({ from: z.string(), to: z.string() })]),
+            ),
             caption: z.string().optional(),
           }),
         ),
@@ -856,7 +947,8 @@ export function createMcpServer(store: Store): McpServer {
   server.registerTool(
     'add_flow_step',
     {
-      description: 'Insert a new step into an existing flow, lighting up the given elements (by id, or an edge as {from,to}).',
+      description:
+        'Insert a new step into an existing flow, lighting up the given elements (by id, or an edge as {from,to}).',
       inputSchema: {
         diagramId: z.string(),
         flowId: z.string(),
@@ -876,7 +968,10 @@ export function createMcpServer(store: Store): McpServer {
         diagramId: z.string(),
         flowId: z.string(),
         stepId: z.string(),
-        patch: z.object({ elements: z.array(elementRefShape).optional(), caption: z.string().optional() }),
+        patch: z.object({
+          elements: z.array(elementRefShape).optional(),
+          caption: z.string().optional(),
+        }),
       },
     },
     (args) => wrap(handlers.setFlowStep(store, args as any)),

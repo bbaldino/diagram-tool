@@ -10,15 +10,15 @@ const items: MenuItem[] = [
 
 describe('menuNav', () => {
   it('moves down skipping disabled, wrapping', () => {
-    expect(moveMenuHighlight(items, -1, 1)).toBe(0)      // none → first enabled
-    expect(moveMenuHighlight(items, 0, 1)).toBe(2)        // skip disabled 'open'
+    expect(moveMenuHighlight(items, -1, 1)).toBe(0) // none → first enabled
+    expect(moveMenuHighlight(items, 0, 1)).toBe(2) // skip disabled 'open'
     expect(moveMenuHighlight(items, 2, 1)).toBe(3)
-    expect(moveMenuHighlight(items, 3, 1)).toBe(0)        // wrap
+    expect(moveMenuHighlight(items, 3, 1)).toBe(0) // wrap
   })
   it('moves up skipping disabled, wrapping', () => {
-    expect(moveMenuHighlight(items, -1, -1)).toBe(3)      // none + up → last enabled
-    expect(moveMenuHighlight(items, 2, -1)).toBe(0)       // skip disabled 'open'
-    expect(moveMenuHighlight(items, 0, -1)).toBe(3)       // wrap
+    expect(moveMenuHighlight(items, -1, -1)).toBe(3) // none + up → last enabled
+    expect(moveMenuHighlight(items, 2, -1)).toBe(0) // skip disabled 'open'
+    expect(moveMenuHighlight(items, 0, -1)).toBe(3) // wrap
   })
   it('first/last enabled', () => {
     expect(firstEnabledIndex(items)).toBe(0)

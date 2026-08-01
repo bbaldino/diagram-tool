@@ -297,9 +297,7 @@ export function FlowsTab({
                       onChange={(e) => setStep(i, { caption: e.target.value })}
                     />
                   ) : (
-                    <span className="flowstab__step-title-view">
-                      {s.caption || '(no caption)'}
-                    </span>
+                    <span className="flowstab__step-title-view">{s.caption || '(no caption)'}</span>
                   )}
                   {canEdit && reorderMode && (
                     <span className="flowstab__step-reorder">
@@ -349,9 +347,7 @@ export function FlowsTab({
                 onClick={() => onSelStep(i)}
               >
                 <span className="flowstab__step-idx flowstab__step-idx--muted">{i + 1}</span>
-                <span className="flowstab__step-title-view">
-                  {s.caption || '(no caption)'}
-                </span>
+                <span className="flowstab__step-title-view">{s.caption || '(no caption)'}</span>
                 {mode === 'play' && i < currentStep && (
                   <span className="flowstab__step-check">✓</span>
                 )}
@@ -419,11 +415,11 @@ export function FlowsTab({
             <button className="flowstab__play" onClick={onPlay}>
               ▶ Walk through
             </button>
-            <div className="flowstab__morewrap" ref={footerMenuOpen ? footerMenuWrapRef : undefined}>
-              <button
-                className="flowstab__more"
-                onClick={() => setFooterMenuOpen((v) => !v)}
-              >
+            <div
+              className="flowstab__morewrap"
+              ref={footerMenuOpen ? footerMenuWrapRef : undefined}
+            >
+              <button className="flowstab__more" onClick={() => setFooterMenuOpen((v) => !v)}>
                 ⋯
               </button>
               {footerMenuOpen && currentFlowId && (

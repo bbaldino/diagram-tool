@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { groupNodes, ungroupNodes, type NodeLike } from './grouping'
 
 const svc = (id: string, x: number, y: number): NodeLike => ({
-  id, type: 'service', position: { x, y }, measured: { width: 180, height: 72 },
+  id,
+  type: 'service',
+  position: { x, y },
+  measured: { width: 180, height: 72 },
 })
 
 describe('groupNodes', () => {

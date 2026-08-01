@@ -1,13 +1,26 @@
 import { describe, it, expect } from 'vitest'
 import {
-  HISTORY_LIMIT, record, seed, reconcile, dropDiagram, canUndo, canRedo,
-  undoTarget, redoTarget, setPointer, undoStates, type HistoryMap,
+  HISTORY_LIMIT,
+  record,
+  seed,
+  reconcile,
+  dropDiagram,
+  canUndo,
+  canRedo,
+  undoTarget,
+  redoTarget,
+  setPointer,
+  undoStates,
+  type HistoryMap,
 } from './history'
 import type { DiagramContent } from '../src/model'
 
 const c = (n: number): DiagramContent => ({
   nodes: [{ id: 'e', label: 'E', fields: [], position: { x: n, y: 0 } }],
-  groups: [], edges: [], notes: [], flows: [],
+  groups: [],
+  edges: [],
+  notes: [],
+  flows: [],
 })
 
 describe('history', () => {

@@ -1,10 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  firstEnabledIndex,
-  lastEnabledIndex,
-  moveMenuHighlight,
-  type MenuItem,
-} from './menuNav'
+import { firstEnabledIndex, lastEnabledIndex, moveMenuHighlight, type MenuItem } from './menuNav'
 
 type MenuId = 'file' | 'edit' | 'view' | 'arrange'
 
@@ -232,9 +227,7 @@ export function MenuBar({
 
   const renderItemContent = (item: MenuItem) => (
     <>
-      {item.checked !== undefined && (
-        <span className="menu__check">{item.checked ? '✓' : ''}</span>
-      )}
+      {item.checked !== undefined && <span className="menu__check">{item.checked ? '✓' : ''}</span>}
       <span className="menu__label">
         {item.label}
         {item.submenu && submenuValueLabel(item) ? ` ▸ ${submenuValueLabel(item)}` : ''}

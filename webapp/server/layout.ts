@@ -2,7 +2,12 @@ import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../src/m
 import { runElk } from './layout-elk'
 import { runGraphviz } from './layout-graphviz'
 import { contractEdges } from './layout-tree'
-import { requiredGroupSize, reflowContainment, GROUP_PAD, GROUP_NEST_TOP_PAD } from '../src/containment'
+import {
+  requiredGroupSize,
+  reflowContainment,
+  GROUP_PAD,
+  GROUP_NEST_TOP_PAD,
+} from '../src/containment'
 
 type HandleId = 'top' | 'right' | 'bottom' | 'left'
 
@@ -11,12 +16,22 @@ export const W = 180
 export type LayoutEngine = 'elk' | 'graphviz'
 export const DEFAULT_ENGINE: LayoutEngine = 'elk'
 
-export interface FlatBox { id: string; width: number; height: number }
-export interface FlatEdge { from: string; to: string }
+export interface FlatBox {
+  id: string
+  width: number
+  height: number
+}
+export interface FlatEdge {
+  from: string
+  to: string
+}
 // Lay out a flat set of sized boxes; return each box's top-left position in
 // engine coordinates (arbitrary origin — the orchestrator normalizes). No
 // groups, no clusters, no hierarchy.
-export type FlatEngine = (boxes: FlatBox[], edges: FlatEdge[]) => Promise<Record<string, { x: number; y: number }>>
+export type FlatEngine = (
+  boxes: FlatBox[],
+  edges: FlatEdge[],
+) => Promise<Record<string, { x: number; y: number }>>
 
 // Base node height (icon row + label/sub) — the box before any inline note.
 const H = 64
@@ -131,13 +146,16 @@ export async function layoutDiagram(
   // Lay out one container (a group id, or null for the canvas root). Recurses
   // into child groups FIRST (leaf-first) so their sizes are known before this
   // container is packed. Records each direct child's parent-relative position.
-  const layoutContainer = async (containerId: string | null): Promise<{ width: number; height: number }> => {
+  const layoutContainer = async (
+    containerId: string | null,
+  ): Promise<{ width: number; height: number }> => {
     const childGroups = diagram.groups.filter((g) => (g.parentId ?? null) === containerId)
     for (const cg of childGroups) await layoutContainer(cg.id)
 
     const childNodes = diagram.nodes.filter((n) => (n.parentId ?? null) === containerId)
     // Top-level notes are left where they are; only grouped notes are arranged.
-    const childNotes = containerId === null ? [] : diagram.notes.filter((n) => n.parentId === containerId)
+    const childNotes =
+      containerId === null ? [] : diagram.notes.filter((n) => n.parentId === containerId)
 
     const boxes: FlatBox[] = [
       ...childNodes.map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? 64 })),
@@ -146,7 +164,9 @@ export async function layoutDiagram(
     ]
 
     if (boxes.length === 0) {
-      const existing = containerId ? diagram.groups.find((g) => g.id === containerId)!.size : { width: 0, height: 0 }
+      const existing = containerId
+        ? diagram.groups.find((g) => g.id === containerId)!.size
+        : { width: 0, height: 0 }
       if (containerId) groupSize.set(containerId, existing)
       return existing
     }
@@ -161,7 +181,10 @@ export async function layoutDiagram(
     const padX = containerId === null ? 0 : GROUP_PAD
     const padY = containerId === null ? 0 : GROUP_NEST_TOP_PAD
 
-    const placed: { position: { x: number; y: number }; size: { width: number; height: number } }[] = []
+    const placed: {
+      position: { x: number; y: number }
+      size: { width: number; height: number }
+    }[] = []
     for (const b of boxes) {
       const p = {
         x: Math.round(pos[b.id].x - originX + padX),
@@ -186,8 +209,14 @@ export async function layoutDiagram(
     position: groupPos.get(g.id) ?? g.position,
     size: groupSize.get(g.id) ?? g.size,
   }))
-  const nodes: Node[] = diagram.nodes.map((n) => ({ ...n, position: nodePos.get(n.id) ?? n.position }))
-  const notes: Note[] = diagram.notes.map((n) => ({ ...n, position: notePos.get(n.id) ?? n.position }))
+  const nodes: Node[] = diagram.nodes.map((n) => ({
+    ...n,
+    position: nodePos.get(n.id) ?? n.position,
+  }))
+  const notes: Note[] = diagram.notes.map((n) => ({
+    ...n,
+    position: notePos.get(n.id) ?? n.position,
+  }))
 
   // Backstop: enforce padding/slack/grow-to-fit invariants (grow-only).
   const reflowed = reflowContainment({ ...diagram, nodes, groups, notes })

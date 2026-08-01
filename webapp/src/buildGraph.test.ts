@@ -21,12 +21,22 @@ function makeDiagram(over: Partial<Diagram> = {}): Diagram {
 describe('buildDiagramGraph', () => {
   it('builds RF nodes for nodes/groups/notes and edges for edges', () => {
     const diagram = makeDiagram({
-      groups: [{ id: 'g1', label: 'Group 1', color: '#fff', position: { x: 0, y: 0 }, size: { width: 200, height: 100 } }],
+      groups: [
+        {
+          id: 'g1',
+          label: 'Group 1',
+          color: '#fff',
+          position: { x: 0, y: 0 },
+          size: { width: 200, height: 100 },
+        },
+      ],
       nodes: [
         { id: 'n1', label: 'Node 1', fields: [], position: { x: 10, y: 10 }, parentId: 'g1' },
         { id: 'n2', label: 'Node 2', fields: [], position: { x: 20, y: 20 } },
       ],
-      notes: [{ id: 'note1', text: 'hello', position: { x: 5, y: 5 }, size: { width: 100, height: 50 } }],
+      notes: [
+        { id: 'note1', text: 'hello', position: { x: 5, y: 5 }, size: { width: 100, height: 50 } },
+      ],
       edges: [{ id: 'e1', from: 'n1', to: 'n2', type: 'talks-to' }],
     })
 
@@ -88,7 +98,13 @@ describe('buildDiagramGraph', () => {
     ]
     const inheritedDiagram = makeDiagram({
       nodes: [
-        { id: 'n1', label: 'Node 1', template: 't1', fields: [{ key: 'ip', value: '10.0.0.1' }], position: { x: 0, y: 0 } },
+        {
+          id: 'n1',
+          label: 'Node 1',
+          template: 't1',
+          fields: [{ key: 'ip', value: '10.0.0.1' }],
+          position: { x: 0, y: 0 },
+        },
       ],
     })
     const { nodes: inheritedNodes } = buildDiagramGraph(inheritedDiagram, templates)
@@ -110,7 +126,13 @@ describe('buildDiagramGraph', () => {
 
     const hiddenByDefaultDiagram = makeDiagram({
       nodes: [
-        { id: 'n1', label: 'Node 1', template: 't1', fields: [{ key: 'port', value: '443' }], position: { x: 0, y: 0 } },
+        {
+          id: 'n1',
+          label: 'Node 1',
+          template: 't1',
+          fields: [{ key: 'port', value: '443' }],
+          position: { x: 0, y: 0 },
+        },
       ],
     })
     const { nodes: hiddenNodes } = buildDiagramGraph(hiddenByDefaultDiagram, templates)
@@ -121,8 +143,21 @@ describe('buildDiagramGraph', () => {
     const diagram = makeDiagram({
       groups: [
         // deliberately listed inner-before-outer to prove the sort reorders them
-        { id: 'inner', label: 'Inner', color: '#000', position: { x: 0, y: 0 }, size: { width: 50, height: 50 }, parentId: 'outer' },
-        { id: 'outer', label: 'Outer', color: '#111', position: { x: 0, y: 0 }, size: { width: 200, height: 200 } },
+        {
+          id: 'inner',
+          label: 'Inner',
+          color: '#000',
+          position: { x: 0, y: 0 },
+          size: { width: 50, height: 50 },
+          parentId: 'outer',
+        },
+        {
+          id: 'outer',
+          label: 'Outer',
+          color: '#111',
+          position: { x: 0, y: 0 },
+          size: { width: 200, height: 200 },
+        },
       ],
     })
     const { nodes } = buildDiagramGraph(diagram)
@@ -133,6 +168,8 @@ describe('buildDiagramGraph', () => {
 
     const inner = nodes.find((n) => n.id === 'inner')!
     expect(inner.parentId).toBe('outer')
-    expect(inner.extent).toEqual(paddedExtent({ width: 200, height: 200 }, { width: 50, height: 50 }))
+    expect(inner.extent).toEqual(
+      paddedExtent({ width: 200, height: 200 }, { width: 50, height: 50 }),
+    )
   })
 })

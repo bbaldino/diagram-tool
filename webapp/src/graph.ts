@@ -1,11 +1,27 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
-import { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, NODE_EST_SIZE, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
+import {
+  GROUP_PAD,
+  GROUP_MIN,
+  GROUP_NEST_TOP_PAD,
+  GROUP_SLACK,
+  NODE_EST_SIZE,
+  requiredGroupSize,
+  paddedExtent,
+  placeInGroup,
+} from './containment'
 
-export { GROUP_PAD, GROUP_MIN, GROUP_NEST_TOP_PAD, GROUP_SLACK, requiredGroupSize, paddedExtent, placeInGroup } from './containment'
+export {
+  GROUP_PAD,
+  GROUP_MIN,
+  GROUP_NEST_TOP_PAD,
+  GROUP_SLACK,
+  requiredGroupSize,
+  paddedExtent,
+  placeInGroup,
+} from './containment'
 
 // dashboard-icons (homarr-labs) — same set used in the D2 diagram
-export const ICON_BASE =
-  'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg'
+export const ICON_BASE = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg'
 
 // Topologically order items so every item with a parentId comes after its
 // parent. Needed because React Flow's `adoptUserNodes` is a single forward
@@ -20,7 +36,9 @@ export const ICON_BASE =
 // one implementation and can't drift apart. Stable: items with no ordering
 // constraint between them keep their original relative order. A cycle
 // (shouldn't happen) just stops recursing instead of looping forever.
-export function topoOrderByParent<T extends { id: string; parentId?: string | null }>(items: T[]): T[] {
+export function topoOrderByParent<T extends { id: string; parentId?: string | null }>(
+  items: T[],
+): T[] {
   const byId = new Map(items.map((it) => [it.id, it]))
   const ordered: T[] = []
   const done = new Set<string>()
@@ -41,13 +59,7 @@ export function topoOrderByParent<T extends { id: string; parentId?: string | nu
 }
 
 // ---- Relationship vocabulary (this is the "typed edges" bit) ----
-export type RelType =
-  | 'talks-to'
-  | 'via'
-  | 'writes-to'
-  | 'reads-from'
-  | 'proxies'
-  | 'monitors'
+export type RelType = 'talks-to' | 'via' | 'writes-to' | 'reads-from' | 'proxies' | 'monitors'
 
 export const REL: Record<RelType, { color: string; label: string }> = {
   'talks-to': { color: '#64748b', label: 'talks to' },
@@ -80,7 +92,13 @@ const GROUPS: G[] = [
     label: 'Infra / Auth',
     color: '#e05252',
     nodes: [
-      { id: 'npm', label: 'Nginx Proxy Manager', icon: 'nginx-proxy-manager', sub: ':80 / :443 / :81', status: 'up' },
+      {
+        id: 'npm',
+        label: 'Nginx Proxy Manager',
+        icon: 'nginx-proxy-manager',
+        sub: ':80 / :443 / :81',
+        status: 'up',
+      },
       { id: 'authelia', label: 'Authelia (SSO)', icon: 'authelia', sub: ':9091', status: 'up' },
       { id: 'postgres', label: 'PostgreSQL 15', icon: 'postgresql', sub: ':5432', status: 'up' },
     ],
@@ -121,7 +139,13 @@ const GROUPS: G[] = [
       { id: 'zwave', label: 'Z-Wave JS UI', icon: 'z-wave-js-ui', sub: ':3000', status: 'up' },
       { id: 'mqtt', label: 'Mosquitto', icon: 'mosquitto', sub: ':1883', status: 'up' },
       { id: 'ma', label: 'Music Assistant', icon: 'music-assistant', sub: ':8095', status: 'up' },
-      { id: 'frigate', label: 'Frigate (NVR)', icon: 'frigate', sub: 'panopticon:5000', status: 'up' },
+      {
+        id: 'frigate',
+        label: 'Frigate (NVR)',
+        icon: 'frigate',
+        sub: 'panopticon:5000',
+        status: 'up',
+      },
     ],
   },
   {
@@ -182,7 +206,12 @@ export const GROUP_COLOR: Record<string, string> = Object.fromEntries(
 // parent regardless.
 export function liveFootprint(n: Node): { width: number; height: number } {
   if (n.type === 'group' || n.type === 'note') {
-    const g = n as { width?: number; height?: number; measured?: { width?: number; height?: number }; style?: { width?: number; height?: number } }
+    const g = n as {
+      width?: number
+      height?: number
+      measured?: { width?: number; height?: number }
+      style?: { width?: number; height?: number }
+    }
     // Prefer the LIVE size. A NodeResizer resize writes top-level width/height
     // + measured but NOT style; the inspector size control writes width + style
     // but not measured; a fresh load from the model sets only style. Reading
@@ -318,7 +347,7 @@ export const REL_TYPES = Object.keys(REL) as RelType[]
 // Re-apply relationship styling to an existing edge (used when its type changes).
 export function restyleEdge(e: Edge, type: RelType, inferred: boolean): Edge {
   const r = REL[type]
-  const dir = ((e.data?.dir as EdgeDir) ?? 'forward')
+  const dir = (e.data?.dir as EdgeDir) ?? 'forward'
   const colorOverride = e.data?.color as string | undefined
   const color = colorOverride ?? r.color
   return {
@@ -371,7 +400,9 @@ export function relayout(nodes: Node[]): Node[] {
   const others = nodes.filter((n) => n.type !== 'group')
   const out: Node[] = []
   const placed = new Set<string>()
-  let cx = 0, cy = 0, rowH = 0
+  let cx = 0,
+    cy = 0,
+    rowH = 0
   for (const g of groups) {
     const kids = others.filter((n) => n.type === 'service' && n.parentId === g.id)
     const rows = Math.max(1, Math.ceil(kids.length / COLS))
@@ -404,10 +435,20 @@ export function relayout(nodes: Node[]): Node[] {
 // cuts across it. Service nodes carry no model size, so use their measured
 // (rendered) size, falling back to NODE_EST_SIZE before RF has measured them.
 function shrinkFootprint(n: Node): { width: number; height: number } {
-  const g = n as { width?: number; height?: number; measured?: { width?: number; height?: number }; style?: { width?: number; height?: number } }
+  const g = n as {
+    width?: number
+    height?: number
+    measured?: { width?: number; height?: number }
+    style?: { width?: number; height?: number }
+  }
   return {
-    width: Number(g.width) || Number(g.measured?.width) || Number(g.style?.width) || NODE_EST_SIZE.width,
-    height: Number(g.height) || Number(g.measured?.height) || Number(g.style?.height) || NODE_EST_SIZE.height,
+    width:
+      Number(g.width) || Number(g.measured?.width) || Number(g.style?.width) || NODE_EST_SIZE.width,
+    height:
+      Number(g.height) ||
+      Number(g.measured?.height) ||
+      Number(g.style?.height) ||
+      NODE_EST_SIZE.height,
   }
 }
 
@@ -429,7 +470,8 @@ export function shrinkGroupToChildren(nodes: Node[], groupId: string): Node[] {
     .map((n) => ({ position: n.position, size: shrinkFootprint(n) }))
   const { width, height } = requiredGroupSize(kids)
   return nodes.map((node) =>
-    node.id === groupId ? { ...node, width, height, style: { ...node.style, width, height } } : node,
+    node.id === groupId
+      ? { ...node, width, height, style: { ...node.style, width, height } }
+      : node,
   )
 }
-

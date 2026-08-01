@@ -37,7 +37,11 @@ export function lcaContainer(diagram: Diagram, a: string, b: string): string | n
 // The id of the box that is a direct child of `container` and (transitively)
 // contains `elementId` — the element itself if it is a direct child, else the
 // ancestor group that is.
-export function boxAtContainer(diagram: Diagram, elementId: string, container: string | null): string {
+export function boxAtContainer(
+  diagram: Diagram,
+  elementId: string,
+  container: string | null,
+): string {
   let cur = elementId
   const seen = new Set<string>()
   while ((parentOf(diagram, cur) ?? null) !== container) {
@@ -52,7 +56,9 @@ export function boxAtContainer(diagram: Diagram, elementId: string, container: s
 // Every edge grouped by its LCA container, contracted to the two direct-child
 // box ids it runs between at that container. Self-loops (both endpoints resolve
 // to the same box) are dropped.
-export function contractEdges(diagram: Diagram): Map<string | null, { from: string; to: string }[]> {
+export function contractEdges(
+  diagram: Diagram,
+): Map<string | null, { from: string; to: string }[]> {
   const out = new Map<string | null, { from: string; to: string }[]>()
   for (const e of diagram.edges) {
     const lca = lcaContainer(diagram, e.from, e.to)

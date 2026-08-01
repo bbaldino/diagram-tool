@@ -61,7 +61,7 @@ node: { id, label, icon?, sub?, status? }          // status: 'up' | 'down' | 'i
 edge: { from, to, type, label?, inferred? }        // type is a RelType
 ```
 
-The relationship *vocabulary* (`RelType`) is just an enum you own — add your own
+The relationship _vocabulary_ (`RelType`) is just an enum you own — add your own
 (`depends on`, `backs up to`, …) in `graph.ts` and give it a color in `REL`.
 
 ## Wiring in live status (next step)
@@ -74,12 +74,13 @@ renders the colored dot, so it's just a data feed.
 ## Editing
 
 Select any node, group, or edge to edit it in the **Inspector** (top-right):
+
 - **Service** — label, sub/port, icon slug, status, and which group it belongs to.
 - **Group** — label, color, **Width/Height** fields (type to resize the group — the
   easy alternative to grabbing its corners; applies on blur/Enter), and two layout actions:
   - **Space to fit** — keeps the group's current size; spreads its members evenly to
     fill it (resize the group, then Space to fit).
-  - **Shrink to fit** — packs members at standard spacing and resizes the *group* to
+  - **Shrink to fit** — packs members at standard spacing and resizes the _group_ to
     wrap them tightly.
 - **Edge** — relationship type, label, and the inferred (dashed) toggle.
 
@@ -89,5 +90,5 @@ becomes the new node's parent. Delete via the Inspector button or Delete/Backspa
 ## Known limitations (it's a prototype)
 
 - You can move a node between groups via the Inspector's **Group** dropdown, but not
-  yet by *dragging* it across on the canvas (`extent: 'parent'` keeps it contained).
+  yet by _dragging_ it across on the canvas (`extent: 'parent'` keeps it contained).
 - No undo/redo yet (state lives in `App.tsx`; Reset reverts to the seed).

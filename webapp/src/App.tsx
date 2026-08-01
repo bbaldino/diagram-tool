@@ -50,19 +50,20 @@ import { ImportDialog } from './ImportDialog'
 import type { MenuItem } from './menuNav'
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
-import { fetchState, subscribe, sendOps, clientId, undo as undoReq, redo as redoReq } from './modelClient'
+import {
+  fetchState,
+  subscribe,
+  sendOps,
+  clientId,
+  undo as undoReq,
+  redo as redoReq,
+} from './modelClient'
 import { diffToOps } from './diff'
 import { flowStates } from './flowState'
 import { newId } from './ids'
 import { groupNodes, ungroupNodes } from './grouping'
 import * as M from './model'
-import type {
-  Model,
-  Node as MNode,
-  Group as MGroup,
-  Note as MNote,
-  Edge as MEdge,
-} from './model'
+import type { Model, Node as MNode, Group as MGroup, Note as MNote, Edge as MEdge } from './model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 const OPEN_TABS_KEY = 'homelab-open-tabs'
@@ -325,7 +326,14 @@ function Flow({
     [openTabs, model],
   )
   const meta = useMemo(
-    () => (active ? { entities: active.nodes.length, groups: active.groups.length, edges: active.edges.length } : null),
+    () =>
+      active
+        ? {
+            entities: active.nodes.length,
+            groups: active.groups.length,
+            edges: active.edges.length,
+          }
+        : null,
     [active],
   )
   const currentFlow = useMemo(
@@ -344,8 +352,7 @@ function Flow({
       // otherwise selecting a flow left the diagram stuck dimmed with no way back
       // to normal. Switching to the Inspector tab (or hiding the rail) now clears
       // the highlight and returns the canvas to normal.
-      const lit =
-        flowMode === 'play' || (flowMode === 'edit' && railVisible && railTab === 'flows')
+      const lit = flowMode === 'play' || (flowMode === 'edit' && railVisible && railTab === 'flows')
       if (!lit || !currentFlow) return undefined
       const activeStep = flowMode === 'edit' ? selStep : currentStep
       const s = flowStates(currentFlow, activeStep)[id]
@@ -362,8 +369,7 @@ function Flow({
     setNodes((ns) =>
       ns.map((n) => {
         const cls = flowClassOf(n.id)
-        const flowBadge =
-          flowMode === 'play' && cls === 'flow-active' ? currentStep + 1 : undefined
+        const flowBadge = flowMode === 'play' && cls === 'flow-active' ? currentStep + 1 : undefined
         return { ...n, className: cls, data: { ...n.data, flowBadge } }
       }),
     )
@@ -424,7 +430,8 @@ function Flow({
       setSelNode(sel)
       setSelEdge(null)
       const p = built.nodes.find((n) => n.id === sel)?.position
-      if (p) setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
+      if (p)
+        setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
     // flowClassOf (and its flowMode/currentFlow/currentStep deps) is
     // excluded: a re-seed must stay keyed on [model, activeId] only, and the
@@ -790,7 +797,13 @@ function Flow({
   )
 
   const updateEdge = useCallback(
-    (patch: { type?: RelType; label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => {
+    (patch: {
+      type?: RelType
+      label?: string
+      inferred?: boolean
+      dir?: EdgeDir
+      color?: string
+    }) => {
       if (!selEdge) return
       setEdges((es) =>
         es.map((e) => {
@@ -829,36 +842,44 @@ function Flow({
     }
   }, [selNode, selEdge, nodes, setNodes, setEdges])
 
-  const addGroup = useCallback((at?: { x: number; y: number }) => {
-    const id = newId()
-    const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
-    const newNode = {
-      id,
-      type: 'group',
-      position: pos,
-      data: { label: 'New Group', color: '#64748b' },
-      style: { width: 320, height: 200 },
-      zIndex: -1, // matches buildGraph: group panes sit behind edges
-      selected: true,
-    } as Node
-    setNodes((ns) => groupsFirst([...ns.map((n) => ({ ...n, selected: false })), newNode] as Node[]))
-    setSelNode(id)
-    setSelEdge(null)
-  }, [rf, setNodes])
-
-  const addNote = useCallback((at?: { x: number; y: number }) => {
-    const id = newId()
-    setNodes((ns) =>
-      ns.concat({
+  const addGroup = useCallback(
+    (at?: { x: number; y: number }) => {
+      const id = newId()
+      const pos = at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 200 })
+      const newNode = {
         id,
-        type: 'note',
-        position: at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 220 }),
-        data: { text: '' },
-        style: { width: 190, height: 110 },
-        zIndex: 2,
-      } as Node),
-    )
-  }, [rf, setNodes])
+        type: 'group',
+        position: pos,
+        data: { label: 'New Group', color: '#64748b' },
+        style: { width: 320, height: 200 },
+        zIndex: -1, // matches buildGraph: group panes sit behind edges
+        selected: true,
+      } as Node
+      setNodes((ns) =>
+        groupsFirst([...ns.map((n) => ({ ...n, selected: false })), newNode] as Node[]),
+      )
+      setSelNode(id)
+      setSelEdge(null)
+    },
+    [rf, setNodes],
+  )
+
+  const addNote = useCallback(
+    (at?: { x: number; y: number }) => {
+      const id = newId()
+      setNodes((ns) =>
+        ns.concat({
+          id,
+          type: 'note',
+          position: at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 220 }),
+          data: { text: '' },
+          style: { width: 190, height: 110 },
+          zIndex: 2,
+        } as Node),
+      )
+    },
+    [rf, setNodes],
+  )
 
   // Double-click on empty canvas opens the Add menu at the cursor. Ignore
   // double-clicks that land on a node/edge/handle — only the pane counts.
@@ -969,8 +990,13 @@ function Flow({
         ns.map((n) => {
           if (n.id !== selNode) return n
           const g = n as any
-          const curW = Number(g.measured?.width) || Number(g.width) || Number((n.style as any)?.width) || 320
-          const curH = Number(g.measured?.height) || Number(g.height) || Number((n.style as any)?.height) || 200
+          const curW =
+            Number(g.measured?.width) || Number(g.width) || Number((n.style as any)?.width) || 320
+          const curH =
+            Number(g.measured?.height) ||
+            Number(g.height) ||
+            Number((n.style as any)?.height) ||
+            200
           const width = size.width ?? curW
           const height = size.height ?? curH
           return { ...n, width, height, style: { ...n.style, width, height } }
@@ -1076,7 +1102,8 @@ function Flow({
   // Group/Ungroup are top-level only this phase. canGroup: 2+ selected non-group
   // nodes, all top-level. canUngroup: exactly one selected top-level group.
   const groupableIds = useMemo(
-    () => nodes.filter((n) => n.selected && n.type !== 'group' && n.parentId == null).map((n) => n.id),
+    () =>
+      nodes.filter((n) => n.selected && n.type !== 'group' && n.parentId == null).map((n) => n.id),
     [nodes],
   )
   const selectedTopGroup = useMemo(
@@ -1095,9 +1122,11 @@ function Flow({
   const groupSelection = useCallback(() => {
     if (groupableIds.length < 2) return
     const gid = newId()
-    setNodes((ns) => recomputeChildExtents(
-      groupNodes(ns as any, groupableIds, gid, 'New Group', '#64748b') as any,
-    ))
+    setNodes((ns) =>
+      recomputeChildExtents(
+        groupNodes(ns as any, groupableIds, gid, 'New Group', '#64748b') as any,
+      ),
+    )
     setSelNode(gid)
     setSelEdge(null)
   }, [groupableIds, setNodes])
@@ -1119,7 +1148,13 @@ function Flow({
         submenu: [
           { id: 'engine-graphviz', label: 'Graphviz', checked: layoutEngine === 'graphviz' },
           { id: 'engine-elk', label: 'elkjs', checked: layoutEngine === 'elk' },
-          { id: 'rerun-layout', label: 'Re-run layout', shortcut: '⌘⇧L', separatorBefore: true, disabled: !canTidy },
+          {
+            id: 'rerun-layout',
+            label: 'Re-run layout',
+            shortcut: '⌘⇧L',
+            separatorBefore: true,
+            disabled: !canTidy,
+          },
         ],
       },
       {
@@ -1131,7 +1166,13 @@ function Flow({
           { id: 'edge-straight', label: 'Straight', checked: edgeStyle === 'straight' },
         ],
       },
-      { id: 'group', label: 'Group selection', shortcut: '⌘G', disabled: !canGroup, separatorBefore: true },
+      {
+        id: 'group',
+        label: 'Group selection',
+        shortcut: '⌘G',
+        disabled: !canGroup,
+        separatorBefore: true,
+      },
       { id: 'ungroup', label: 'Ungroup', shortcut: '⇧⌘G', disabled: !canUngroup },
       { id: 'bring-front', label: 'Bring to front', disabled: true, separatorBefore: true },
       { id: 'send-back', label: 'Send to back', disabled: true },
@@ -1147,7 +1188,12 @@ function Flow({
       { id: 'zoom-actual', label: 'Actual size' },
       { id: 'legend', label: 'Legend', checked: showLegend, separatorBefore: true },
       { id: 'minimap', label: 'Minimap', checked: showMinimap },
-      { id: 'inspector', label: 'Inspector', shortcut: '⌘I', checked: railVisible && railTab === 'inspector' },
+      {
+        id: 'inspector',
+        label: 'Inspector',
+        shortcut: '⌘I',
+        checked: railVisible && railTab === 'inspector',
+      },
       { id: 'snap', label: 'Snap to grid', checked: snapToGrid },
       { id: 'note-spellcheck', label: 'Spellcheck notes', checked: noteSpellcheck },
       {
@@ -1171,7 +1217,13 @@ function Flow({
       { id: 'paste', label: 'Paste', shortcut: '⌘V', disabled: true },
       { id: 'duplicate', label: 'Duplicate', shortcut: '⌘D', disabled: true },
       { id: 'delete', label: 'Delete', shortcut: '⌫', disabled: !hasSelection },
-      { id: 'select-all', label: 'Select all', shortcut: '⌘A', disabled: true, separatorBefore: true },
+      {
+        id: 'select-all',
+        label: 'Select all',
+        shortcut: '⌘A',
+        disabled: true,
+        separatorBefore: true,
+      },
       { id: 'deselect', label: 'Deselect', shortcut: 'Esc', disabled: true },
     ],
     [undoFlags.canUndo, undoFlags.canRedo, hasSelection],
@@ -1314,7 +1366,10 @@ function Flow({
       const newZoom = Math.min(2, Math.max(0.15, zoom * factor))
       const fx = (sx - x) / zoom
       const fy = (sy - y) / zoom
-      rf.setViewport({ x: sx - fx * newZoom, y: sy - fy * newZoom, zoom: newZoom }, { duration: 120 })
+      rf.setViewport(
+        { x: sx - fx * newZoom, y: sy - fy * newZoom, zoom: newZoom },
+        { duration: 120 },
+      )
     },
     [rf],
   )
@@ -1324,7 +1379,14 @@ function Flow({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT' || t.isContentEditable)) return
+      if (
+        t &&
+        (t.tagName === 'INPUT' ||
+          t.tagName === 'TEXTAREA' ||
+          t.tagName === 'SELECT' ||
+          t.isContentEditable)
+      )
+        return
       if (e.metaKey || e.ctrlKey || e.altKey) return
       if (e.key === '=' || e.key === '+') {
         e.preventDefault()
@@ -1352,14 +1414,31 @@ function Flow({
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
       if (!(e.metaKey || e.ctrlKey)) return
       const key = e.key.toLowerCase()
-      if (key === 'z' && !e.shiftKey) { e.preventDefault(); doUndo() }
-      else if ((key === 'z' && e.shiftKey) || key === 'y') { e.preventDefault(); doRedo() }
-      else if (key === 'l' && e.shiftKey) { e.preventDefault(); tidy() }
-      else if (key === 't' && e.shiftKey) { e.preventDefault(); tidy() }
-      else if (key === 'i' && !e.shiftKey && !e.altKey) { e.preventDefault(); toggleRailTab('inspector') }
-      else if (key === 'f' && e.shiftKey) { e.preventDefault(); toggleRailTab('flows') }
-      else if (key === 'g' && !e.shiftKey) { e.preventDefault(); if (canGroup) groupSelection() }
-      else if (key === 'g' && e.shiftKey) { e.preventDefault(); if (canUngroup) ungroupSelection() }
+      if (key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        doUndo()
+      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
+        e.preventDefault()
+        doRedo()
+      } else if (key === 'l' && e.shiftKey) {
+        e.preventDefault()
+        tidy()
+      } else if (key === 't' && e.shiftKey) {
+        e.preventDefault()
+        tidy()
+      } else if (key === 'i' && !e.shiftKey && !e.altKey) {
+        e.preventDefault()
+        toggleRailTab('inspector')
+      } else if (key === 'f' && e.shiftKey) {
+        e.preventDefault()
+        toggleRailTab('flows')
+      } else if (key === 'g' && !e.shiftKey) {
+        e.preventDefault()
+        if (canGroup) groupSelection()
+      } else if (key === 'g' && e.shiftKey) {
+        e.preventDefault()
+        if (canUngroup) ungroupSelection()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -1396,14 +1475,8 @@ function Flow({
     setCurrentStep((s) => Math.min(Math.max(0, s), Math.max(0, len - 1)))
   }, [currentFlow, flowMode])
 
-  const selectedNode = useMemo(
-    () => nodes.find((n) => n.id === selNode) ?? null,
-    [nodes, selNode],
-  )
-  const selectedEdge = useMemo(
-    () => edges.find((e) => e.id === selEdge) ?? null,
-    [edges, selEdge],
-  )
+  const selectedNode = useMemo(() => nodes.find((n) => n.id === selNode) ?? null, [nodes, selNode])
+  const selectedEdge = useMemo(() => edges.find((e) => e.id === selEdge) ?? null, [edges, selEdge])
   const groupList = useMemo(
     () =>
       nodes
@@ -1425,7 +1498,9 @@ function Flow({
   const diagramColors = useMemo(() => {
     const set = new Set<string>()
     for (const e of edges) {
-      const c = ((e.data as any)?.color as string) ?? REL[((e.data as any)?.rel as RelType) ?? 'talks-to']?.color
+      const c =
+        ((e.data as any)?.color as string) ??
+        REL[((e.data as any)?.rel as RelType) ?? 'talks-to']?.color
       if (c) set.add(c.toLowerCase())
     }
     for (const n of nodes) {
@@ -1446,7 +1521,9 @@ function Flow({
     : undefined
   const inspectorFields = useMemo(() => {
     if (!selModelNode) return []
-    const tmplShow = new Map((selTemplate?.fields ?? []).map((tf) => [tf.key, tf.showOnNode === true]))
+    const tmplShow = new Map(
+      (selTemplate?.fields ?? []).map((tf) => [tf.key, tf.showOnNode === true]),
+    )
     return selModelNode.fields.map((f) => ({
       key: f.key,
       value: f.value,
@@ -1520,191 +1597,206 @@ function Flow({
           </div>
         </div>
       ) : (
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-      <div
-        ref={wrapperRef}
-        className={groupEditing ? 'group-editing' : undefined}
-        style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
-        onMouseMove={(e) => {
-          pointer.current = { x: e.clientX, y: e.clientY }
-        }}
-      >
-      <NoteSpellcheckContext.Provider value={noteSpellcheck}>
-        <ReactFlow
-          className={flowMode === 'play' ? 'is-flow-play' : undefined}
-          nodes={nodes}
-          edges={flowEdges}
-          onNodesChange={handleNodesChange}
-          onNodeDragStop={flushNow}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onReconnect={onReconnect}
-          edgesReconnectable={false}
-          elevateEdgesOnSelect
-          onSelectionChange={onSelectionChange}
-          onNodeClick={(_, n) => toggleInStep(n.id)}
-          onEdgeClick={(_, e) => toggleInStep(e.id)}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.15}
-          deleteKeyCode={['Backspace', 'Delete']}
-          connectionMode={ConnectionMode.Loose}
-          zoomOnDoubleClick={false}
-          proOptions={{ hideAttribution: true }}
-          snapToGrid={snapToGrid}
-          snapGrid={[16, 16]}
-        >
-          <Background gap={22} color="#e2e8f0" />
-          <Controls />
-          {showMinimap && <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />}
+        <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+          <div
+            ref={wrapperRef}
+            className={groupEditing ? 'group-editing' : undefined}
+            style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
+            onMouseMove={(e) => {
+              pointer.current = { x: e.clientX, y: e.clientY }
+            }}
+          >
+            <NoteSpellcheckContext.Provider value={noteSpellcheck}>
+              <ReactFlow
+                className={flowMode === 'play' ? 'is-flow-play' : undefined}
+                nodes={nodes}
+                edges={flowEdges}
+                onNodesChange={handleNodesChange}
+                onNodeDragStop={flushNow}
+                onEdgesChange={onEdgesChange}
+                onConnect={onConnect}
+                onReconnect={onReconnect}
+                edgesReconnectable={false}
+                elevateEdgesOnSelect
+                onSelectionChange={onSelectionChange}
+                onNodeClick={(_, n) => toggleInStep(n.id)}
+                onEdgeClick={(_, e) => toggleInStep(e.id)}
+                nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
+                fitView
+                fitViewOptions={{ padding: 0.2 }}
+                minZoom={0.15}
+                deleteKeyCode={['Backspace', 'Delete']}
+                connectionMode={ConnectionMode.Loose}
+                zoomOnDoubleClick={false}
+                proOptions={{ hideAttribution: true }}
+                snapToGrid={snapToGrid}
+                snapGrid={[16, 16]}
+              >
+                <Background gap={22} color="#e2e8f0" />
+                <Controls />
+                {showMinimap && (
+                  <MiniMap nodeColor={miniColor} nodeStrokeWidth={2} pannable zoomable />
+                )}
 
-          <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
-            <CanvasPill
-              canUndo={undoFlags.canUndo}
-              canRedo={undoFlags.canRedo}
-              onUndo={doUndo}
-              onRedo={doRedo}
-              onTidy={tidy}
-              engine={layoutEngine}
-              engines={[{ id: 'graphviz', label: 'Graphviz' }, { id: 'elk', label: 'elkjs' }]}
-              onChooseEngine={(id) => { if (id === 'elk' || id === 'graphviz') chooseEngine(id) }}
-              onReRun={tidy}
-              canTidy={canTidy}
-            />
-          </Panel>
-
-          <Panel position="top-right" className="stack-tr">
-            <div className="panel toolbar">
-              <button onClick={() => addGroup()}>+ Group</button>
-              <button onClick={() => addNote()}>+ Note</button>
-            </div>
-          </Panel>
-
-          <Panel position="top-left" className="stack-tl">
-            {showLegend && (
-              <div className="panel">
-                <h4>Legend</h4>
-                <div className="legend__row">
-                  <span
-                    className="legend__line"
-                    style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+                <Panel position="top-center" style={{ marginTop: 14, zIndex: 6 }}>
+                  <CanvasPill
+                    canUndo={undoFlags.canUndo}
+                    canRedo={undoFlags.canRedo}
+                    onUndo={doUndo}
+                    onRedo={doRedo}
+                    onTidy={tidy}
+                    engine={layoutEngine}
+                    engines={[
+                      { id: 'graphviz', label: 'Graphviz' },
+                      { id: 'elk', label: 'elkjs' },
+                    ]}
+                    onChooseEngine={(id) => {
+                      if (id === 'elk' || id === 'graphviz') chooseEngine(id)
+                    }}
+                    onReRun={tidy}
+                    canTidy={canTidy}
                   />
-                  <span>dashed = inferred (guess)</span>
-                </div>
-                <h4 style={{ marginTop: 10 }}>Status</h4>
-                <div className="legend__row">
-                  <span className="legend__dot status-up" /> up
-                </div>
-                <div className="legend__row">
-                  <span className="legend__dot status-idle" /> on-demand / idle
-                </div>
-              </div>
+                </Panel>
+
+                <Panel position="top-right" className="stack-tr">
+                  <div className="panel toolbar">
+                    <button onClick={() => addGroup()}>+ Group</button>
+                    <button onClick={() => addNote()}>+ Note</button>
+                  </div>
+                </Panel>
+
+                <Panel position="top-left" className="stack-tl">
+                  {showLegend && (
+                    <div className="panel">
+                      <h4>Legend</h4>
+                      <div className="legend__row">
+                        <span
+                          className="legend__line"
+                          style={{ borderTopColor: '#94a3b8', borderTopStyle: 'dashed' }}
+                        />
+                        <span>dashed = inferred (guess)</span>
+                      </div>
+                      <h4 style={{ marginTop: 10 }}>Status</h4>
+                      <div className="legend__row">
+                        <span className="legend__dot status-up" /> up
+                      </div>
+                      <div className="legend__row">
+                        <span className="legend__dot status-idle" /> on-demand / idle
+                      </div>
+                    </div>
+                  )}
+                </Panel>
+              </ReactFlow>
+            </NoteSpellcheckContext.Provider>
+
+            {addMenu && (
+              <CanvasAddMenu
+                x={addMenu.sx}
+                y={addMenu.sy}
+                onCreateEntity={(label) => createNode(label, addMenu.flow)}
+                onAddGroup={() => addGroup(addMenu.flow)}
+                onAddNote={() => addNote(addMenu.flow)}
+                onClose={() => setAddMenu(null)}
+              />
             )}
-          </Panel>
-        </ReactFlow>
-      </NoteSpellcheckContext.Provider>
 
-      {addMenu && (
-        <CanvasAddMenu
-          x={addMenu.sx}
-          y={addMenu.sy}
-          onCreateEntity={(label) => createNode(label, addMenu.flow)}
-          onAddGroup={() => addGroup(addMenu.flow)}
-          onAddNote={() => addNote(addMenu.flow)}
-          onClose={() => setAddMenu(null)}
-        />
-      )}
+            {flowMode === 'play' && currentFlow && currentFlow.steps.length > 0 && (
+              <>
+                <StepCaptionCard
+                  stepIndex={currentStep}
+                  stepCount={currentFlow.steps.length}
+                  flowName={currentFlow.name}
+                  elementSummary={(currentFlow.steps[currentStep]?.elementIds ?? [])
+                    .map(chipLabel)
+                    .join(' · ')}
+                  description={currentFlow.steps[currentStep]?.caption ?? ''}
+                />
+                <StepBar
+                  stepIndex={currentStep}
+                  stepCount={currentFlow.steps.length}
+                  onBack={() => setCurrentStep((s) => Math.max(0, s - 1))}
+                  onNext={() =>
+                    setCurrentStep((s) => Math.min(s + 1, currentFlow.steps.length - 1))
+                  }
+                  onExit={() => setFlowMode('edit')}
+                  onScrub={(i) => setCurrentStep(i)}
+                />
+              </>
+            )}
 
-      {flowMode === 'play' && currentFlow && currentFlow.steps.length > 0 && (
-        <>
-          <StepCaptionCard
-            stepIndex={currentStep}
-            stepCount={currentFlow.steps.length}
-            flowName={currentFlow.name}
-            elementSummary={(currentFlow.steps[currentStep]?.elementIds ?? [])
-              .map(chipLabel)
-              .join(' · ')}
-            description={currentFlow.steps[currentStep]?.caption ?? ''}
-          />
-          <StepBar
-            stepIndex={currentStep}
-            stepCount={currentFlow.steps.length}
-            onBack={() => setCurrentStep((s) => Math.max(0, s - 1))}
-            onNext={() => setCurrentStep((s) => Math.min(s + 1, currentFlow.steps.length - 1))}
-            onExit={() => setFlowMode('edit')}
-            onScrub={(i) => setCurrentStep(i)}
-          />
-        </>
-      )}
-
-      {isEmptyCanvas && (
-        <div className="canvas-fresh">Double-click anywhere to add your first entity</div>
-      )}
-      </div>
-      {railVisible && (
-        <RightRail
-          tab={railTab}
-          onTab={setRailTab}
-          flowCount={active?.flows?.length ?? 0}
-          inspector={
-            <Inspector
-              node={selectedNode}
-              edge={selectedEdge}
-              groups={groupParentOptions}
-              onNodeData={updateNodeData}
-              onNodeParent={reparent}
-              onEdge={updateEdge}
-              onShrink={shrinkGroup}
-              onGroupSize={setGroupSize}
-              onDelete={deleteSelected}
-              fields={inspectorFields}
-              onFieldShow={onFieldShow}
-              diagramColors={diagramColors}
-            />
-          }
-          flows={
-            <FlowsTab
-              flows={active?.flows ?? []}
-              currentFlowId={currentFlowId}
-              currentFlow={currentFlow}
-              mode={flowMode}
-              selStep={selStep}
-              currentStep={currentStep}
-              onSelStep={(i) => {
-                if (flowMode === 'play') {
-                  // Clicking a step in the rail during playback jumps to it —
-                  // same as the step-bar scrubber.
-                  setCurrentStep(i)
-                } else {
-                  setSelStep(i)
-                }
-              }}
-              onSelectFlow={selectFlow}
-              onCreateFlow={createFlow}
-              onRenameFlow={renameFlowById}
-              onDuplicateFlow={duplicateFlow}
-              onDeleteFlow={deleteFlowById}
-              onStepsChange={(steps) =>
-                activeId && currentFlow && setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
+            {isEmptyCanvas && (
+              <div className="canvas-fresh">Double-click anywhere to add your first entity</div>
+            )}
+          </div>
+          {railVisible && (
+            <RightRail
+              tab={railTab}
+              onTab={setRailTab}
+              flowCount={active?.flows?.length ?? 0}
+              inspector={
+                <Inspector
+                  node={selectedNode}
+                  edge={selectedEdge}
+                  groups={groupParentOptions}
+                  onNodeData={updateNodeData}
+                  onNodeParent={reparent}
+                  onEdge={updateEdge}
+                  onShrink={shrinkGroup}
+                  onGroupSize={setGroupSize}
+                  onDelete={deleteSelected}
+                  fields={inspectorFields}
+                  onFieldShow={onFieldShow}
+                  diagramColors={diagramColors}
+                />
               }
-              newStepId={newId}
-              onPlay={() => {
-                setCurrentStep(0)
-                setFlowMode('play')
-              }}
-              onStop={() => setFlowMode('edit')}
-              chipLabel={chipLabel}
+              flows={
+                <FlowsTab
+                  flows={active?.flows ?? []}
+                  currentFlowId={currentFlowId}
+                  currentFlow={currentFlow}
+                  mode={flowMode}
+                  selStep={selStep}
+                  currentStep={currentStep}
+                  onSelStep={(i) => {
+                    if (flowMode === 'play') {
+                      // Clicking a step in the rail during playback jumps to it —
+                      // same as the step-bar scrubber.
+                      setCurrentStep(i)
+                    } else {
+                      setSelStep(i)
+                    }
+                  }}
+                  onSelectFlow={selectFlow}
+                  onCreateFlow={createFlow}
+                  onRenameFlow={renameFlowById}
+                  onDuplicateFlow={duplicateFlow}
+                  onDeleteFlow={deleteFlowById}
+                  onStepsChange={(steps) =>
+                    activeId &&
+                    currentFlow &&
+                    setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
+                  }
+                  newStepId={newId}
+                  onPlay={() => {
+                    setCurrentStep(0)
+                    setFlowMode('play')
+                  }}
+                  onStop={() => setFlowMode('edit')}
+                  chipLabel={chipLabel}
+                />
+              }
             />
-          }
-        />
-      )}
-      </div>
+          )}
+        </div>
       )}
       {openDialog && (
         <OpenDiagramDialog
-          diagrams={model.diagrams.map((d) => ({ id: d.id, name: d.name, entities: d.nodes.length }))}
+          diagrams={model.diagrams.map((d) => ({
+            id: d.id,
+            name: d.name,
+            entities: d.nodes.length,
+          }))}
           openTabIds={openTabs}
           onOpen={(id) => {
             openDiagram(id)
@@ -1817,9 +1909,7 @@ export default function App() {
       if (cancelled) return
       const stored = localStorage.getItem(ACTIVE_KEY)
       const id =
-        snap.model.diagrams.find((d) => d.id === stored)?.id ??
-        snap.model.diagrams[0]?.id ??
-        null
+        snap.model.diagrams.find((d) => d.id === stored)?.id ?? snap.model.diagrams[0]?.id ?? null
       lastServerModel.current = snap.model
       lastServerRev.current = snap.rev
       ownRev.current = snap.rev

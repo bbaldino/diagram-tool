@@ -59,7 +59,11 @@ describe('node mutators', () => {
   it('addNode appends a node and dedupes by id (unchanged diagram returned as-is)', () => {
     const n: Node = { id: 'grafana', label: 'Grafana', fields: [], position: { x: 5, y: 5 } }
     const once = addNode(baseModel, 'logical', n)
-    expect(getDiagram(once, 'logical')!.nodes.map((x) => x.id)).toEqual(['plex', 'users', 'grafana'])
+    expect(getDiagram(once, 'logical')!.nodes.map((x) => x.id)).toEqual([
+      'plex',
+      'users',
+      'grafana',
+    ])
     const twice = addNode(once, 'logical', { ...n, label: 'Different' })
     expect(getDiagram(twice, 'logical')!.nodes.filter((x) => x.id === 'grafana')).toHaveLength(1)
     expect(getDiagram(twice, 'logical')).toBe(getDiagram(once, 'logical')) // diagram object reused when the add is a no-op
@@ -67,7 +71,9 @@ describe('node mutators', () => {
 
   it('updateNode patches a node immutably', () => {
     const m = updateNode(baseModel, 'logical', 'plex', { label: 'Plex Media Server' })
-    expect(getDiagram(m, 'logical')!.nodes.find((n) => n.id === 'plex')!.label).toBe('Plex Media Server')
+    expect(getDiagram(m, 'logical')!.nodes.find((n) => n.id === 'plex')!.label).toBe(
+      'Plex Media Server',
+    )
     expect(getDiagram(baseModel, 'logical')!.nodes.find((n) => n.id === 'plex')!.label).toBe('Plex') // original untouched
   })
 
@@ -78,8 +84,10 @@ describe('node mutators', () => {
     expect(d.edges).toHaveLength(0)
   })
 
-  it('setNodeFields replaces a node\'s fields immutably', () => {
-    const m = setNodeFields(baseModel, 'logical', 'plex', [{ key: 'ip', value: '10.0.0.5', showOnNode: true }])
+  it("setNodeFields replaces a node's fields immutably", () => {
+    const m = setNodeFields(baseModel, 'logical', 'plex', [
+      { key: 'ip', value: '10.0.0.5', showOnNode: true },
+    ])
     expect(getDiagram(m, 'logical')!.nodes.find((n) => n.id === 'plex')!.fields).toEqual([
       { key: 'ip', value: '10.0.0.5', showOnNode: true },
     ])
@@ -95,7 +103,12 @@ describe('applyTemplate', () => {
       icon: 'docker',
       fields: [{ key: 'image', default: 'nginx' }, { key: 'port' }],
     }
-    const node: Node = { id: 'e', label: 'E', fields: [{ key: 'image', value: 'keep' }], position: { x: 0, y: 0 } }
+    const node: Node = {
+      id: 'e',
+      label: 'E',
+      fields: [{ key: 'image', value: 'keep' }],
+      position: { x: 0, y: 0 },
+    }
     const out = applyTemplate(node, tmpl)
     expect(out.template).toBe('t')
     expect(out.icon).toBe('docker')
@@ -117,7 +130,13 @@ describe('removeGroup', () => {
     const created = addDiagram(normalizeModel(null), 'D', 'canvas')
     const id = created.id
     let m = created.model
-    m = addGroup(m, id, { id: 'g1', label: 'G', color: '#000', position: { x: 0, y: 0 }, size: { width: 200, height: 120 } })
+    m = addGroup(m, id, {
+      id: 'g1',
+      label: 'G',
+      color: '#000',
+      position: { x: 0, y: 0 },
+      size: { width: 200, height: 120 },
+    })
     m = addGroup(m, id, {
       id: 'g2',
       label: 'Child group',
@@ -126,8 +145,20 @@ describe('removeGroup', () => {
       size: { width: 100, height: 80 },
       parentId: 'g1',
     })
-    m = addNode(m, id, { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 }, parentId: 'g1' })
-    m = addNote(m, id, { id: 'note1', text: 'hi', position: { x: 0, y: 0 }, size: { width: 190, height: 110 }, parentId: 'g1' })
+    m = addNode(m, id, {
+      id: 'n1',
+      label: 'N',
+      fields: [],
+      position: { x: 0, y: 0 },
+      parentId: 'g1',
+    })
+    m = addNote(m, id, {
+      id: 'note1',
+      text: 'hi',
+      position: { x: 0, y: 0 },
+      size: { width: 190, height: 110 },
+      parentId: 'g1',
+    })
 
     m = removeGroup(m, id, 'g1')
     const d = getDiagram(m, id)!
@@ -140,14 +171,25 @@ describe('removeGroup', () => {
 
 describe('group/note/edge/flow mutators', () => {
   it('addGroup/updateGroup round-trip', () => {
-    let m = addGroup(baseModel, 'logical', { id: 'g', label: 'G', color: '#111', position: { x: 1, y: 2 }, size: { width: 100, height: 50 } })
+    let m = addGroup(baseModel, 'logical', {
+      id: 'g',
+      label: 'G',
+      color: '#111',
+      position: { x: 1, y: 2 },
+      size: { width: 100, height: 50 },
+    })
     expect(getDiagram(m, 'logical')!.groups).toHaveLength(1)
     m = updateGroup(m, 'logical', 'g', { label: 'G renamed' })
     expect(getDiagram(m, 'logical')!.groups[0].label).toBe('G renamed')
   })
 
   it('addNote/updateNote/removeNote round-trip', () => {
-    let m = addNote(baseModel, 'logical', { id: 'n1', position: { x: 0, y: 0 }, size: { width: 190, height: 110 }, text: 'hello' })
+    let m = addNote(baseModel, 'logical', {
+      id: 'n1',
+      position: { x: 0, y: 0 },
+      size: { width: 190, height: 110 },
+      text: 'hello',
+    })
     expect(getDiagram(m, 'logical')!.notes).toHaveLength(1)
     m = updateNote(m, 'logical', 'n1', { text: 'updated' })
     expect(getDiagram(m, 'logical')!.notes[0].text).toBe('updated')
@@ -249,7 +291,14 @@ describe('template mutators', () => {
     const withTemplate: Model = {
       version: 2,
       templates: [{ id: 't', name: 'C', fields: [] }],
-      diagrams: [{ ...diagram, nodes: [{ id: 'plex', label: 'Plex', template: 't', fields: [], position: { x: 0, y: 0 } }] }],
+      diagrams: [
+        {
+          ...diagram,
+          nodes: [
+            { id: 'plex', label: 'Plex', template: 't', fields: [], position: { x: 0, y: 0 } },
+          ],
+        },
+      ],
     }
     const out = deleteTemplate(withTemplate, 't')
     expect(out.templates).toHaveLength(0)
@@ -258,7 +307,7 @@ describe('template mutators', () => {
 })
 
 describe('nodesById', () => {
-  it('indexes a diagram\'s nodes by id', () => {
+  it("indexes a diagram's nodes by id", () => {
     const byId = nodesById(diagram)
     expect(byId.plex.label).toBe('Plex')
     expect(byId.users.label).toBe('Users')
@@ -280,7 +329,10 @@ describe('diagramContent', () => {
 
 describe('patchDiagram', () => {
   it('patches selected diagram-content fields immutably', () => {
-    const m = patchDiagram(baseModel, 'logical', { name: 'Patched', notes: [{ id: 'n', text: 'x', position: { x: 0, y: 0 }, size: { width: 1, height: 1 } }] })
+    const m = patchDiagram(baseModel, 'logical', {
+      name: 'Patched',
+      notes: [{ id: 'n', text: 'x', position: { x: 0, y: 0 }, size: { width: 1, height: 1 } }],
+    })
     const d = getDiagram(m, 'logical')!
     expect(d.name).toBe('Patched')
     expect(d.notes).toHaveLength(1)
@@ -289,7 +341,18 @@ describe('patchDiagram', () => {
 })
 
 function d(over: Partial<Diagram> = {}): Diagram {
-  return { id: 'd1', name: 'D1', title: 'D1', type: 'canvas', nodes: [], groups: [], notes: [], edges: [], flows: [], ...over }
+  return {
+    id: 'd1',
+    name: 'D1',
+    title: 'D1',
+    type: 'canvas',
+    nodes: [],
+    groups: [],
+    notes: [],
+    edges: [],
+    flows: [],
+    ...over,
+  }
 }
 function m(diagrams: Diagram[], templates: Model['templates'] = []): Model {
   return { version: 2, diagrams, templates }
@@ -297,31 +360,40 @@ function m(diagrams: Diagram[], templates: Model['templates'] = []): Model {
 
 describe('diagramCounts / describeCounts', () => {
   it('counts each category', () => {
-    const c = diagramCounts(d({
-      nodes: [{}, {}, {}] as any,
-      groups: [{}] as any,
-      edges: [{}, {}] as any,
-      flows: [{}] as any,
-      notes: [{}, {}] as any,
-    }))
+    const c = diagramCounts(
+      d({
+        nodes: [{}, {}, {}] as any,
+        groups: [{}] as any,
+        edges: [{}, {}] as any,
+        flows: [{}] as any,
+        notes: [{}, {}] as any,
+      }),
+    )
     expect(c).toEqual({ entities: 3, groups: 1, edges: 2, flows: 1, notes: 2 })
   })
 
   it('describes non-zero categories, pluralized, with a trailing "and"', () => {
-    expect(describeCounts({ entities: 12, groups: 3, edges: 9, flows: 2, notes: 0 }))
-      .toBe('12 entities, 3 groups, 9 edges and 2 flows')
-    expect(describeCounts({ entities: 1, groups: 0, edges: 1, flows: 0, notes: 0 }))
-      .toBe('1 entity and 1 edge')
-    expect(describeCounts({ entities: 5, groups: 0, edges: 0, flows: 0, notes: 0 }))
-      .toBe('5 entities')
-    expect(describeCounts({ entities: 0, groups: 0, edges: 0, flows: 0, notes: 0 }))
-      .toBe('no content')
+    expect(describeCounts({ entities: 12, groups: 3, edges: 9, flows: 2, notes: 0 })).toBe(
+      '12 entities, 3 groups, 9 edges and 2 flows',
+    )
+    expect(describeCounts({ entities: 1, groups: 0, edges: 1, flows: 0, notes: 0 })).toBe(
+      '1 entity and 1 edge',
+    )
+    expect(describeCounts({ entities: 5, groups: 0, edges: 0, flows: 0, notes: 0 })).toBe(
+      '5 entities',
+    )
+    expect(describeCounts({ entities: 0, groups: 0, edges: 0, flows: 0, notes: 0 })).toBe(
+      'no content',
+    )
   })
 })
 
 describe('clearDiagram', () => {
   it('empties content but keeps the diagram row', () => {
-    const before = m([d({ id: 'a', name: 'Keep', nodes: [{}] as any, flows: [{}] as any }), d({ id: 'b' })])
+    const before = m([
+      d({ id: 'a', name: 'Keep', nodes: [{}] as any, flows: [{}] as any }),
+      d({ id: 'b' }),
+    ])
     const after = clearDiagram(before, 'a')
     const a = after.diagrams.find((x) => x.id === 'a')!
     expect(a.name).toBe('Keep')
@@ -344,7 +416,13 @@ describe('mergeModel', () => {
 
   it('unions templates by id and handles an empty import', () => {
     const base = m([d()], [{ id: 't1', name: 'T1', fields: [] }])
-    const imported = m([], [{ id: 't1', name: 'dup', fields: [] }, { id: 't2', name: 'T2', fields: [] }])
+    const imported = m(
+      [],
+      [
+        { id: 't1', name: 'dup', fields: [] },
+        { id: 't2', name: 'T2', fields: [] },
+      ],
+    )
     const { model, firstId } = mergeModel(base, imported)
     expect(model.templates.map((t) => t.id)).toEqual(['t1', 't2'])
     expect(firstId).toBeNull()

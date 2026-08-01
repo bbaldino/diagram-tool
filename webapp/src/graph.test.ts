@@ -18,26 +18,40 @@ import {
 } from './graph'
 
 const edge = (over: Partial<Edge> = {}): Edge => ({
-  id: 'e0-npm-authelia', source: 'npm', target: 'authelia', type: 'waypoint',
-  data: { points: [{ x: 5, y: 5 }], shape: 'default' }, ...over,
+  id: 'e0-npm-authelia',
+  source: 'npm',
+  target: 'authelia',
+  type: 'waypoint',
+  data: { points: [{ x: 5, y: 5 }], shape: 'default' },
+  ...over,
 })
 
 describe('applyReconnect', () => {
   it('rewires the target, preserves the id, and clears manual waypoints', () => {
     const edges = [edge()]
-    const conn: Connection = { source: 'npm', target: 'sonarr', sourceHandle: null, targetHandle: null }
+    const conn: Connection = {
+      source: 'npm',
+      target: 'sonarr',
+      sourceHandle: null,
+      targetHandle: null,
+    }
     const out = applyReconnect(edges[0], conn, edges)
     const e = out.find((x) => x.id === 'e0-npm-authelia')!
-    expect(e).toBeTruthy()                          // id unchanged (NOT regenerated)
+    expect(e).toBeTruthy() // id unchanged (NOT regenerated)
     expect(e.source).toBe('npm')
-    expect(e.target).toBe('sonarr')                 // rewired
-    expect((e.data as any).points).toEqual([])      // waypoints cleared
-    expect((e.data as any).shape).toBe('default')   // other data preserved
+    expect(e.target).toBe('sonarr') // rewired
+    expect((e.data as any).points).toEqual([]) // waypoints cleared
+    expect((e.data as any).shape).toBe('default') // other data preserved
   })
 
   it('rewires the source and its handle', () => {
     const edges = [edge()]
-    const conn: Connection = { source: 'plex', target: 'authelia', sourceHandle: 'right', targetHandle: 'left' }
+    const conn: Connection = {
+      source: 'plex',
+      target: 'authelia',
+      sourceHandle: 'right',
+      targetHandle: 'left',
+    }
     const out = applyReconnect(edges[0], conn, edges)
     const e = out.find((x) => x.id === 'e0-npm-authelia')!
     expect(e.source).toBe('plex')
@@ -46,9 +60,19 @@ describe('applyReconnect', () => {
   })
 
   it('leaves other edges untouched', () => {
-    const other = edge({ id: 'e1-a-b', source: 'a', target: 'b', data: { points: [{ x: 1, y: 1 }] } })
+    const other = edge({
+      id: 'e1-a-b',
+      source: 'a',
+      target: 'b',
+      data: { points: [{ x: 1, y: 1 }] },
+    })
     const edges = [edge(), other]
-    const conn: Connection = { source: 'npm', target: 'sonarr', sourceHandle: null, targetHandle: null }
+    const conn: Connection = {
+      source: 'npm',
+      target: 'sonarr',
+      sourceHandle: null,
+      targetHandle: null,
+    }
     const out = applyReconnect(edges[0], conn, edges)
     const e1 = out.find((x) => x.id === 'e1-a-b')!
     expect(e1.target).toBe('b')
@@ -87,7 +111,10 @@ describe('topoOrderByParent', () => {
   })
 
   it('does not hang on a cycle', () => {
-    const items: Item[] = [{ id: 'p', parentId: 'q' }, { id: 'q', parentId: 'p' }]
+    const items: Item[] = [
+      { id: 'p', parentId: 'q' },
+      { id: 'q', parentId: 'p' },
+    ]
     const out = topoOrderByParent(items)
     expect(out.map((i) => i.id).sort()).toEqual(['p', 'q'])
   })
@@ -129,7 +156,10 @@ describe('requiredGroupSize', () => {
 
   it('honors custom pad/min overrides', () => {
     const children = [{ position: { x: 0, y: 0 }, size: { width: 50, height: 50 } }]
-    expect(requiredGroupSize(children, 10, { width: 0, height: 0 })).toEqual({ width: 60, height: 60 })
+    expect(requiredGroupSize(children, 10, { width: 0, height: 0 })).toEqual({
+      width: 60,
+      height: 60,
+    })
   })
 })
 
@@ -213,16 +243,28 @@ describe('placeInGroup', () => {
   it('honors custom pad/gap overrides', () => {
     expect(placeInGroup({ width: 10, height: 10 }, [], 5, 40, 8)).toEqual({ x: 5, y: 40 })
     const sibling = { position: { x: 5, y: 40 }, size: { width: 20, height: 20 } }
-    expect(placeInGroup({ width: 10, height: 10 }, [sibling], 5, 40, 8)).toEqual({ x: 5 + 20 + 8, y: 40 })
+    expect(placeInGroup({ width: 10, height: 10 }, [sibling], 5, 40, 8)).toEqual({
+      x: 5 + 20 + 8,
+      y: 40,
+    })
   })
 })
 
 describe('growGroupsToFitChildren', () => {
   const group = (over: Partial<Node> = {}): Node => ({
-    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 }, ...over,
+    id: 'g',
+    type: 'group',
+    position: { x: 0, y: 0 },
+    data: {},
+    style: { width: 220, height: 130 },
+    ...over,
   })
   const service = (over: Partial<Node> = {}): Node => ({
-    id: 's', type: 'service', position: { x: 0, y: 0 }, data: {}, ...over,
+    id: 's',
+    type: 'service',
+    position: { x: 0, y: 0 },
+    data: {},
+    ...over,
   })
 
   it('leaves a group at GROUP_MIN when it has no children', () => {
@@ -234,7 +276,12 @@ describe('growGroupsToFitChildren', () => {
     const nodes = [
       group({ id: 'g1', style: { width: 220, height: 130 } }),
       service({ id: 's1', parentId: 'g1', position: { x: 16, y: 16 } }),
-      group({ id: 'g2', parentId: 'g1', position: { x: 16, y: 16 }, style: { width: 300, height: 200 } }),
+      group({
+        id: 'g2',
+        parentId: 'g1',
+        position: { x: 16, y: 16 },
+        style: { width: 300, height: 200 },
+      }),
     ]
     const out = growGroupsToFitChildren(nodes)
     const g1 = out.find((n) => n.id === 'g1')!
@@ -271,7 +318,12 @@ describe('growGroupsToFitChildren', () => {
     // The regression scenario: child group is ~as big as the parent.
     const nodes = [
       group({ id: 'outer', style: { width: 240, height: 146 } }),
-      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 16 }, style: { width: 240, height: 146 } }),
+      group({
+        id: 'inner',
+        parentId: 'outer',
+        position: { x: 16, y: 16 },
+        style: { width: 240, height: 146 },
+      }),
     ]
     const out = growGroupsToFitChildren(nodes)
     const outer = out.find((n) => n.id === 'outer')!
@@ -283,11 +335,21 @@ describe('growGroupsToFitChildren', () => {
   it('cascades growth outward through multiple nesting levels', () => {
     const nodes = [
       group({ id: 'a', style: { width: 220, height: 130 } }),
-      group({ id: 'b', parentId: 'a', position: { x: 16, y: 16 }, style: { width: 220, height: 130 } }),
-      group({ id: 'c', parentId: 'b', position: { x: 16, y: 16 }, style: { width: 220, height: 130 } }),
+      group({
+        id: 'b',
+        parentId: 'a',
+        position: { x: 16, y: 16 },
+        style: { width: 220, height: 130 },
+      }),
+      group({
+        id: 'c',
+        parentId: 'b',
+        position: { x: 16, y: 16 },
+        style: { width: 220, height: 130 },
+      }),
     ]
     const out = growGroupsToFitChildren(nodes)
-    const byId = new Map(out.map((n) => [n.id, (n.style as any)]))
+    const byId = new Map(out.map((n) => [n.id, n.style as any]))
     // each level must be strictly bigger than the one it contains
     expect(byId.get('a').width).toBeGreaterThan(byId.get('b').width)
     expect(byId.get('b').width).toBeGreaterThan(byId.get('c').width)
@@ -312,13 +374,23 @@ describe('growGroupsToFitChildren', () => {
 
 describe('reflowGroups', () => {
   const group = (over: Partial<Node> = {}): Node => ({
-    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 }, ...over,
+    id: 'g',
+    type: 'group',
+    position: { x: 0, y: 0 },
+    data: {},
+    style: { width: 220, height: 130 },
+    ...over,
   })
 
   it('grows the parent AND updates the nested child extent from the grown size', () => {
     const nodes = [
       group({ id: 'outer', style: { width: 240, height: 146 } }),
-      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 16 }, style: { width: 240, height: 146 } }),
+      group({
+        id: 'inner',
+        parentId: 'outer',
+        position: { x: 16, y: 16 },
+        style: { width: 240, height: 146 },
+      }),
     ]
     const out = reflowGroups(nodes)
     const outer = out.find((n) => n.id === 'outer')!
@@ -326,7 +398,12 @@ describe('reflowGroups', () => {
     const outerStyle = outer.style as any
     expect(outerStyle.width).toBeGreaterThan(240)
     // inner's extent must be computed against the GROWN outer size, not the stale 240x146
-    expect(inner.extent).toEqual(paddedExtent({ width: outerStyle.width, height: outerStyle.height }, { width: 240, height: 146 }))
+    expect(inner.extent).toEqual(
+      paddedExtent(
+        { width: outerStyle.width, height: outerStyle.height },
+        { width: 240, height: 146 },
+      ),
+    )
   })
 
   it('leaves an un-parented node without an extent', () => {
@@ -341,7 +418,16 @@ describe('reflowGroups', () => {
     // The child's drag extent must follow the LIVE (600x500) size, otherwise it
     // stays clamped to the old boundary.
     const nodes = [
-      { id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, width: 600, height: 500, measured: { width: 600, height: 500 }, style: { width: 240, height: 146 } },
+      {
+        id: 'g',
+        type: 'group',
+        position: { x: 0, y: 0 },
+        data: {},
+        width: 600,
+        height: 500,
+        measured: { width: 600, height: 500 },
+        style: { width: 240, height: 146 },
+      },
       { id: 's', type: 'service', parentId: 'g', position: { x: 16, y: 32 }, data: {} },
     ] as unknown as Node[]
     const out = reflowGroups(nodes)
@@ -352,7 +438,13 @@ describe('reflowGroups', () => {
   })
 
   it('leaves a node with a dangling parentId (no matching parent node) untouched', () => {
-    const service: Node = { id: 's1', type: 'service', parentId: 'ghost', position: { x: 0, y: 0 }, data: {} }
+    const service: Node = {
+      id: 's1',
+      type: 'service',
+      parentId: 'ghost',
+      position: { x: 0, y: 0 },
+      data: {},
+    }
     const out = reflowGroups([service])
     expect(out[0]).toEqual(service)
   })
@@ -364,38 +456,82 @@ describe('recomputeChildExtents', () => {
     // the note's extent must reflect that tight size — not a stale larger one —
     // so it cannot be dragged past the new edges.
     const nodes = [
-      { id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, width: 192, height: 306, style: { width: 192, height: 306 } },
-      { id: 'n', type: 'note', parentId: 'g', position: { x: 16, y: 200 }, data: {}, style: { width: 160, height: 90 } },
+      {
+        id: 'g',
+        type: 'group',
+        position: { x: 0, y: 0 },
+        data: {},
+        width: 192,
+        height: 306,
+        style: { width: 192, height: 306 },
+      },
+      {
+        id: 'n',
+        type: 'note',
+        parentId: 'g',
+        position: { x: 16, y: 200 },
+        data: {},
+        style: { width: 160, height: 90 },
+      },
     ] as unknown as Node[]
     const out = recomputeChildExtents(nodes)
     const note = out.find((n) => n.id === 'n')!
-    expect(note.extent).toEqual(paddedExtent({ width: 192, height: 306 }, { width: 160, height: 90 }))
+    expect(note.extent).toEqual(
+      paddedExtent({ width: 192, height: 306 }, { width: 160, height: 90 }),
+    )
     // and it does NOT resize the group (pure extent refresh)
     expect((out.find((n) => n.id === 'g')! as any).width).toBe(192)
   })
 
   it('leaves an un-parented node without an extent', () => {
-    const out = recomputeChildExtents([{ id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 220, height: 130 } } as unknown as Node])
+    const out = recomputeChildExtents([
+      {
+        id: 'g',
+        type: 'group',
+        position: { x: 0, y: 0 },
+        data: {},
+        style: { width: 220, height: 130 },
+      } as unknown as Node,
+    ])
     expect(out[0].extent).toBeUndefined()
   })
 })
 
 describe('shrinkGroupToChildren', () => {
   const group = (over: Partial<Node> = {}): Node => ({
-    id: 'g', type: 'group', position: { x: 0, y: 0 }, data: {}, style: { width: 400, height: 400 }, ...over,
+    id: 'g',
+    type: 'group',
+    position: { x: 0, y: 0 },
+    data: {},
+    style: { width: 400, height: 400 },
+    ...over,
   })
   const service = (over: Partial<Node> = {}): Node => ({
-    id: 's', type: 'service', position: { x: 0, y: 0 }, data: {}, ...over,
+    id: 's',
+    type: 'service',
+    position: { x: 0, y: 0 },
+    data: {},
+    ...over,
   })
   const note = (over: Partial<Node> = {}): Node => ({
-    id: 'n', type: 'note', position: { x: 0, y: 0 }, data: {}, style: { width: 160, height: 90 }, ...over,
+    id: 'n',
+    type: 'note',
+    position: { x: 0, y: 0 },
+    data: {},
+    style: { width: 160, height: 90 },
+    ...over,
   })
 
   it('sizes the group to contain a NOTE child, not just its service nodes (the reported bug)', () => {
     const nodes = [
       group({ id: 'g1', style: { width: 400, height: 400 } }),
       service({ id: 's1', parentId: 'g1', position: { x: 16, y: 32 } }),
-      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 200 }, style: { width: 160, height: 90 } }),
+      note({
+        id: 'n1',
+        parentId: 'g1',
+        position: { x: 16, y: 200 },
+        style: { width: 160, height: 90 },
+      }),
     ]
     const out = shrinkGroupToChildren(nodes, 'g1')
     const g1 = out.find((n) => n.id === 'g1')!.style as any
@@ -408,7 +544,12 @@ describe('shrinkGroupToChildren', () => {
   it('sizes the group to contain a nested SUB-GROUP child', () => {
     const nodes = [
       group({ id: 'outer', style: { width: 200, height: 200 } }),
-      group({ id: 'inner', parentId: 'outer', position: { x: 16, y: 32 }, style: { width: 300, height: 220 } }),
+      group({
+        id: 'inner',
+        parentId: 'outer',
+        position: { x: 16, y: 32 },
+        style: { width: 300, height: 220 },
+      }),
     ]
     const out = shrinkGroupToChildren(nodes, 'outer')
     const outer = out.find((n) => n.id === 'outer')!.style as any
@@ -420,7 +561,12 @@ describe('shrinkGroupToChildren', () => {
     const nodes = [
       group({ id: 'g1', style: { width: 900, height: 900 } }),
       service({ id: 's1', parentId: 'g1', position: { x: 16, y: 32 } }),
-      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 120 }, style: { width: 160, height: 90 } }),
+      note({
+        id: 'n1',
+        parentId: 'g1',
+        position: { x: 16, y: 120 },
+        style: { width: 160, height: 90 },
+      }),
     ]
     const out = shrinkGroupToChildren(nodes, 'g1')
     const g1 = out.find((n) => n.id === 'g1')!.style as any
@@ -429,7 +575,10 @@ describe('shrinkGroupToChildren', () => {
   })
 
   it('an empty group shrinks to GROUP_MIN (no slack for no children)', () => {
-    const out = shrinkGroupToChildren([group({ id: 'g1', style: { width: 800, height: 800 } })], 'g1')
+    const out = shrinkGroupToChildren(
+      [group({ id: 'g1', style: { width: 800, height: 800 } })],
+      'g1',
+    )
     expect(out.find((n) => n.id === 'g1')!.style).toMatchObject(GROUP_MIN)
   })
 
@@ -438,7 +587,12 @@ describe('shrinkGroupToChildren', () => {
       group({ id: 'g1', style: { width: 800, height: 800 } }),
       // tall note so the fit clears the GROUP_MIN height floor and the exact
       // bottom is measurable: far bottom = 100 + 220 = 320, +GROUP_PAD = 336.
-      note({ id: 'n1', parentId: 'g1', position: { x: 16, y: 100 }, style: { width: 160, height: 220 } }),
+      note({
+        id: 'n1',
+        parentId: 'g1',
+        position: { x: 16, y: 100 },
+        style: { width: 160, height: 220 },
+      }),
     ]
     const out = shrinkGroupToChildren(nodes, 'g1')
     const g1 = out.find((n) => n.id === 'g1')!.style as any
@@ -450,7 +604,14 @@ describe('shrinkGroupToChildren', () => {
     // zero-footprint point would shrink the box PAST the node's far edges.
     const nodes = [
       group({ id: 'g1', style: { width: 800, height: 800 } }),
-      { id: 's1', type: 'service', parentId: 'g1', position: { x: 100, y: 200 }, data: {}, measured: { width: 170, height: 64 } },
+      {
+        id: 's1',
+        type: 'service',
+        parentId: 'g1',
+        position: { x: 100, y: 200 },
+        data: {},
+        measured: { width: 170, height: 64 },
+      },
     ] as unknown as Node[]
     const out = shrinkGroupToChildren(nodes, 'g1')
     const g1 = out.find((n) => n.id === 'g1')!.style as any
@@ -466,15 +627,25 @@ describe('liveFootprint', () => {
     // A NodeResizer corner-drag writes top-level width/height (+measured) but
     // leaves style stale — the live size must win so a resize persists.
     expect(
-      liveFootprint(mk({ type: 'note', width: 300, height: 220, style: { width: 160, height: 90 } })),
+      liveFootprint(
+        mk({ type: 'note', width: 300, height: 220, style: { width: 160, height: 90 } }),
+      ),
     ).toEqual({ width: 300, height: 220 })
     expect(
-      liveFootprint(mk({ type: 'group', width: 500, height: 400, style: { width: 320, height: 200 } })),
+      liveFootprint(
+        mk({ type: 'group', width: 500, height: 400, style: { width: 320, height: 200 } }),
+      ),
     ).toEqual({ width: 500, height: 400 })
   })
   it('falls back to measured when there is no top-level size, then to style', () => {
     expect(
-      liveFootprint(mk({ type: 'note', measured: { width: 240, height: 130 }, style: { width: 160, height: 90 } })),
+      liveFootprint(
+        mk({
+          type: 'note',
+          measured: { width: 240, height: 130 },
+          style: { width: 160, height: 90 },
+        }),
+      ),
     ).toEqual({ width: 240, height: 130 })
     expect(liveFootprint(mk({ type: 'note', style: { width: 160, height: 90 } }))).toEqual({
       width: 160,
@@ -482,6 +653,9 @@ describe('liveFootprint', () => {
     })
   })
   it('treats service (entity) nodes as zero-footprint', () => {
-    expect(liveFootprint(mk({ type: 'service', width: 180, height: 72 }))).toEqual({ width: 0, height: 0 })
+    expect(liveFootprint(mk({ type: 'service', width: 180, height: 72 }))).toEqual({
+      width: 0,
+      height: 0,
+    })
   })
 })

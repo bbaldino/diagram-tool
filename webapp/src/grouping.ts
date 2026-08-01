@@ -84,7 +84,11 @@ export function ungroupNodes(nodes: NodeLike[], groupId: string): NodeLike[] {
     if (n.id === groupId) continue // drop the group node
     if (n.parentId === groupId) {
       const { parentId: _p, extent: _e, ...rest } = n
-      out.push({ ...rest, selected: false, position: { x: gx + n.position.x, y: gy + n.position.y } })
+      out.push({
+        ...rest,
+        selected: false,
+        position: { x: gx + n.position.x, y: gy + n.position.y },
+      })
     } else {
       out.push({ ...n, selected: false })
     }

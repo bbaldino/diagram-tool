@@ -138,7 +138,12 @@ export function addNode(model: Model, diagramId: string, node: Node): Model {
   )
 }
 
-export function updateNode(model: Model, diagramId: string, id: string, patch: Partial<Omit<Node, 'id'>>): Model {
+export function updateNode(
+  model: Model,
+  diagramId: string,
+  id: string,
+  patch: Partial<Omit<Node, 'id'>>,
+): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
     nodes: d.nodes.map((n) => (n.id === id ? { ...n, ...patch, id: n.id } : n)),
@@ -159,8 +164,15 @@ export function setNodeFields(model: Model, diagramId: string, id: string, field
 
 export function applyTemplate(node: Node, template: Template): Node {
   const have = new Set(node.fields.map((f) => f.key))
-  const added = template.fields.filter((tf) => !have.has(tf.key)).map((tf) => ({ key: tf.key, value: tf.default ?? '' }))
-  return { ...node, template: template.id, icon: node.icon ?? template.icon, fields: [...node.fields, ...added] }
+  const added = template.fields
+    .filter((tf) => !have.has(tf.key))
+    .map((tf) => ({ key: tf.key, value: tf.default ?? '' }))
+  return {
+    ...node,
+    template: template.id,
+    icon: node.icon ?? template.icon,
+    fields: [...node.fields, ...added],
+  }
 }
 
 export function addGroup(model: Model, diagramId: string, group: Group): Model {
@@ -169,7 +181,12 @@ export function addGroup(model: Model, diagramId: string, group: Group): Model {
   )
 }
 
-export function updateGroup(model: Model, diagramId: string, id: string, patch: Partial<Omit<Group, 'id'>>): Model {
+export function updateGroup(
+  model: Model,
+  diagramId: string,
+  id: string,
+  patch: Partial<Omit<Group, 'id'>>,
+): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
     groups: d.groups.map((g) => (g.id === id ? { ...g, ...patch, id: g.id } : g)),
@@ -195,7 +212,12 @@ export function addFlow(model: Model, diagramId: string, flow: Flow): Model {
   )
 }
 
-export function updateFlow(model: Model, diagramId: string, id: string, patch: Partial<Omit<Flow, 'id'>>): Model {
+export function updateFlow(
+  model: Model,
+  diagramId: string,
+  id: string,
+  patch: Partial<Omit<Flow, 'id'>>,
+): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
     flows: d.flows.map((f) => (f.id === id ? { ...f, ...patch, id: f.id } : f)),
@@ -212,7 +234,12 @@ export function addNote(model: Model, diagramId: string, note: Note): Model {
   )
 }
 
-export function updateNote(model: Model, diagramId: string, id: string, patch: Partial<Omit<Note, 'id'>>): Model {
+export function updateNote(
+  model: Model,
+  diagramId: string,
+  id: string,
+  patch: Partial<Omit<Note, 'id'>>,
+): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
     notes: d.notes.map((n) => (n.id === id ? { ...n, ...patch, id: n.id } : n)),
@@ -229,7 +256,12 @@ export function addEdge(model: Model, diagramId: string, edge: Edge): Model {
   )
 }
 
-export function updateEdge(model: Model, diagramId: string, id: string, patch: Partial<Omit<Edge, 'id'>>): Model {
+export function updateEdge(
+  model: Model,
+  diagramId: string,
+  id: string,
+  patch: Partial<Omit<Edge, 'id'>>,
+): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
     edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
@@ -248,13 +280,27 @@ export function patchDiagram(
   return mapDiagram(model, diagramId, (d) => ({ ...d, ...patch }))
 }
 
-export function addDiagram(model: Model, name: string, type: DiagramType): { model: Model; id: string } {
+export function addDiagram(
+  model: Model,
+  name: string,
+  type: DiagramType,
+): { model: Model; id: string } {
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   const base = `d-${slug}`
   const existing = new Set(model.diagrams.map((d) => d.id))
   let id = base
   for (let n = 2; existing.has(id); n++) id = `${base}-${n}`
-  const d: Diagram = { id, name, title: name, type, nodes: [], groups: [], notes: [], edges: [], flows: [] }
+  const d: Diagram = {
+    id,
+    name,
+    title: name,
+    type,
+    nodes: [],
+    groups: [],
+    notes: [],
+    edges: [],
+    flows: [],
+  }
   return { model: { ...model, diagrams: [...model.diagrams, d] }, id }
 }
 
@@ -277,8 +323,15 @@ export function addTemplate(model: Model, name: string): { model: Model; id: str
   return { model: { ...model, templates: [...model.templates, t] }, id }
 }
 
-export function updateTemplate(model: Model, id: string, patch: Partial<Omit<Template, 'id'>>): Model {
-  return { ...model, templates: model.templates.map((t) => (t.id === id ? { ...t, ...patch, id: t.id } : t)) }
+export function updateTemplate(
+  model: Model,
+  id: string,
+  patch: Partial<Omit<Template, 'id'>>,
+): Model {
+  return {
+    ...model,
+    templates: model.templates.map((t) => (t.id === id ? { ...t, ...patch, id: t.id } : t)),
+  }
 }
 
 export function deleteTemplate(model: Model, id: string): Model {
@@ -331,14 +384,24 @@ export function describeCounts(c: DiagramCounts): string {
 // Clear a diagram's content but keep the diagram row (id/name/title/type).
 // patchDiagram's patch type excludes `flows`, so this uses mapDiagram directly.
 export function clearDiagram(model: Model, id: string): Model {
-  return mapDiagram(model, id, (d) => ({ ...d, nodes: [], groups: [], notes: [], edges: [], flows: [] }))
+  return mapDiagram(model, id, (d) => ({
+    ...d,
+    nodes: [],
+    groups: [],
+    notes: [],
+    edges: [],
+    flows: [],
+  }))
 }
 
 // Merge an imported model into this one as NEW diagrams: each imported diagram
 // keeps its content but gets a collision-free id; imported templates are unioned
 // by id. Returns the new model and the id of the first imported diagram (or null
 // when the import has no diagrams).
-export function mergeModel(model: Model, imported: Model): { model: Model; firstId: string | null } {
+export function mergeModel(
+  model: Model,
+  imported: Model,
+): { model: Model; firstId: string | null } {
   const existing = new Set(model.diagrams.map((d) => d.id))
   const added: Diagram[] = []
   let firstId: string | null = null

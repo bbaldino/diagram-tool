@@ -59,8 +59,7 @@ export function registerRoutes(app: Express, store: Store): void {
         diagramId: string
         engine?: string
       }
-      const eng: LayoutEngine =
-        engine === 'elk' || engine === 'graphviz' ? engine : DEFAULT_ENGINE
+      const eng: LayoutEngine = engine === 'elk' || engine === 'graphviz' ? engine : DEFAULT_ENGINE
       const result = await handlers.layout(store, diagramId, eng)
       res.setHeader('Content-Type', 'application/json')
       if ('error' in result) res.statusCode = 400

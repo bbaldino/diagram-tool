@@ -34,7 +34,12 @@ describe('node ops', () => {
       diagramId: d.id,
       node: { id: 'n1', label: 'N', fields: [], position: { x: 0, y: 0 } },
     })
-    m = applyOp(m, { t: 'node.setFields', diagramId: d.id, id: 'n1', fields: [{ key: 'port', value: '80' }] })
+    m = applyOp(m, {
+      t: 'node.setFields',
+      diagramId: d.id,
+      id: 'n1',
+      fields: [{ key: 'port', value: '80' }],
+    })
     expect(getDiagram(m, d.id)!.nodes[0].fields).toEqual([{ key: 'port', value: '80' }])
   })
 
@@ -47,7 +52,12 @@ describe('node ops', () => {
     })
     const t = addTemplate(m, 'Svc')
     m = t.model
-    m = { ...m, templates: m.templates.map((tt) => (tt.id === t.id ? { ...tt, fields: [{ key: 'port', default: '8080' }] } : tt)) }
+    m = {
+      ...m,
+      templates: m.templates.map((tt) =>
+        tt.id === t.id ? { ...tt, fields: [{ key: 'port', default: '8080' }] } : tt,
+      ),
+    }
     m = applyOp(m, { t: 'node.applyTemplate', diagramId: d.id, id: 'n1', templateId: t.id })
     expect(getDiagram(m, d.id)!.nodes[0].template).toBe(t.id)
     expect(getDiagram(m, d.id)!.nodes[0].fields).toEqual([{ key: 'port', value: '8080' }])
@@ -55,7 +65,12 @@ describe('node ops', () => {
 
   it('node.applyTemplate is a no-op when the node or template is missing', () => {
     const d = addDiagram(empty, 'D', 'canvas')
-    const m = applyOp(d.model, { t: 'node.applyTemplate', diagramId: d.id, id: 'missing', templateId: 'also-missing' })
+    const m = applyOp(d.model, {
+      t: 'node.applyTemplate',
+      diagramId: d.id,
+      id: 'missing',
+      templateId: 'also-missing',
+    })
     expect(m).toEqual(d.model)
   })
 })
@@ -104,7 +119,17 @@ describe('diagram ops', () => {
 describe('group ops', () => {
   it('group.add/update/remove', () => {
     const d = addDiagram(empty, 'D', 'canvas')
-    let m = applyOp(d.model, { t: 'group.add', diagramId: d.id, group: { id: 'g1', label: 'G', color: '#000', position: { x: 0, y: 0 }, size: { width: 10, height: 10 } } })
+    let m = applyOp(d.model, {
+      t: 'group.add',
+      diagramId: d.id,
+      group: {
+        id: 'g1',
+        label: 'G',
+        color: '#000',
+        position: { x: 0, y: 0 },
+        size: { width: 10, height: 10 },
+      },
+    })
     expect(getDiagram(m, d.id)!.groups).toHaveLength(1)
     m = applyOp(m, { t: 'group.update', diagramId: d.id, id: 'g1', patch: { label: 'G2' } })
     expect(getDiagram(m, d.id)!.groups[0].label).toBe('G2')
@@ -116,7 +141,11 @@ describe('group ops', () => {
 describe('note ops', () => {
   it('note.add/update/remove', () => {
     const d = addDiagram(empty, 'D', 'canvas')
-    let m = applyOp(d.model, { t: 'note.add', diagramId: d.id, note: { id: 'n1', position: { x: 0, y: 0 }, size: { width: 10, height: 10 }, text: 'hi' } })
+    let m = applyOp(d.model, {
+      t: 'note.add',
+      diagramId: d.id,
+      note: { id: 'n1', position: { x: 0, y: 0 }, size: { width: 10, height: 10 }, text: 'hi' },
+    })
     expect(getDiagram(m, d.id)!.notes).toHaveLength(1)
     m = applyOp(m, { t: 'note.update', diagramId: d.id, id: 'n1', patch: { text: 'bye' } })
     expect(getDiagram(m, d.id)!.notes[0].text).toBe('bye')

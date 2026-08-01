@@ -7,11 +7,17 @@ import type { Diagram, Field, Node as DNode, Template } from './model'
 function shownFields(node: DNode, tmpl: Template | undefined): { key: string; value: string }[] {
   const tmplShow = new Map((tmpl?.fields ?? []).map((tf) => [tf.key, tf.showOnNode === true]))
   return node.fields
-    .filter((f: Field) => f.showOnNode === true || (tmplShow.get(f.key) === true && f.showOnNode !== false))
+    .filter(
+      (f: Field) =>
+        f.showOnNode === true || (tmplShow.get(f.key) === true && f.showOnNode !== false),
+    )
     .map((f) => ({ key: f.key, value: f.value }))
 }
 
-export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []): { nodes: Node[]; edges: Edge[] } {
+export function buildDiagramGraph(
+  diagram: Diagram,
+  templates: Template[] = [],
+): { nodes: Node[]; edges: Edge[] } {
   const templatesById = new Map(templates.map((t) => [t.id, t]))
   const groupsById = new Map(diagram.groups.map((g) => [g.id, g]))
   const nodes: Node[] = []
@@ -82,7 +88,12 @@ export function buildDiagramGraph(diagram: Diagram, templates: Template[] = []):
       color: de.color,
     })
     edge.id = de.id
-    edge.data = { ...edge.data, shape: de.shape ?? 'default', points: de.points, labelPos: de.labelPos }
+    edge.data = {
+      ...edge.data,
+      shape: de.shape ?? 'default',
+      points: de.points,
+      labelPos: de.labelPos,
+    }
     edge = restyleEdge(edge, de.type, !!de.inferred) // keeps id/source/target/data via spread
     return edge
   })

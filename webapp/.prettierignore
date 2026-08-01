@@ -1,0 +1,10 @@
+dist
+build
+node_modules
+coverage
+*.min.js
+package-lock.json
+model.json
+history.json
+graph.json
+CHANGELOG.md

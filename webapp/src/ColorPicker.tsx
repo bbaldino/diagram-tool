@@ -25,7 +25,15 @@ export const PALETTE = [
   '#ec4899', // pink
 ]
 
-function Swatch({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
+function Swatch({
+  color,
+  active,
+  onClick,
+}: {
+  color: string
+  active: boolean
+  onClick: () => void
+}) {
   return (
     <button
       type="button"
@@ -37,7 +45,14 @@ function Swatch({ color, active, onClick }: { color: string; active: boolean; on
   )
 }
 
-export function ColorPicker({ value, overridden, defaultLabel, diagramColors, onChange, onReset }: Props) {
+export function ColorPicker({
+  value,
+  overridden,
+  defaultLabel,
+  diagramColors,
+  onChange,
+  onReset,
+}: Props) {
   const cur = value.toLowerCase()
   const inDiagram = diagramColors.map((c) => c.toLowerCase())
 
@@ -57,12 +72,22 @@ export function ColorPicker({ value, overridden, defaultLabel, diagramColors, on
         <div className="colorpick__label">Palette</div>
         <div className="colorpick__swatches">
           {PALETTE.map((c) => (
-            <Swatch key={c} color={c} active={c.toLowerCase() === cur} onClick={() => onChange(c)} />
+            <Swatch
+              key={c}
+              color={c}
+              active={c.toLowerCase() === cur}
+              onClick={() => onChange(c)}
+            />
           ))}
         </div>
       </div>
       <div className="colorpick__custom">
-        <input type="color" value={value} onChange={(e) => onChange(e.target.value)} title="Custom color" />
+        <input
+          type="color"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          title="Custom color"
+        />
         <span className="colorpick__hint">{overridden ? 'custom' : defaultLabel}</span>
         {overridden && (
           <button type="button" className="colorpick__reset" onClick={onReset}>

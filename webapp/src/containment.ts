@@ -105,7 +105,10 @@ export function paddedExtent(
 // can use it without changing callers.
 export function placeInGroup(
   _childSize: { width: number; height: number },
-  existingSiblings: { position: { x: number; y: number }; size: { width: number; height: number } }[],
+  existingSiblings: {
+    position: { x: number; y: number }
+    size: { width: number; height: number }
+  }[],
   padX = GROUP_PAD,
   padTop = GROUP_NEST_TOP_PAD,
   gap = 16,

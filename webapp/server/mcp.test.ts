@@ -34,7 +34,9 @@ describe('handlers', () => {
 
     it('getDiagram returns the diagram or an error', async () => {
       const store = await mkStore()
-      const res = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as { diagramId: string }
+      const res = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+        diagramId: string
+      }
       const d = handlers.getDiagram(store, res.diagramId)
       expect('error' in d).toBe(false)
       expect((d as { id: string }).id).toBe(res.diagramId)
@@ -65,7 +67,11 @@ describe('handlers', () => {
     it('returns { error } and leaves rev unchanged on a bad spec', async () => {
       const store = await mkStore()
       const rev0 = store.getState().rev
-      const r = await handlers.authorDiagram(store, { name: 'Bad', nodes: ['A'], edges: [['a', 'ghost']] })
+      const r = await handlers.authorDiagram(store, {
+        name: 'Bad',
+        nodes: ['A'],
+        edges: [['a', 'ghost']],
+      })
       expect('error' in r).toBe(true)
       expect(store.getState().rev).toBe(rev0)
     })
@@ -74,7 +80,10 @@ describe('handlers', () => {
   describe('writes', () => {
     it('addNode creates a node and returns its uuid', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const r = handlers.addNode(store, { diagramId, label: 'Sonarr', position: { x: 10, y: 20 } })
@@ -98,7 +107,10 @@ describe('handlers', () => {
 
     it('addNode errors for a parentId that is not a group, leaving rev unchanged', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const rev0 = store.getState().rev
@@ -110,20 +122,35 @@ describe('handlers', () => {
 
     it('addNode with parentId places the child non-overlapping and grows the group via reflow — same as editNode reparent', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Seed'],
+      })) as {
         diagramId: string
       }
-      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
-      const before = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+        id: string
+      }
+      const before = getDiagram(store.getState().model, diagramId)!.groups.find(
+        (g) => g.id === groupId,
+      )!
 
       // first child: no explicit position → landed at the group's padded top-left, not (0,0) over the title.
-      const { id: nodeA } = handlers.addNode(store, { diagramId, label: 'Plex', parentId: groupId }) as { id: string }
+      const { id: nodeA } = handlers.addNode(store, {
+        diagramId,
+        label: 'Plex',
+        parentId: groupId,
+      }) as { id: string }
       const a = getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeA)!
       expect(a.parentId).toBe(groupId)
       expect(a.position).toEqual({ x: 16, y: 40 }) // GROUP_PAD x, GROUP_NEST_TOP_PAD y
 
       // second child: placed beside its sibling (not stacked on top), and the group grows to fit both.
-      const { id: nodeB } = handlers.addNode(store, { diagramId, label: 'Sonarr', parentId: groupId }) as { id: string }
+      const { id: nodeB } = handlers.addNode(store, {
+        diagramId,
+        label: 'Sonarr',
+        parentId: groupId,
+      }) as { id: string }
       const d = getDiagram(store.getState().model, diagramId)!
       const b = d.nodes.find((n) => n.id === nodeB)!
       expect(b.parentId).toBe(groupId)
@@ -191,8 +218,12 @@ describe('handlers', () => {
       const edgeId = store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0].id
       const r = handlers.editEdge(store, { diagramId, edgeId, patch: { label: 'renamed' } })
       expect(r).toEqual({ ok: true })
-      expect(store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0].label).toBe('renamed')
-      expect('error' in handlers.editEdge(store, { diagramId, edgeId: 'nope', patch: {} })).toBe(true)
+      expect(store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0].label).toBe(
+        'renamed',
+      )
+      expect('error' in handlers.editEdge(store, { diagramId, edgeId: 'nope', patch: {} })).toBe(
+        true,
+      )
       void nodeIds
     })
 
@@ -206,13 +237,26 @@ describe('handlers', () => {
       const diagram = store.getState().model.diagrams.find((x) => x.id === diagramId)!
       const edgeId = diagram.edges[0].id
       const originalType = diagram.edges[0].type
-      const r = handlers.editEdge(store, { diagramId, edgeId, patch: { color: '#fff', label: 'renamed' } })
+      const r = handlers.editEdge(store, {
+        diagramId,
+        edgeId,
+        patch: { color: '#fff', label: 'renamed' },
+      })
       expect(r).toEqual({ ok: true })
       const updated = store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0]
       expect(updated.color).toBe('#fff')
       expect(updated.label).toBe('renamed')
       expect(updated.type).toBe(originalType)
-      expect(Object.keys(updated).sort()).toEqual(['color', 'from', 'id', 'label', 'sourceHandle', 'targetHandle', 'to', 'type'])
+      expect(Object.keys(updated).sort()).toEqual([
+        'color',
+        'from',
+        'id',
+        'label',
+        'sourceHandle',
+        'targetHandle',
+        'to',
+        'type',
+      ])
     })
 
     it('edgeAttrsShape (shared by connect and editEdge) strips unknown keys and rejects a bad type field', () => {
@@ -225,43 +269,70 @@ describe('handlers', () => {
 
     it('addNote creates a new sticky note and returns its uuid', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const r = handlers.addNote(store, { diagramId, text: '4k', position: { x: 5, y: 5 } })
       expect('id' in r).toBe(true)
       const id = (r as { id: string }).id
       expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
-      const note = store.getState().model.diagrams.find((x) => x.id === diagramId)!.notes.find((n) => n.id === id)!
+      const note = store
+        .getState()
+        .model.diagrams.find((x) => x.id === diagramId)!
+        .notes.find((n) => n.id === id)!
       expect(note.text).toBe('4k')
       expect('error' in handlers.addNote(store, { diagramId: 'nope', text: 'x' })).toBe(true)
     })
 
-    it('editNote updates an existing note\'s text', async () => {
+    it("editNote updates an existing note's text", async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const { id } = handlers.addNote(store, { diagramId, text: 'first' }) as { id: string }
       const r = handlers.editNote(store, { diagramId, id, patch: { text: 'second' } })
       expect(r).toEqual({ ok: true })
-      const note = store.getState().model.diagrams.find((x) => x.id === diagramId)!.notes.find((n) => n.id === id)!
+      const note = store
+        .getState()
+        .model.diagrams.find((x) => x.id === diagramId)!
+        .notes.find((n) => n.id === id)!
       expect(note.text).toBe('second')
-      expect('error' in handlers.editNote(store, { diagramId, id: 'ghost', patch: { text: 'x' } })).toBe(true)
+      expect(
+        'error' in handlers.editNote(store, { diagramId, id: 'ghost', patch: { text: 'x' } }),
+      ).toBe(true)
     })
 
     it('editNote reparents a note into a group, placing it non-overlapping and growing the group via reflow', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
-      const { id: nodeId } = handlers.addNode(store, { diagramId, label: 'Sibling' }) as { id: string }
-      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
+      const { id: nodeId } = handlers.addNode(store, { diagramId, label: 'Sibling' }) as {
+        id: string
+      }
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+        id: string
+      }
       // put the sibling node in the group first, so the note has a sibling to avoid overlapping.
       handlers.editNode(store, { diagramId, id: nodeId, patch: { parentId: groupId } })
-      const groupAfterNode = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+      const groupAfterNode = getDiagram(store.getState().model, diagramId)!.groups.find(
+        (g) => g.id === groupId,
+      )!
 
-      const { id: noteId } = handlers.addNote(store, { diagramId, text: 'note', position: { x: 500, y: 500 } }) as {
+      const { id: noteId } = handlers.addNote(store, {
+        diagramId,
+        text: 'note',
+        position: { x: 500, y: 500 },
+      }) as {
         id: string
       }
       const r = handlers.editNote(store, { diagramId, id: noteId, patch: { parentId: groupId } })
@@ -281,14 +352,23 @@ describe('handlers', () => {
 
     it('editNote errors on an unknown note, diagram, or parentId group', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const { id: noteId } = handlers.addNote(store, { diagramId, text: 'note' }) as { id: string }
-      expect('error' in handlers.editNote(store, { diagramId, id: 'ghost', patch: { text: 'x' } })).toBe(true)
-      expect('error' in handlers.editNote(store, { diagramId: 'nope', id: noteId, patch: { text: 'x' } })).toBe(true)
       expect(
-        'error' in handlers.editNote(store, { diagramId, id: noteId, patch: { parentId: 'no-such-group' } }),
+        'error' in handlers.editNote(store, { diagramId, id: 'ghost', patch: { text: 'x' } }),
+      ).toBe(true)
+      expect(
+        'error' in
+          handlers.editNote(store, { diagramId: 'nope', id: noteId, patch: { text: 'x' } }),
+      ).toBe(true)
+      expect(
+        'error' in
+          handlers.editNote(store, { diagramId, id: noteId, patch: { parentId: 'no-such-group' } }),
       ).toBe(true)
     })
 
@@ -307,14 +387,20 @@ describe('handlers', () => {
       expect(store.getState().model.diagrams.find((x) => x.id === diagramId)!.notes).toHaveLength(0)
       expect(handlers.remove(store, { diagramId, nodeId: nodeIds[1] })).toEqual({ ok: true })
       expect(
-        store.getState().model.diagrams.find((x) => x.id === diagramId)!.nodes.some((n) => n.id === nodeIds[1]),
+        store
+          .getState()
+          .model.diagrams.find((x) => x.id === diagramId)!
+          .nodes.some((n) => n.id === nodeIds[1]),
       ).toBe(false)
       expect('error' in handlers.remove(store, { diagramId })).toBe(true)
     })
 
     it('layout re-lays-out a diagram', async () => {
       const store = await mkStore()
-      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
         nodeIds: string[]
       }
@@ -328,7 +414,10 @@ describe('handlers', () => {
 
     it('layout accepts the graphviz engine without throwing', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as {
         diagramId: string
       }
       const r = await handlers.layout(store, diagramId, 'graphviz')
@@ -337,10 +426,17 @@ describe('handlers', () => {
 
     it('layout persists notes and keeps a grouped note inside its group', async () => {
       const store = await mkStore()
-      const { diagramId } = (await handlers.authorDiagram(store, { name: 'L', nodes: ['Seed'] })) as { diagramId: string }
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'L',
+        nodes: ['Seed'],
+      })) as { diagramId: string }
       const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'G' }) as { id: string }
       handlers.addNode(store, { diagramId, label: 'N', parentId: groupId })
-      const { id: noteId } = handlers.addNote(store, { diagramId, text: 'hi', parentId: groupId }) as { id: string }
+      const { id: noteId } = handlers.addNote(store, {
+        diagramId,
+        text: 'hi',
+        parentId: groupId,
+      }) as { id: string }
       const r = await handlers.layout(store, diagramId)
       expect(r).toEqual({ ok: true })
       const d = getDiagram(store.getState().model, diagramId)!
@@ -359,7 +455,9 @@ describe('edge orientation', () => {
     })) as { diagramId: string; nodeIds: string[] }
     const [plexId, sonarrId] = nodeIds
     handlers.connect(store, { diagramId, from: plexId, to: sonarrId, orientation: 'vertical' })
-    const edge = getDiagram(store.getState().model, diagramId)!.edges.find((e) => e.from === plexId && e.to === sonarrId)!
+    const edge = getDiagram(store.getState().model, diagramId)!.edges.find(
+      (e) => e.from === plexId && e.to === sonarrId,
+    )!
     expect(edge.orientation).toBe('vertical')
   })
 
@@ -454,7 +552,9 @@ describe('createMcpServer', () => {
     const store = await mkStore()
     const server = createMcpServer(store)
     // _registeredTools is keyed by the external tool name.
-    const names = Object.keys((server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools)
+    const names = Object.keys(
+      (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools,
+    )
     expect(names).toContain('author_diagram')
     expect(names).toContain('add_node')
     expect(names).toContain('list_nodes')
@@ -470,7 +570,9 @@ describe('createMcpServer', () => {
   it('registers add_note/edit_note/edit_edge, and NOT the old set_note/set_edge names', async () => {
     const store = await mkStore()
     const server = createMcpServer(store)
-    const names = Object.keys((server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools)
+    const names = Object.keys(
+      (server as unknown as { _registeredTools: Record<string, unknown> })._registeredTools,
+    )
     expect(names).toContain('add_note')
     expect(names).toContain('edit_note')
     expect(names).toContain('edit_edge')
@@ -481,7 +583,12 @@ describe('createMcpServer', () => {
 })
 
 describe('author_flow', () => {
-  const mkFlowStore = async (): Promise<{ store: Store; diagramId: string; a: string; b: string }> => {
+  const mkFlowStore = async (): Promise<{
+    store: Store
+    diagramId: string
+    a: string
+    b: string
+  }> => {
     const store = await mkStore()
     const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
       name: 'D',
@@ -512,19 +619,32 @@ describe('author_flow', () => {
 
   it('rejects an unknown element ref', async () => {
     const { store, diagramId } = await mkFlowStore()
-    const res = handlers.authorFlow(store, { diagramId, name: 'X', steps: [{ elements: ['nope'] }] })
+    const res = handlers.authorFlow(store, {
+      diagramId,
+      name: 'X',
+      steps: [{ elements: ['nope'] }],
+    })
     expect('error' in res).toBe(true)
   })
 
   it('rejects an unresolvable edge ref', async () => {
     const { store, diagramId, a } = await mkFlowStore()
-    const res = handlers.authorFlow(store, { diagramId, name: 'X', steps: [{ elements: [{ from: a, to: 'zzz' }] }] })
+    const res = handlers.authorFlow(store, {
+      diagramId,
+      name: 'X',
+      steps: [{ elements: [{ from: a, to: 'zzz' }] }],
+    })
     expect('error' in res).toBe(true)
   })
 })
 
 describe('flow granular tools', () => {
-  const mkFlowStore = async (): Promise<{ store: Store; diagramId: string; a: string; b: string }> => {
+  const mkFlowStore = async (): Promise<{
+    store: Store
+    diagramId: string
+    a: string
+    b: string
+  }> => {
     const store = await mkStore()
     const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
       name: 'D',
@@ -536,7 +656,11 @@ describe('flow granular tools', () => {
 
   it('add/set/remove step, rename, delete a flow', async () => {
     const { store, diagramId, a, b } = await mkFlowStore()
-    const { flowId } = handlers.authorFlow(store, { diagramId, name: 'F', steps: [{ elements: [a] }] }) as { flowId: string }
+    const { flowId } = handlers.authorFlow(store, {
+      diagramId,
+      name: 'F',
+      steps: [{ elements: [a] }],
+    }) as { flowId: string }
     handlers.addFlowStep(store, { diagramId, flowId, elements: [b], caption: 'two' })
     let f = getDiagram(store.getState().model, diagramId)!.flows!.find((x) => x.id === flowId)!
     expect(f.steps).toHaveLength(2)
@@ -545,13 +669,20 @@ describe('flow granular tools', () => {
     handlers.removeFlowStep(store, { diagramId, flowId, stepId })
     handlers.renameFlow(store, { diagramId, flowId, name: 'F2' })
     f = getDiagram(store.getState().model, diagramId)!.flows!.find((x) => x.id === flowId)!
-    expect(f.name).toBe('F2'); expect(f.steps).toHaveLength(1)
+    expect(f.name).toBe('F2')
+    expect(f.steps).toHaveLength(1)
     handlers.deleteFlow(store, { diagramId, flowId })
-    expect(getDiagram(store.getState().model, diagramId)!.flows!.find((x) => x.id === flowId)).toBeUndefined()
+    expect(
+      getDiagram(store.getState().model, diagramId)!.flows!.find((x) => x.id === flowId),
+    ).toBeUndefined()
   })
   it('get_diagram surfaces flows and edge ids', async () => {
     const { store, diagramId, a, b } = await mkFlowStore()
-    const { flowId } = handlers.authorFlow(store, { diagramId, name: 'G', steps: [{ elements: [{ from: a, to: b }] }] }) as { flowId: string }
+    const { flowId } = handlers.authorFlow(store, {
+      diagramId,
+      name: 'G',
+      steps: [{ elements: [{ from: a, to: b }] }],
+    }) as { flowId: string }
     const d = handlers.getDiagram(store, diagramId) as any
     expect(d.flows.find((f: any) => f.id === flowId)).toBeTruthy()
     expect(d.edges[0].id).toBeTruthy()
@@ -561,38 +692,73 @@ describe('flow granular tools', () => {
 describe('edit_node / add_group / edit_group', () => {
   it('editNode renames a node (label patch)', async () => {
     const store = await mkStore()
-    const { diagramId, nodeIds } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+    const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Plex'],
+    })) as {
       diagramId: string
       nodeIds: string[]
     }
-    const r = handlers.editNode(store, { diagramId, id: nodeIds[0], patch: { label: 'Plex Renamed' } })
+    const r = handlers.editNode(store, {
+      diagramId,
+      id: nodeIds[0],
+      patch: { label: 'Plex Renamed' },
+    })
     expect(r).toEqual({ ok: true })
-    const node = getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeIds[0])!
+    const node = getDiagram(store.getState().model, diagramId)!.nodes.find(
+      (n) => n.id === nodeIds[0],
+    )!
     expect(node.label).toBe('Plex Renamed')
   })
 
   it('editNode errors on an unknown node or diagram, and on an unknown parentId group', async () => {
     const store = await mkStore()
-    const { diagramId, nodeIds } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Plex'] })) as {
+    const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Plex'],
+    })) as {
       diagramId: string
       nodeIds: string[]
     }
-    expect('error' in handlers.editNode(store, { diagramId, id: 'ghost', patch: { label: 'x' } })).toBe(true)
-    expect('error' in handlers.editNode(store, { diagramId: 'nope', id: nodeIds[0], patch: { label: 'x' } })).toBe(true)
-    expect('error' in handlers.editNode(store, { diagramId, id: nodeIds[0], patch: { parentId: 'no-such-group' } })).toBe(true)
+    expect(
+      'error' in handlers.editNode(store, { diagramId, id: 'ghost', patch: { label: 'x' } }),
+    ).toBe(true)
+    expect(
+      'error' in
+        handlers.editNode(store, { diagramId: 'nope', id: nodeIds[0], patch: { label: 'x' } }),
+    ).toBe(true)
+    expect(
+      'error' in
+        handlers.editNode(store, {
+          diagramId,
+          id: nodeIds[0],
+          patch: { parentId: 'no-such-group' },
+        }),
+    ).toBe(true)
   })
 
   it('editNode reparenting a lone node into a group places it at the padded top-left (no absurd growth)', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
     // position is intentionally far away — a naive reparent that kept this
     // position (reinterpreted as relative to the new parent, per buildGraph.ts)
     // would force the group to balloon or crowd the group's title strip.
-    const { id: nodeId } = handlers.addNode(store, { diagramId, label: 'Plex', position: { x: 500, y: 500 } }) as {
+    const { id: nodeId } = handlers.addNode(store, {
+      diagramId,
+      label: 'Plex',
+      position: { x: 500, y: 500 },
+    }) as {
       id: string
     }
-    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
-    const before = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+      id: string
+    }
+    const before = getDiagram(store.getState().model, diagramId)!.groups.find(
+      (g) => g.id === groupId,
+    )!
 
     const r = handlers.editNode(store, { diagramId, id: nodeId, patch: { parentId: groupId } })
     expect(r).toEqual({ ok: true })
@@ -609,13 +775,20 @@ describe('edit_node / add_group / edit_group', () => {
 
   it('editNode reparenting a second node into a group with an existing child places it non-overlapping, growing the group', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
     const { id: nodeA } = handlers.addNode(store, { diagramId, label: 'Plex' }) as { id: string }
     const { id: nodeB } = handlers.addNode(store, { diagramId, label: 'Sonarr' }) as { id: string }
-    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+      id: string
+    }
 
     handlers.editNode(store, { diagramId, id: nodeA, patch: { parentId: groupId } })
-    const afterA = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+    const afterA = getDiagram(store.getState().model, diagramId)!.groups.find(
+      (g) => g.id === groupId,
+    )!
 
     const r = handlers.editNode(store, { diagramId, id: nodeB, patch: { parentId: groupId } })
     expect(r).toEqual({ ok: true })
@@ -634,18 +807,30 @@ describe('edit_node / add_group / edit_group', () => {
 
   it('editNode un-parents a node when parentId is set to null', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
     const { id: nodeId } = handlers.addNode(store, { diagramId, label: 'Plex' }) as { id: string }
-    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+      id: string
+    }
     handlers.editNode(store, { diagramId, id: nodeId, patch: { parentId: groupId } })
-    expect(getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeId)!.parentId).toBe(groupId)
+    expect(
+      getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeId)!.parentId,
+    ).toBe(groupId)
     handlers.editNode(store, { diagramId, id: nodeId, patch: { parentId: null } })
-    expect(getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeId)!.parentId).toBeUndefined()
+    expect(
+      getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === nodeId)!.parentId,
+    ).toBeUndefined()
   })
 
   it('addGroup returns a uuid and the group exists with the requested label', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
     const r = handlers.addGroup(store, { diagramId, label: 'Media' })
     expect('id' in r).toBe(true)
     const id = (r as { id: string }).id
@@ -656,33 +841,56 @@ describe('edit_node / add_group / edit_group', () => {
 
   it('addGroup errors on an unknown diagram or an unknown parentId group', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
     expect('error' in handlers.addGroup(store, { diagramId: 'nope', label: 'X' })).toBe(true)
-    expect('error' in handlers.addGroup(store, { diagramId, label: 'X', parentId: 'no-such-group' })).toBe(true)
+    expect(
+      'error' in handlers.addGroup(store, { diagramId, label: 'X', parentId: 'no-such-group' }),
+    ).toBe(true)
   })
 
   it('editGroup updates label/color', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
-    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
-    const r = handlers.editGroup(store, { diagramId, id: groupId, patch: { label: 'Media Renamed', color: '#123456' } })
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+      id: string
+    }
+    const r = handlers.editGroup(store, {
+      diagramId,
+      id: groupId,
+      patch: { label: 'Media Renamed', color: '#123456' },
+    })
     expect(r).toEqual({ ok: true })
-    const group = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === groupId)!
+    const group = getDiagram(store.getState().model, diagramId)!.groups.find(
+      (g) => g.id === groupId,
+    )!
     expect(group.label).toBe('Media Renamed')
     expect(group.color).toBe('#123456')
   })
 
   it('editGroup nests a group into another via parentId, growing the parent via reflow', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
-    const { id: outerId } = handlers.addGroup(store, { diagramId, label: 'Outer' }) as { id: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
+    const { id: outerId } = handlers.addGroup(store, { diagramId, label: 'Outer' }) as {
+      id: string
+    }
     const { id: innerId } = handlers.addGroup(store, {
       diagramId,
       label: 'Inner',
       position: { x: 500, y: 500 },
       size: { width: 300, height: 200 },
     }) as { id: string }
-    const outerBefore = getDiagram(store.getState().model, diagramId)!.groups.find((g) => g.id === outerId)!
+    const outerBefore = getDiagram(store.getState().model, diagramId)!.groups.find(
+      (g) => g.id === outerId,
+    )!
 
     const r = handlers.editGroup(store, { diagramId, id: innerId, patch: { parentId: outerId } })
     expect(r).toEqual({ ok: true })
@@ -696,26 +904,54 @@ describe('edit_node / add_group / edit_group', () => {
 
   it('editGroup errors on an unknown group or diagram, and on an unknown parentId', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
-    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as { id: string }
-    expect('error' in handlers.editGroup(store, { diagramId, id: 'ghost', patch: { label: 'x' } })).toBe(true)
-    expect('error' in handlers.editGroup(store, { diagramId: 'nope', id: groupId, patch: { label: 'x' } })).toBe(true)
-    expect('error' in handlers.editGroup(store, { diagramId, id: groupId, patch: { parentId: 'no-such-group' } })).toBe(true)
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
+    const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+      id: string
+    }
+    expect(
+      'error' in handlers.editGroup(store, { diagramId, id: 'ghost', patch: { label: 'x' } }),
+    ).toBe(true)
+    expect(
+      'error' in
+        handlers.editGroup(store, { diagramId: 'nope', id: groupId, patch: { label: 'x' } }),
+    ).toBe(true)
+    expect(
+      'error' in
+        handlers.editGroup(store, { diagramId, id: groupId, patch: { parentId: 'no-such-group' } }),
+    ).toBe(true)
   })
 
   it('editGroup rejects reparenting a group into itself or into its own descendant (cycle guard)', async () => {
     const store = await mkStore()
-    const { diagramId } = (await handlers.authorDiagram(store, { name: 'Flow', nodes: ['Seed'] })) as { diagramId: string }
-    const { id: outerId } = handlers.addGroup(store, { diagramId, label: 'Outer' }) as { id: string }
-    const { id: innerId } = handlers.addGroup(store, { diagramId, label: 'Inner' }) as { id: string }
+    const { diagramId } = (await handlers.authorDiagram(store, {
+      name: 'Flow',
+      nodes: ['Seed'],
+    })) as { diagramId: string }
+    const { id: outerId } = handlers.addGroup(store, { diagramId, label: 'Outer' }) as {
+      id: string
+    }
+    const { id: innerId } = handlers.addGroup(store, { diagramId, label: 'Inner' }) as {
+      id: string
+    }
     handlers.editGroup(store, { diagramId, id: innerId, patch: { parentId: outerId } })
 
     // self-parenting
-    const selfRes = handlers.editGroup(store, { diagramId, id: outerId, patch: { parentId: outerId } })
+    const selfRes = handlers.editGroup(store, {
+      diagramId,
+      id: outerId,
+      patch: { parentId: outerId },
+    })
     expect('error' in selfRes).toBe(true)
 
     // outer -> inner would create a cycle since inner is already outer's child
-    const cycleRes = handlers.editGroup(store, { diagramId, id: outerId, patch: { parentId: innerId } })
+    const cycleRes = handlers.editGroup(store, {
+      diagramId,
+      id: outerId,
+      patch: { parentId: innerId },
+    })
     expect('error' in cycleRes).toBe(true)
 
     // model unchanged: outer is still top-level, inner still parented to outer

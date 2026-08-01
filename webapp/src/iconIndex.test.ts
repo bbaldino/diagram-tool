@@ -29,13 +29,21 @@ describe('searchIcons', () => {
   })
   it('ranks slug-prefix, then alias-prefix, then substring; stable by slug', () => {
     // 'plex': slug-prefix plex, plexamp; substring complex-thing (slug) + plex(alias already counted)
-    expect(searchIcons(fixture, 'plex').map((e) => e.slug)).toEqual(['plex', 'plexamp', 'complex-thing'])
+    expect(searchIcons(fixture, 'plex').map((e) => e.slug)).toEqual([
+      'plex',
+      'plexamp',
+      'complex-thing',
+    ])
   })
   it('surfaces an icon via an alias-prefix match', () => {
     expect(searchIcons(fixture, 'movies').map((e) => e.slug)).toEqual(['radarr'])
   })
   it('is case-insensitive and respects the limit', () => {
-    expect(searchIcons(fixture, 'PLEX').map((e) => e.slug)).toEqual(['plex', 'plexamp', 'complex-thing'])
+    expect(searchIcons(fixture, 'PLEX').map((e) => e.slug)).toEqual([
+      'plex',
+      'plexamp',
+      'complex-thing',
+    ])
     expect(searchIcons(fixture, 'a', 1)).toHaveLength(1)
   })
 })
@@ -51,8 +59,12 @@ describe('moveHighlight', () => {
 })
 
 describe('loadIconIndex', () => {
-  beforeEach(() => { vi.resetModules() })
-  afterEach(() => { vi.unstubAllGlobals() })
+  beforeEach(() => {
+    vi.resetModules()
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
 
   it('fetches once and caches across calls', async () => {
     const mod = await import('./iconIndex')
@@ -70,7 +82,12 @@ describe('loadIconIndex', () => {
 
   it('returns [] on fetch failure without throwing', async () => {
     const mod = await import('./iconIndex')
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline') }) as unknown as typeof fetch)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline')
+      }) as unknown as typeof fetch,
+    )
     await expect(mod.loadIconIndex()).resolves.toEqual([])
   })
 })

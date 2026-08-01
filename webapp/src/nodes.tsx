@@ -1,11 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import {
-  Handle,
-  Position,
-  NodeResizer,
-  useReactFlow,
-  type NodeProps,
-} from '@xyflow/react'
+import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
 
 // Global toggle for the browser's native spellcheck on note textareas.
@@ -49,12 +43,7 @@ export function ServiceNode({ data, selected }: NodeProps) {
       <SideHandles />
       <div className="node__row">
         {iconUrl ? (
-          <img
-            className="node__icon"
-            src={iconUrl}
-            alt=""
-            onError={() => setIconBroken(true)}
-          />
+          <img className="node__icon" src={iconUrl} alt="" onError={() => setIconBroken(true)} />
         ) : (
           <div className="node__icon node__icon--placeholder">
             {d.kind === 'actor' ? '👤' : initials(d.label)}
@@ -64,21 +53,20 @@ export function ServiceNode({ data, selected }: NodeProps) {
           <div className="node__label">{d.label}</div>
           {d.sub ? <div className="node__sub">{d.sub}</div> : null}
         </div>
-        {d.status ? (
-          <div className={`node__status status-${d.status}`} title={d.status} />
-        ) : null}
+        {d.status ? <div className={`node__status status-${d.status}`} title={d.status} /> : null}
       </div>
       {Array.isArray((d as any).shownFields) && (d as any).shownFields.length > 0 && (
         <div className="node__fields">
           {(d as any).shownFields.map((f: { key: string; value: string }) => (
-            <div className="node__field" key={f.key}><span className="node__field-k">{f.key}</span>{f.value}</div>
+            <div className="node__field" key={f.key}>
+              <span className="node__field-k">{f.key}</span>
+              {f.value}
+            </div>
           ))}
         </div>
       )}
       {(d as any).note ? <div className="node__note">{(d as any).note}</div> : null}
-      {(d as any).flowBadge ? (
-        <div className="node__flow-badge">{(d as any).flowBadge}</div>
-      ) : null}
+      {(d as any).flowBadge ? <div className="node__flow-badge">{(d as any).flowBadge}</div> : null}
     </div>
   )
 }
@@ -97,9 +85,7 @@ export function NoteNode({ id, data, selected }: NodeProps) {
         placeholder="note…"
         onChange={(e) =>
           setNodes((ns) =>
-            ns.map((n) =>
-              n.id === id ? { ...n, data: { ...n.data, text: e.target.value } } : n,
-            ),
+            ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text: e.target.value } } : n)),
           )
         }
       />

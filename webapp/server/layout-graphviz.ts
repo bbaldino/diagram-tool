@@ -13,9 +13,12 @@ export const runGraphviz: FlatEngine = async (boxes, edges) => {
   const ids = new Set(boxes.map((b) => b.id))
   const lines: string[] = ['digraph G {', '  rankdir=LR;', '  nodesep=0.5; ranksep=1.0;']
   for (const b of boxes) {
-    lines.push(`  ${dotId(b.id)} [shape=box fixedsize=true width=${b.width / 72} height=${b.height / 72}];`)
+    lines.push(
+      `  ${dotId(b.id)} [shape=box fixedsize=true width=${b.width / 72} height=${b.height / 72}];`,
+    )
   }
-  for (const e of edges) if (ids.has(e.from) && ids.has(e.to)) lines.push(`  ${dotId(e.from)} -> ${dotId(e.to)};`)
+  for (const e of edges)
+    if (ids.has(e.from) && ids.has(e.to)) lines.push(`  ${dotId(e.from)} -> ${dotId(e.to)};`)
   lines.push('}')
   const parsed = JSON.parse(await graphviz.layout(lines.join('\n'), 'json', 'dot'))
   const [, , , totalHeight] = String(parsed.bb).split(',').map(Number)
