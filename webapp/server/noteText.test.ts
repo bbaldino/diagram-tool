@@ -29,9 +29,11 @@ describe('normalizeNoteText', () => {
     expect(normalizeNoteText('use \\\\n for a newline')).toBe('use \\n for a newline')
   })
 
-  it('leaves other backslash sequences untouched', () => {
-    expect(normalizeNoteText('C:\\temp\\report and \\t stays')).toBe(
-      'C:\\temp\\report and \\t stays',
+  it('leaves a backslash followed by anything other than n or backslash untouched (e.g. \\t, \\r)', () => {
+    // Only `\n` and `\\` are special-cased; every other backslash-letter pair
+    // simply does not match the repair regex and passes through as-is.
+    expect(normalizeNoteText('\\t stays, and so does \\r and \\p')).toBe(
+      '\\t stays, and so does \\r and \\p',
     )
   })
 
@@ -41,5 +43,41 @@ describe('normalizeNoteText', () => {
 
   it('handles an empty string', () => {
     expect(normalizeNoteText('')).toBe('')
+  })
+
+  it('KNOWN LIMITATION: still repairs a \\n that is part of a plain-prose Windows path', () => {
+    // "\notes" reads as a backslash-n escape sequence indistinguishable from
+    // an intentional escaped newline outside of a code context. This pins
+    // the current (imperfect) behaviour as a documented decision rather than
+    // an accident: a bare, unfenced Windows path is not safe from repair.
+    const input = 'see C:\\notes\\x for details'
+    expect(normalizeNoteText(input)).toBe('see C:' + '\n' + 'otes\\x for details')
+  })
+
+  it('leaves a \\n inside an inline code span untouched', () => {
+    const input = 'before `a\\nb` after'
+    expect(normalizeNoteText(input)).toBe('before `a\\nb` after')
+  })
+
+  it('still repairs a \\n in prose surrounding an inline code span', () => {
+    const input = 'line one\\n`code` line two\\nline three'
+    expect(normalizeNoteText(input)).toBe('line one\n`code` line two\nline three')
+  })
+
+  it('leaves a \\n inside a fenced code block untouched', () => {
+    const input = '```\ncode\\nmore\n```'
+    expect(normalizeNoteText(input)).toBe('```\ncode\\nmore\n```')
+  })
+
+  it('still repairs a \\n in prose surrounding a fenced code block', () => {
+    const input = 'intro\\n```\nfenced\\ncontent\n```\\nend'
+    expect(normalizeNoteText(input)).toBe('intro\n```\nfenced\\ncontent\n```\nend')
+  })
+
+  it('handles a note mixing repaired prose, an inline span, and a fenced block', () => {
+    const input = 'title\\nsee `path\\to\\code` then:\\n```\nblock\\nline\n```\\ndone'
+    expect(normalizeNoteText(input)).toBe(
+      'title\nsee `path\\to\\code` then:\n```\nblock\\nline\n```\ndone',
+    )
   })
 })
