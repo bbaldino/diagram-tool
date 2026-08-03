@@ -80,4 +80,22 @@ describe('normalizeNoteText', () => {
       'title\nsee `path\\to\\code` then:\n```\nblock\\nline\n```\ndone',
     )
   })
+
+  it('preserves a \\n inside an unterminated fenced block (CommonMark treats it as code to EOF)', () => {
+    // An unclosed fence is code to end-of-text per CommonMark spec.
+    const input = '```\ncode\\nmore'
+    expect(normalizeNoteText(input)).toBe('```\ncode\\nmore')
+  })
+
+  it('still repairs a \\n in an unterminated inline span (not code per CommonMark)', () => {
+    // A single unterminated backtick is literal prose, not a code span.
+    const input = 'before `a\\nb after'
+    expect(normalizeNoteText(input)).toBe('before `a\nb after')
+  })
+
+  it('preserves a real newline inside an unterminated fenced block', () => {
+    // Real 0x0a newlines are never touched; this is how code blocks get actual line breaks.
+    const input = '```\nfirst\nsecond'
+    expect(normalizeNoteText(input)).toBe('```\nfirst\nsecond')
+  })
 })

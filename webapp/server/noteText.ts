@@ -23,7 +23,9 @@
 // Note text is markdown and routinely carries code and paths, so the repair
 // skips markdown code contexts: inline spans delimited by single backticks
 // and fenced blocks delimited by triple backticks. Text inside those runs is
-// passed through byte-for-byte, escaped newlines included.
+// passed through byte-for-byte, escaped newlines included. An unclosed fence
+// is treated as code to end-of-text per CommonMark, so an unterminated ```
+// block preserves escaped newlines until EOF.
 export function normalizeNoteText(text: string): string {
   return replaceOutsideCodeContexts(text, repairEscapes)
 }
@@ -38,7 +40,7 @@ function repairEscapes(segment: string): string {
 // alternation so a backtick inside one isn't mistaken for the start of an
 // inline span.
 function replaceOutsideCodeContexts(text: string, fn: (segment: string) => string): string {
-  const CODE_RUN = /```[\s\S]*?```|`[^`]*`/g
+  const CODE_RUN = /```[\s\S]*?(?:```|$)|`[^`]*`/g
   let result = ''
   let lastIndex = 0
   let match: RegExpExecArray | null
