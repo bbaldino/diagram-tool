@@ -1,32 +1,40 @@
 # Homelab Diagram MCP
 
 The diagram app (in `webapp/`) hosts an **MCP server** so an agent (Claude Code / Desktop)
-can create and edit diagrams that appear **live** in the open app. It's served by the same
-dev server — no separate process.
+can create and edit diagrams that appear **live** in the app. The same server process serves
+the frontend, the API and `/mcp` — no separate process.
 
-## Prerequisites
+## Where it runs
 
-1. **Run the app** (this is what serves the MCP):
-   ```
-   cd webapp && npm run dev
-   ```
-   The MCP endpoint is then at `http://localhost:5173/mcp` (or `http://192.168.1.21:5173/mcp`
-   from another machine on the LAN).
-2. To *watch* an agent build a diagram, keep the app open in a browser on the **Diagrams** tab.
+Since 2026-08-03 the app is **deployed**, not run from a working tree: a Komodo stack on the
+Proxmox Docker VM (`192.168.1.220:8090`), behind Nginx Proxy Manager at **`diagram.home`**.
+
+**The MCP endpoint is `http://diagram.home/mcp`.** That is what agents should use — it is
+always up, and its data is the live diagram data.
+
+`npm run dev` still serves `/mcp` on its own Vite port for local development, but that
+instance has its own `DATA_DIR` and is **not** what `diagram.home` serves. Do not register a
+dev URL as the everyday MCP: it only works while a dev server happens to be running, and it
+edits whatever scratch data that server was pointed at.
+
+To *watch* an agent build a diagram, keep `http://diagram.home` open in a browser.
 
 ## Register the MCP with Claude Code
 
 Registered as **`homelab-diagram`** at **user scope** so it's available from every repo on this machine:
 ```
-claude mcp add --transport http --scope user homelab-diagram http://localhost:5173/mcp
+claude mcp add --transport http --scope user homelab-diagram http://diagram.home/mcp
 ```
 - **Scopes:** `local` (default) = this repo only · `user` = all your repos on this machine ·
   `project` = written to a committed `.mcp.json`, shared with anyone who clones the repo.
-- **From another machine:** run the same command *there* with the LAN URL —
-  `claude mcp add --transport http --scope user homelab-diagram http://192.168.1.21:5173/mcp`
-  (`localhost` only works on the box running the app).
-- Verify: `claude mcp list` → `homelab-diagram: … - ✔ Connected` (the dev server must be running).
+- **From another machine:** the same command works anywhere that resolves `diagram.home`.
+  If DNS is unavailable, use the VM directly: `http://192.168.1.220:8090/mcp`.
+- Verify: `claude mcp list` → `homelab-diagram: … - ✔ Connected`.
 - Remove: `claude mcp remove --scope user homelab-diagram`. Change the URL: remove then re-add.
+- **Against a local dev server instead** (rare — only when testing MCP changes before release):
+  point at the Vite port `npm run dev` prints, e.g.
+  `claude mcp add --transport http --scope local homelab-diagram-dev http://localhost:5173/mcp`.
+  Use a distinct name and `local` scope so it cannot be mistaken for the deployed one.
 
 **MCP servers load at session start**, so **start a fresh `claude` session** (in this repo) to
 use the tools. In-session, `/mcp` lists connected servers and their tools.
