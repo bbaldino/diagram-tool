@@ -167,6 +167,104 @@ body {
   font-size: 12px;
   color: #713f12;
 }
+/* Rendered (deselected) note. Metrics deliberately match .note textarea so
+   text does not shift when selection flips between the two. */
+.note__md,
+.note__placeholder {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  font-size: 12px;
+  color: #713f12;
+}
+.note__placeholder {
+  opacity: 0.55;
+}
+/* Sit flush against .note's 8px padding. */
+.note__md > *:first-child {
+  margin-top: 0;
+}
+.note__md > *:last-child {
+  margin-bottom: 0;
+}
+/* A sticky is small: keep headings close to body size or one `# x` blows the
+   box out. */
+.note__md h1 {
+  font-size: 15px;
+}
+.note__md h2 {
+  font-size: 13.5px;
+}
+.note__md h3,
+.note__md h4,
+.note__md h5,
+.note__md h6 {
+  font-size: 12.5px;
+}
+.note__md h1,
+.note__md h2,
+.note__md h3,
+.note__md h4,
+.note__md h5,
+.note__md h6 {
+  margin: 6px 0 3px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.note__md p {
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+.note__md ul,
+.note__md ol {
+  margin: 0 0 6px;
+  padding-left: 18px;
+}
+.note__md li {
+  margin: 1px 0;
+  line-height: 1.35;
+}
+.note__md code {
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(113, 63, 18, 0.1);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+.note__md pre {
+  margin: 0 0 6px;
+  padding: 6px;
+  overflow-x: auto;
+  border-radius: 4px;
+  background: rgba(113, 63, 18, 0.1);
+}
+.note__md pre code {
+  padding: 0;
+  background: none;
+}
+.note__md blockquote {
+  margin: 0 0 6px;
+  padding-left: 8px;
+  border-left: 3px solid rgba(113, 63, 18, 0.3);
+}
+.note__md a {
+  color: #4f46e5;
+}
+.note__md table {
+  display: block;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+.note__md th,
+.note__md td {
+  padding: 2px 6px;
+  border: 1px solid rgba(113, 63, 18, 0.25);
+}
+.note__md hr {
+  margin: 6px 0;
+  border: 0;
+  border-top: 1px solid rgba(113, 63, 18, 0.25);
+}
 
 /* ---------- Group node ---------- */
 /* Remove React Flow's default group-node box; we draw our own border in .group. */
