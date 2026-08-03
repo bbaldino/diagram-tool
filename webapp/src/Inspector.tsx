@@ -133,10 +133,13 @@ export function Inspector({
           <input value={d.label ?? ''} onChange={(e) => onNodeData({ label: e.target.value })} />
         </Field>
         <Field label="Color">
-          <input
-            type="color"
+          <ColorPicker
             value={d.color ?? '#64748b'}
-            onChange={(e) => onNodeData({ color: e.target.value })}
+            overridden={typeof d.color === 'string'}
+            defaultLabel="default"
+            diagramColors={diagramColors}
+            onChange={(hex) => onNodeData({ color: hex })}
+            onReset={() => onNodeData({ color: '#64748b' })}
           />
         </Field>
         <div className="insp__row2">
@@ -187,6 +190,7 @@ export function Inspector({
 
   // ----- note selected -----
   if (node && node.type === 'note') {
+    const d = node.data as any
     return (
       <div className="panel insp">
         <div className="insp__header">
@@ -194,6 +198,16 @@ export function Inspector({
           <span className="insp__chip">Note</span>
         </div>
         <div className="insp__hint">Edit the text directly on the note.</div>
+        <Field label="Color">
+          <ColorPicker
+            value={(d.color as string) ?? '#eab308'}
+            overridden={typeof d.color === 'string'}
+            defaultLabel="default"
+            diagramColors={diagramColors}
+            onChange={(hex) => onNodeData({ color: hex })}
+            onReset={() => onNodeData({ color: undefined })}
+          />
+        </Field>
         <Field label="Group">
           <select value={node.parentId ?? ''} onChange={(e) => onNodeParent(e.target.value)}>
             <option value="">(none)</option>
@@ -235,6 +249,16 @@ export function Inspector({
             value={d.icon}
             onChange={(v) => onNodeData({ icon: v })}
             placeholder="plex, sonarr, … (dashboard-icons)"
+          />
+        </Field>
+        <Field label="Color">
+          <ColorPicker
+            value={(d.color as string) ?? '#64748b'}
+            overridden={typeof d.color === 'string'}
+            defaultLabel="default"
+            diagramColors={diagramColors}
+            onChange={(hex) => onNodeData({ color: hex })}
+            onReset={() => onNodeData({ color: undefined })}
           />
         </Field>
         <Field label="Status">
