@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.4.0](https://github.com/bbaldino/diagram-tool/compare/v0.3.0...v0.4.0) (2026-08-03)
+
+
+### Features
+
+* **color:** accept an optional colour on the note and node MCP tools ([1b9a4dc](https://github.com/bbaldino/diagram-tool/commit/1b9a4dc8bff597ddd449453901cefcd4f8ff70f4))
+* **color:** add optional color to Node and Note and plumb it through the canvas ([6ddc35b](https://github.com/bbaldino/diagram-tool/commit/6ddc35b9c1901aae42372bc4aa811d78ffacfc35))
+* **color:** colour picker in the note, node and group inspectors ([ccb3774](https://github.com/bbaldino/diagram-tool/commit/ccb37746b05f5f893de4106eb468627e8c6728d4))
+* **color:** render tinted notes and accented service nodes ([ee4e076](https://github.com/bbaldino/diagram-tool/commit/ee4e076f3ec52e0bad488b3f559962a6dc99d76e))
+
+
+### Bug Fixes
+
+* cover tinted note code/pre contrast and lower text mix to 55% ([bbfee9e](https://github.com/bbaldino/diagram-tool/commit/bbfee9e994c8ddf829293f0ce9ee36eeb4514414))
+* darken tinted-note text mix so all palette colours pass WCAG AA ([36b50fa](https://github.com/bbaldino/diagram-tool/commit/36b50faa732b50089338ec07bb33944f8da69337))
+* include note and node colours in diagram quick-picks ([5d9908a](https://github.com/bbaldino/diagram-tool/commit/5d9908ade68b0f6c647f38f749237adc9932582a))
+* remove non-functional reset affordance from edge colour picker ([369f702](https://github.com/bbaldino/diagram-tool/commit/369f702d67a4e5107bafd1728dd1733abb1efed4))
+* remove non-functional reset affordance from note/service colour pickers ([1d4a788](https://github.com/bbaldino/diagram-tool/commit/1d4a78871de82925fca8096ed5de784a9ff547f9))
+
 ## [0.3.0](https://github.com/bbaldino/diagram-tool/compare/v0.2.1...v0.3.0) (2026-08-03)
 
 
