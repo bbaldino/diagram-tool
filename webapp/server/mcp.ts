@@ -41,6 +41,7 @@ export interface AddNodeArgs {
   label: string
   icon?: string
   status?: Status
+  color?: string
   position?: { x: number; y: number }
   parentId?: string | null
 }
@@ -66,6 +67,7 @@ export interface AddNoteArgs {
   text: string
   position?: { x: number; y: number }
   size?: { width: number; height: number }
+  color?: string
   parentId?: string | null
 }
 
@@ -76,6 +78,7 @@ export interface EditNoteArgs {
     text: string
     position: { x: number; y: number }
     size: { width: number; height: number }
+    color: string
     parentId: string | null
   }>
 }
@@ -98,6 +101,7 @@ export interface EditNodeArgs {
     status: Status
     actor: boolean
     fields: Field[]
+    color: string
     parentId: string | null
   }>
 }
@@ -294,6 +298,7 @@ export const handlers = {
     }
     if (a.icon !== undefined) node.icon = a.icon
     if (a.status !== undefined) node.status = a.status
+    if (a.color !== undefined) node.color = a.color
     if (a.parentId) {
       node.parentId = a.parentId
       if (a.position === undefined)
@@ -358,6 +363,7 @@ export const handlers = {
       position: a.position ?? { x: 0, y: 0 },
       size: a.size ?? { width: 160, height: 90 },
     }
+    if (a.color !== undefined) note.color = a.color
     if (a.parentId) {
       note.parentId = a.parentId
       if (a.position === undefined)
@@ -682,6 +688,13 @@ export const edgeAttrsShape = {
   orientation: z.enum(['auto', 'horizontal', 'vertical']).optional(),
 }
 
+// A 6-digit hex colour. Validated at the schema so a malformed value is
+// rejected rather than stored and rendered as a broken CSS custom property.
+const colorShape = z
+  .string()
+  .regex(/^#[0-9a-fA-F]{6}$/, 'color must be a 6-digit hex like #3b82f6')
+  .optional()
+
 // spec.nodes entries mint brand-new nodes (uuid ids) — there is no catalog to
 // resolve an "existing" node against. spec.edges/groups/positions refer back
 // to a node minted earlier in the SAME call via a spec-local ref derived from
@@ -767,6 +780,7 @@ export function createMcpServer(store: Store): McpServer {
         label: z.string(),
         icon: z.string().optional().describe(ICON_FIELD_DESC),
         status: z.enum(['up', 'down', 'idle']).optional(),
+        color: colorShape,
         position: positionShape.optional(),
         parentId: z.string().nullable().optional(),
       },
@@ -812,6 +826,7 @@ export function createMcpServer(store: Store): McpServer {
         text: z.string(),
         position: positionShape.optional(),
         size: z.object({ width: z.number(), height: z.number() }).optional(),
+        color: colorShape,
         parentId: z.string().nullable().optional(),
       },
     },
@@ -830,6 +845,7 @@ export function createMcpServer(store: Store): McpServer {
           text: z.string().optional(),
           position: positionShape.optional(),
           size: z.object({ width: z.number(), height: z.number() }).optional(),
+          color: colorShape,
           parentId: z
             .string()
             .nullable()
@@ -865,6 +881,7 @@ export function createMcpServer(store: Store): McpServer {
     fields: z
       .array(z.object({ key: z.string(), value: z.string(), showOnNode: z.boolean().optional() }))
       .optional(),
+    color: colorShape,
     parentId: z
       .string()
       .nullable()

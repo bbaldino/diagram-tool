@@ -325,6 +325,13 @@ describe('handlers', () => {
       expect('type' in edgeAttrsShape).toBe(false)
     })
 
+    it('rejects a malformed colour at the tool schema', () => {
+      const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/)
+      expect(hex.safeParse('#3b82f6').success).toBe(true)
+      expect(hex.safeParse('blue').success).toBe(false)
+      expect(hex.safeParse('#3b82f').success).toBe(false)
+    })
+
     it('addNote creates a new sticky note and returns its uuid', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
@@ -579,6 +586,66 @@ describe('handlers', () => {
       const d = getDiagram(store.getState().model, diagramId)!
       const note = d.notes.find((n) => n.id === noteId)!
       expect(note.parentId).toBe(groupId) // still grouped after tidy
+    })
+
+    it('add_note stores a colour when given one', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, {
+        diagramId,
+        text: 'x',
+        color: '#3b82f6',
+      }) as { id: string }
+      const note = getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
+      expect(note.color).toBe('#3b82f6')
+    })
+
+    it('add_note leaves colour absent when not given one', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, { diagramId, text: 'x' }) as { id: string }
+      const note = getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
+      expect(note.color).toBeUndefined()
+    })
+
+    it('edit_note sets a colour, and omitting it leaves the existing one', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, { diagramId, text: 'x' }) as { id: string }
+      handlers.editNote(store, { diagramId, id, patch: { color: '#10b981' } })
+      const read = () =>
+        getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
+      expect(read().color).toBe('#10b981')
+      handlers.editNote(store, { diagramId, id, patch: { text: 'changed' } })
+      expect(read().color).toBe('#10b981')
+      expect(read().text).toBe('changed')
+    })
+
+    it('add_node and edit_node carry colour the same way', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNode(store, {
+        diagramId,
+        label: 'Sonarr',
+        color: '#ec4899',
+      }) as { id: string }
+      const read = () =>
+        getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === id)!
+      expect(read().color).toBe('#ec4899')
+      handlers.editNode(store, { diagramId, id, patch: { label: 'Renamed' } })
+      expect(read().color).toBe('#ec4899')
     })
   })
 })
