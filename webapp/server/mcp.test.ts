@@ -325,11 +325,47 @@ describe('handlers', () => {
       expect('type' in edgeAttrsShape).toBe(false)
     })
 
-    it('rejects a malformed colour at the tool schema', () => {
-      const hex = z.string().regex(/^#[0-9a-fA-F]{6}$/)
-      expect(hex.safeParse('#3b82f6').success).toBe(true)
-      expect(hex.safeParse('blue').success).toBe(false)
-      expect(hex.safeParse('#3b82f').success).toBe(false)
+    // Asserts against the REAL registered tool schemas (via the MCP server's
+    // internal _registeredTools, same introspection as the 'createMcpServer'
+    // tests below), not a local reimplementation of the regex. A local
+    // z.string().regex(...) copy would still pass even if `colorShape` were
+    // swapped out of all four `registerTool` calls (e.g. replaced by a bare
+    // z.string().optional()) — this test would not.
+    it('add_note, edit_note, add_node, and edit_node reject a malformed colour at the actual registered tool schema, and accept a valid hex or undefined', async () => {
+      const store = await mkStore()
+      const server = createMcpServer(store)
+      const tools = (
+        server as unknown as {
+          _registeredTools: Record<string, { inputSchema: z.ZodTypeAny }>
+        }
+      )._registeredTools
+
+      const cases: { name: string; args: (color: unknown) => Record<string, unknown> }[] = [
+        { name: 'add_note', args: (color) => ({ diagramId: 'd', text: 'x', color }) },
+        {
+          name: 'edit_note',
+          args: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
+        },
+        { name: 'add_node', args: (color) => ({ diagramId: 'd', label: 'x', color }) },
+        {
+          name: 'edit_node',
+          args: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
+        },
+      ]
+
+      for (const { name, args } of cases) {
+        const schema = tools[name].inputSchema
+        expect(schema, `${name} must be registered`).toBeDefined()
+        expect(schema.safeParse(args('blue')).success, `${name} should reject 'blue'`).toBe(false)
+        expect(
+          schema.safeParse(args('#3b82f6')).success,
+          `${name} should accept a valid 6-digit hex`,
+        ).toBe(true)
+        expect(
+          schema.safeParse(args(undefined)).success,
+          `${name} should accept an absent/undefined color`,
+        ).toBe(true)
+      }
     })
 
     it('addNote creates a new sticky note and returns its uuid', async () => {
@@ -628,6 +664,44 @@ describe('handlers', () => {
       handlers.editNote(store, { diagramId, id, patch: { text: 'changed' } })
       expect(read().color).toBe('#10b981')
       expect(read().text).toBe('changed')
+    })
+
+    // Both addNote/addNode assign `color` BEFORE the `if (a.parentId) { ... return }`
+    // early-return that reflows containment for a grouped child. That's correct
+    // today, but nothing exercised the grouped path, so a future refactor that
+    // moved the color assignment after that block would silently drop colour
+    // for grouped entities while every other colour test (which adds ungrouped)
+    // kept passing.
+    it('add_note and add_node carry colour for an entity created inside a group', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'G' }) as {
+        id: string
+      }
+
+      const { id: noteId } = handlers.addNote(store, {
+        diagramId,
+        text: 'x',
+        color: '#3b82f6',
+        parentId: groupId,
+      }) as { id: string }
+      const { id: nodeId } = handlers.addNode(store, {
+        diagramId,
+        label: 'Grouped',
+        color: '#ec4899',
+        parentId: groupId,
+      }) as { id: string }
+
+      const d = getDiagram(store.getState().model, diagramId)!
+      const note = d.notes.find((n) => n.id === noteId)!
+      const node = d.nodes.find((n) => n.id === nodeId)!
+      expect(note.color).toBe('#3b82f6')
+      expect(note.parentId).toBe(groupId)
+      expect(node.color).toBe('#ec4899')
+      expect(node.parentId).toBe(groupId)
     })
 
     it('add_node and edit_node carry colour the same way', async () => {

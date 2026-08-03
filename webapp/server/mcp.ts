@@ -690,7 +690,9 @@ export const edgeAttrsShape = {
 
 // A 6-digit hex colour. Validated at the schema so a malformed value is
 // rejected rather than stored and rendered as a broken CSS custom property.
-const colorShape = z
+// Exported so tests can assert against the real schema rather than a
+// reimplementation of it.
+export const colorShape = z
   .string()
   .regex(/^#[0-9a-fA-F]{6}$/, 'color must be a 6-digit hex like #3b82f6')
   .optional()
