@@ -94,12 +94,22 @@ export function NoteNode({ id, data, selected }: NodeProps) {
     if (!editing.current) setDraft(incoming)
   }, [incoming])
 
+  // React does not fire onBlur for a focused element removed from the DOM,
+  // so a deselect that unmounts a focused textarea would otherwise leave
+  // `editing.current` stuck at true forever, permanently blocking the sync
+  // effect above from picking up inbound `data.text` changes (undo, an MCP
+  // edit). Deselecting always means "not editing," so reset it here too.
+  useEffect(() => {
+    if (!selected) editing.current = false
+  }, [selected])
+
   return (
     <div className="note">
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       {selected ? (
         <textarea
+          autoFocus
           spellCheck={noteSpellcheck}
           value={draft}
           placeholder="note…"

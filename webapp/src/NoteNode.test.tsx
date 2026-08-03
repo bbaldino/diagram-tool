@@ -94,6 +94,19 @@ const notePropsSelected = (text: string): NodeProps =>
   ({ id: 'n1', data: { text }, selected: true }) as unknown as NodeProps
 
 describe('NoteNode selected vs rendered', () => {
+  it('focuses the textarea as soon as the note becomes selected', () => {
+    // Deselected note -> click -> the wrapper's onClick selects the node and
+    // the textarea mounts. One click should be enough to get a caret; the
+    // user should not have to click a second time.
+    render(
+      <ReactFlowProvider>
+        <NoteNode {...notePropsSelected('hello')} />
+      </ReactFlowProvider>,
+    )
+    const el = screen.getByPlaceholderText('note…') as HTMLTextAreaElement
+    expect(document.activeElement).toBe(el)
+  })
+
   it('shows the raw markdown in a textarea while selected', () => {
     render(
       <ReactFlowProvider>
@@ -149,5 +162,35 @@ describe('NoteNode selected vs rendered', () => {
 
     expect(container.querySelector('textarea')).toBeNull()
     expect(container.textContent).toContain('start more')
+  })
+
+  it('picks up an inbound data.text change after its textarea was focused then unmounted by deselect', () => {
+    const { rerender, container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...notePropsSelected('original')} />
+      </ReactFlowProvider>,
+    )
+    const el = ta()
+    el.focus()
+    expect(document.activeElement).toBe(el)
+
+    // Deselect: the textarea unmounts. React does not fire onBlur for a
+    // focused element removed from the DOM, so `editing.current` must not be
+    // left stuck at true.
+    rerender(
+      <ReactFlowProvider>
+        <NoteNode {...noteProps('original')} />
+      </ReactFlowProvider>,
+    )
+    expect(container.querySelector('textarea')).toBeNull()
+
+    // An inbound change (MCP edit / undo) while deselected must still show up.
+    rerender(
+      <ReactFlowProvider>
+        <NoteNode {...noteProps('replaced from elsewhere')} />
+      </ReactFlowProvider>,
+    )
+
+    expect(container.textContent).toContain('replaced from elsewhere')
   })
 })
