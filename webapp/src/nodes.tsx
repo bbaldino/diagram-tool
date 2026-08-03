@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
+import { NoteMarkdown } from './NoteMarkdown'
 
 // Global toggle for the browser's native spellcheck on note textareas.
 // Provided by App from a persisted view preference; default off = clean viewing.
@@ -97,26 +98,33 @@ export function NoteNode({ id, data, selected }: NodeProps) {
     <div className="note">
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
-      <textarea
-        spellCheck={noteSpellcheck}
-        value={draft}
-        placeholder="note…"
-        onFocus={() => {
-          editing.current = true
-        }}
-        // Deliberately does NOT reset draft: the store may not have caught up
-        // yet, and resetting here would revert what was just typed.
-        onBlur={() => {
-          editing.current = false
-        }}
-        onChange={(e) => {
-          const next = e.target.value
-          setDraft(next)
-          setNodes((ns) =>
-            ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text: next } } : n)),
-          )
-        }}
-      />
+      {selected ? (
+        <textarea
+          spellCheck={noteSpellcheck}
+          value={draft}
+          placeholder="note…"
+          onFocus={() => {
+            editing.current = true
+          }}
+          // Deliberately does NOT reset draft: the store may not have caught up
+          // yet, and resetting here would revert what was just typed.
+          onBlur={() => {
+            editing.current = false
+          }}
+          onChange={(e) => {
+            const next = e.target.value
+            setDraft(next)
+            setNodes((ns) =>
+              ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text: next } } : n)),
+            )
+          }}
+        />
+      ) : draft.trim() ? (
+        <NoteMarkdown text={draft} />
+      ) : (
+        // An empty note would otherwise be an invisible yellow rectangle.
+        <div className="note__placeholder">note…</div>
+      )}
     </div>
   )
 }

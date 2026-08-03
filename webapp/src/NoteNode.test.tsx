@@ -21,7 +21,7 @@ const noteProps = (text: string): NodeProps =>
 function LaggingParent({ text }: { text: string }) {
   return (
     <ReactFlowProvider>
-      <NoteNode {...noteProps(text)} />
+      <NoteNode {...notePropsSelected(text)} />
     </ReactFlowProvider>
   )
 }
@@ -32,7 +32,7 @@ function ExternallyUpdatedParent({ initial }: { initial: string }) {
   return (
     <ReactFlowProvider>
       <button onClick={() => setText('replaced from elsewhere')}>external</button>
-      <NoteNode {...noteProps(text)} />
+      <NoteNode {...notePropsSelected(text)} />
     </ReactFlowProvider>
   )
 }
@@ -87,5 +87,67 @@ describe('NoteNode textarea', () => {
     await user.click(screen.getByRole('button', { name: 'external' }))
 
     expect(ta().value).toBe('replaced from elsewhere')
+  })
+})
+
+const notePropsSelected = (text: string): NodeProps =>
+  ({ id: 'n1', data: { text }, selected: true }) as unknown as NodeProps
+
+describe('NoteNode selected vs rendered', () => {
+  it('shows the raw markdown in a textarea while selected', () => {
+    render(
+      <ReactFlowProvider>
+        <NoteNode {...notePropsSelected('**bold**')} />
+      </ReactFlowProvider>,
+    )
+    const el = screen.getByPlaceholderText('note…') as HTMLTextAreaElement
+    expect(el.value).toBe('**bold**')
+  })
+
+  it('renders markdown and hides the textarea while deselected', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...noteProps('**bold**')} />
+      </ReactFlowProvider>,
+    )
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(container.querySelector('strong')?.textContent).toBe('bold')
+  })
+
+  it('shows the placeholder hint for an empty note while deselected', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...noteProps('   ')} />
+      </ReactFlowProvider>,
+    )
+    expect(container.querySelector('.note__placeholder')?.textContent).toBe('note…')
+  })
+
+  it('still shows text typed just before deselecting, even if the store lagged', async () => {
+    // The textarea unmounts on deselect. NoteNode itself does not, so its local
+    // `draft` survives and the rendered view must use it — otherwise a keystroke
+    // taken in the last moments before deselect disappears from view. Note
+    // `data.text` is deliberately UNCHANGED across the rerender: that is the
+    // React Flow store lagging, which is the condition the caret fix exists for.
+    const user = userEvent.setup()
+    const { rerender, container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...notePropsSelected('start')} />
+      </ReactFlowProvider>,
+    )
+    const el = screen.getByPlaceholderText('note…') as HTMLTextAreaElement
+    el.focus()
+    el.setSelectionRange(5, 5)
+    await user.keyboard(' more')
+    expect(el.value).toBe('start more')
+
+    rerender(
+      <ReactFlowProvider>
+        <NoteNode {...noteProps('start')} />
+      </ReactFlowProvider>,
+    )
+
+    expect(container.querySelector('textarea')).toBeNull()
+    expect(container.textContent).toContain('start more')
   })
 })
