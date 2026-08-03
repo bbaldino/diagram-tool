@@ -815,11 +815,12 @@ function Flow({
           const inferred = patch.inferred ?? !!cur.inferred
           const dir = patch.dir ?? (cur.dir as EdgeDir) ?? 'forward'
           const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
-          // stash dir (and, if the patch touches it, the color override) in data
-          // so restyleEdge recomputes stroke/arrowheads/label from them. 'color'
-          // in patch — even undefined — means "set it" (undefined = reset to type).
+          // stash dir (and, if the patch sets one, the color override) in data so
+          // restyleEdge recomputes stroke/arrowheads/label from them.
           let next: Edge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
-          if ('color' in patch) next = { ...next, data: { ...next.data, color: patch.color } }
+          if (patch.color !== undefined) {
+            next = { ...next, data: { ...next.data, color: patch.color } }
+          }
           return restyleEdge(next, type, inferred)
         }),
       )
