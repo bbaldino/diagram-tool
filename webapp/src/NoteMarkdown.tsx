@@ -24,15 +24,26 @@ export function NoteMarkdown({ text }: { text: string }) {
         disallowedElements={DISALLOWED}
         components={{
           // Without target/rel a click navigates the whole canvas away.
-          // `nodrag` + stopPropagation keep React Flow from treating the click
-          // as a node select, which would swap the link out mid-click.
+          //
+          // React Flow selects a node from a plain React `onClick` on the
+          // node wrapper (see NodeWrapper in @xyflow/react), not from
+          // mousedown/pointerdown — the `nodrag` class only gates the
+          // pointerdown-driven *drag* path in XYDrag, it does not stop the
+          // click-driven select path. So stopping propagation on mousedown
+          // alone (the original approach) does not work: mousedown, click,
+          // and pointerdown are separate event dispatches, and stopping one
+          // does not stop the others from bubbling. Stop all three so the
+          // click never reaches the node wrapper and flips the note into
+          // edit mode mid-click.
           a: ({ children, ...props }) => (
             <a
               {...props}
               className="nodrag"
               target="_blank"
               rel="noreferrer noopener"
+              onPointerDown={(e) => e.stopPropagation()}
               onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
             >
               {children}
             </a>

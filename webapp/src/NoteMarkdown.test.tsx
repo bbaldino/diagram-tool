@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NoteMarkdown } from './NoteMarkdown'
 
 afterEach(cleanup)
@@ -52,5 +53,21 @@ describe('NoteMarkdown', () => {
   it('wraps its output in .note__md', () => {
     const { container } = render(<NoteMarkdown text="hi" />)
     expect(container.querySelector('.note__md')).not.toBeNull()
+  })
+
+  it('does not let a link click bubble to the parent node (which would select it)', async () => {
+    // React Flow selects a node from a plain React onClick on the node
+    // wrapper (see NodeWrapper in @xyflow/react), not from mousedown or
+    // pointerdown. Cover all three so a regression that only fixes one is
+    // caught.
+    const user = userEvent.setup()
+    const onParent = vi.fn()
+    render(
+      <div onClick={onParent} onPointerDown={onParent} onMouseDown={onParent}>
+        <NoteMarkdown text="[site](http://example.com)" />
+      </div>,
+    )
+    await user.click(screen.getByRole('link', { name: 'site' }))
+    expect(onParent).not.toHaveBeenCalled()
   })
 })
