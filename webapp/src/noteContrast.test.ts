@@ -2,10 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { PALETTE } from './ColorPicker'
 
 // These percentages must match the color-mix() calls in index.css for
-// .note--tinted (background) and .note--tinted textarea/.note__md/.note__placeholder
-// (text). Keep them in sync by eye whenever the CSS changes.
+// .note--tinted (background), .note--tinted .note__md code/pre (code background,
+// composited over the note background), and .note--tinted textarea/.note__md/
+// .note__placeholder (text). Keep them in sync by eye whenever the CSS changes.
 const BACKGROUND_MIX_PERCENT = 15 // color-mix(in srgb, var(--note-color) 15%, white)
-const TEXT_MIX_PERCENT = 60 // color-mix(in srgb, var(--note-color) TEXT_MIX_PERCENT%, black)
+const CODE_MIX_PERCENT = 18 // color-mix(in srgb, var(--note-color) 18%, transparent), over the note background
+const TEXT_MIX_PERCENT = 55 // color-mix(in srgb, var(--note-color) TEXT_MIX_PERCENT%, black)
 
 const MIN_CONTRAST = 4.5 // WCAG AA for normal text
 
@@ -47,11 +49,29 @@ const WHITE: Rgb = [255, 255, 255]
 const BLACK: Rgb = [0, 0, 0]
 
 describe('tinted note text contrast', () => {
-  it.each(PALETTE)('reaches WCAG AA contrast (>= 4.5:1) for %s', (hex) => {
+  it.each(PALETTE)('reaches WCAG AA contrast (>= 4.5:1) for %s on the note background', (hex) => {
     const base = hexToRgb(hex)
     const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
     const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
     const ratio = contrastRatio(background, text)
     expect(ratio).toBeGreaterThanOrEqual(MIN_CONTRAST)
   })
+
+  // .note--tinted .note__md code/pre re-tint to color-mix(in srgb, var(--note-color)
+  // 18%, transparent). Per the CSS Color 4 spec, mixing a colour with `transparent`
+  // keeps the colour's own RGB channels and only scales alpha, so this paints as an
+  // 18%-alpha wash of the note colour OVER the note's already-tinted background —
+  // i.e. the same linear-interpolation formula as colorMix(), composited a second
+  // time on top of `background` rather than on top of white.
+  it.each(PALETTE)(
+    'reaches WCAG AA contrast (>= 4.5:1) for %s on the code/pre background',
+    (hex) => {
+      const base = hexToRgb(hex)
+      const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
+      const codeBackground = colorMix(base, CODE_MIX_PERCENT, background)
+      const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
+      const ratio = contrastRatio(codeBackground, text)
+      expect(ratio).toBeGreaterThanOrEqual(MIN_CONTRAST)
+    },
+  )
 })

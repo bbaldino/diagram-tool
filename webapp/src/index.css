@@ -189,10 +189,10 @@ body {
 .note--tinted textarea,
 .note--tinted .note__md,
 .note--tinted .note__placeholder {
-  /* 60% (vs. background's 15%) so every PALETTE colour, including pale
-     amber, clears WCAG AA (4.5:1) against the tinted background — see
-     noteContrast.test.ts. */
-  color: color-mix(in srgb, var(--note-color) 60%, black);
+  /* 55% (vs. background's 15%) so every PALETTE colour, including pale
+     amber, clears WCAG AA (4.5:1) against BOTH the tinted background and the
+     tinted code/pre background (18% over that) — see noteContrast.test.ts. */
+  color: color-mix(in srgb, var(--note-color) 55%, black);
 }
 .note--tinted .note__md code,
 .note--tinted .note__md pre {
