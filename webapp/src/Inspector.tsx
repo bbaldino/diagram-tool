@@ -91,7 +91,6 @@ export function Inspector({
             defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
-            onReset={() => onEdge({ color: undefined })}
           />
         </Field>
         <Field label="Label">

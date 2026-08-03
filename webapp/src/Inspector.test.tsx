@@ -69,4 +69,15 @@ describe('Inspector colour', () => {
     await user.click(screen.getByRole('button', { name: 'reset' }))
     expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
   })
+
+  it('does not offer a reset affordance for a coloured edge', () => {
+    const edge = {
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      data: { rel: 'talks-to', color: '#3b82f6' },
+    } as never
+    render(<Inspector {...baseProps} node={null} edge={edge} onNodeData={() => {}} />)
+    expect(screen.queryByText('reset')).toBeNull()
+  })
 })
