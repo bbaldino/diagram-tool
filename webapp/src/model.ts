@@ -36,6 +36,7 @@ export interface Node extends Entity {
   template?: string // Template id
   fields: Field[]
   note?: string
+  color?: string // per-entity accent colour (hex); absent = default styling
   position: { x: number; y: number }
   parentId?: string // containing Group id
 }
@@ -48,6 +49,7 @@ export interface Group extends Entity {
 }
 export interface Note extends Entity {
   text: string
+  color?: string // sticky colour (hex); absent = default yellow
   position: { x: number; y: number }
   size: { width: number; height: number }
   parentId?: string

@@ -116,6 +116,7 @@ function nodesToDiagramParts(
       notes.push({
         id: n.id,
         text: d.text ?? '',
+        color: d.color,
         position: n.position,
         parentId: n.parentId ?? undefined,
         size: {
@@ -136,6 +137,7 @@ function nodesToDiagramParts(
         status: d.status || undefined,
         actor: d.kind === 'actor' ? true : undefined,
         note: (d.note as string) || undefined,
+        color: d.color || undefined,
         template: prev?.template,
         fields: prev?.fields ?? [],
         position: n.position,

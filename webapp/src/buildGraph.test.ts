@@ -173,3 +173,59 @@ describe('buildDiagramGraph', () => {
     )
   })
 })
+
+describe('color passthrough', () => {
+  it('carries a note color onto the canvas node data', () => {
+    const d = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'canvas' as const,
+      nodes: [],
+      groups: [],
+      edges: [],
+      flows: [],
+      notes: [
+        {
+          id: 'n1',
+          text: 'x',
+          color: '#3b82f6',
+          position: { x: 0, y: 0 },
+          size: { width: 160, height: 90 },
+        },
+        { id: 'n2', text: 'y', position: { x: 0, y: 0 }, size: { width: 160, height: 90 } },
+      ],
+    }
+    const g = buildDiagramGraph(d as never, [])
+    expect((g.nodes.find((n) => n.id === 'n1')!.data as never as { color?: string }).color).toBe(
+      '#3b82f6',
+    )
+    expect(
+      (g.nodes.find((n) => n.id === 'n2')!.data as never as { color?: string }).color,
+    ).toBeUndefined()
+  })
+
+  it('carries a service node color onto the canvas node data', () => {
+    const d = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'canvas' as const,
+      groups: [],
+      notes: [],
+      edges: [],
+      flows: [],
+      nodes: [
+        { id: 's1', label: 'Plex', fields: [], color: '#10b981', position: { x: 0, y: 0 } },
+        { id: 's2', label: 'Sonarr', fields: [], position: { x: 0, y: 0 } },
+      ],
+    }
+    const g = buildDiagramGraph(d as never, [])
+    expect((g.nodes.find((n) => n.id === 's1')!.data as never as { color?: string }).color).toBe(
+      '#10b981',
+    )
+    expect(
+      (g.nodes.find((n) => n.id === 's2')!.data as never as { color?: string }).color,
+    ).toBeUndefined()
+  })
+})
