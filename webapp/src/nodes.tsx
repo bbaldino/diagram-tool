@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react'
+import { createContext, type CSSProperties, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
 import { NoteMarkdown } from './NoteMarkdown'
@@ -40,7 +40,10 @@ export function ServiceNode({ data, selected }: NodeProps) {
   useEffect(() => setIconBroken(false), [d.icon])
   const iconUrl = d.icon && !iconBroken ? `${ICON_BASE}/${d.icon}.svg` : null
   return (
-    <div className={`node ${selected ? 'selected' : ''}`}>
+    <div
+      className={`node ${selected ? 'selected' : ''}${d.color ? ' node--accented' : ''}`}
+      style={d.color ? ({ ['--node-color' as string]: d.color } as CSSProperties) : undefined}
+    >
       <SideHandles />
       <div className="node__row">
         {iconUrl ? (
@@ -104,7 +107,10 @@ export function NoteNode({ id, data, selected }: NodeProps) {
   }, [selected])
 
   return (
-    <div className="note">
+    <div
+      className={`note${d.color ? ' note--tinted' : ''}`}
+      style={d.color ? ({ ['--note-color' as string]: d.color } as CSSProperties) : undefined}
+    >
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       {selected ? (

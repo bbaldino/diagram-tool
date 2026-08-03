@@ -45,6 +45,18 @@ body {
 .node.selected {
   box-shadow: 0 0 0 2px #6366f1;
 }
+/* Accent bar for a coloured service node. The card stays white — its icon,
+   status dot and field text all rely on contrast against white. */
+.node--accented::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 12px 0 0 12px;
+  background: var(--node-color);
+}
 /* Four-sided connection points: hidden until the node is hovered or selected,
    so nodes don't look like pincushions. Still interactive while hidden. */
 .node .react-flow__handle,
@@ -166,6 +178,32 @@ body {
   font: inherit;
   font-size: 12px;
   color: #713f12;
+}
+/* Tinted note. Applied ONLY when a colour is set, so an uncoloured note keeps
+   the literal defaults above byte-for-byte. Derivations mirror the existing
+   --group-color approach. */
+.note--tinted {
+  background: color-mix(in srgb, var(--note-color) 15%, white);
+  border-color: color-mix(in srgb, var(--note-color) 45%, white);
+}
+.note--tinted textarea,
+.note--tinted .note__md,
+.note--tinted .note__placeholder {
+  color: color-mix(in srgb, var(--note-color) 70%, black);
+}
+.note--tinted .note__md code,
+.note--tinted .note__md pre {
+  background: color-mix(in srgb, var(--note-color) 18%, transparent);
+}
+.note--tinted .note__md blockquote {
+  border-left-color: color-mix(in srgb, var(--note-color) 40%, transparent);
+}
+.note--tinted .note__md th,
+.note--tinted .note__md td {
+  border-color: color-mix(in srgb, var(--note-color) 35%, transparent);
+}
+.note--tinted .note__md hr {
+  border-top-color: color-mix(in srgb, var(--note-color) 35%, transparent);
 }
 /* Rendered (deselected) note. Metrics deliberately match .note textarea so
    text does not shift when selection flips between the two. */

@@ -194,3 +194,30 @@ describe('NoteNode selected vs rendered', () => {
     expect(container.textContent).toContain('replaced from elsewhere')
   })
 })
+
+describe('NoteNode colour', () => {
+  const coloured = (text: string, color?: string): NodeProps =>
+    ({ id: 'n1', data: { text, color }, selected: false }) as unknown as NodeProps
+
+  it('applies the tint modifier and custom property when a colour is set', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...coloured('hi', '#3b82f6')} />
+      </ReactFlowProvider>,
+    )
+    const note = container.querySelector('.note') as HTMLElement
+    expect(note.classList.contains('note--tinted')).toBe(true)
+    expect(note.style.getPropertyValue('--note-color')).toBe('#3b82f6')
+  })
+
+  it('renders exactly as before when no colour is set', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...coloured('hi')} />
+      </ReactFlowProvider>,
+    )
+    const note = container.querySelector('.note') as HTMLElement
+    expect(note.classList.contains('note--tinted')).toBe(false)
+    expect(note.style.getPropertyValue('--note-color')).toBe('')
+  })
+})
