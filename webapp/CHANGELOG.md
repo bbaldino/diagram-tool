@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/bbaldino/diagram-tool/compare/v0.2.0...v0.2.1) (2026-08-03)
+
+
+### Bug Fixes
+
+* **layout:** keep annotations with their subject and use measured node heights ([0258c80](https://github.com/bbaldino/diagram-tool/commit/0258c80782c5d1872857447e78acb7e0fba10c90))
+
 ## [0.2.0](https://github.com/bbaldino/diagram-tool/compare/v0.1.0...v0.2.0) (2026-07-31)
 
 
