@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.3.0](https://github.com/bbaldino/diagram-tool/compare/v0.2.1...v0.3.0) (2026-08-03)
+
+
+### Features
+
+* **notes:** add markdown renderer for canvas notes ([7b5a379](https://github.com/bbaldino/diagram-tool/commit/7b5a379eef025e9908df72a8f2a46e16f2833f39))
+* **notes:** render canvas notes as markdown when not selected ([412c18e](https://github.com/bbaldino/diagram-tool/commit/412c18eeb845598b1440c84acc85b2b1cf6016d6))
+
+
+### Bug Fixes
+
+* **mcp:** let connect join notes and groups, not just nodes ([1483824](https://github.com/bbaldino/diagram-tool/commit/14838248c4affec425b9e55dc76a8db6dfeed159))
+* **notes:** focus textarea on select and unstick editing ref on deselect ([2182239](https://github.com/bbaldino/diagram-tool/commit/21822393a2be2891c1ce52e44c351a9303a9682d))
+* **notes:** keep the caret in place when editing note text mid-string ([b1f9d79](https://github.com/bbaldino/diagram-tool/commit/b1f9d79ac85414373f2d83002b5ae398184e908e))
+* **notes:** repair escaped newlines in note text written over MCP ([8da523b](https://github.com/bbaldino/diagram-tool/commit/8da523bc3636c465c6c50ecefabe98c8f20d8918))
+* **notes:** skip markdown code contexts in escaped-newline repair ([9aa1495](https://github.com/bbaldino/diagram-tool/commit/9aa1495060d71198e297c6cfd1f342baf98df7d8))
+* **notes:** stop link clicks from selecting the note into edit mode ([63def87](https://github.com/bbaldino/diagram-tool/commit/63def878ab68fc69464f841d0113e153b24eec62))
+* **notes:** strip node prop before spreading onto markdown link anchor ([b620471](https://github.com/bbaldino/diagram-tool/commit/b6204710b5670ddd85dbc74e983aa7d10275f4ec))
+* **notes:** treat unterminated fence as code to end-of-text per CommonMark ([b320e79](https://github.com/bbaldino/diagram-tool/commit/b320e796c848dc0fe4bf7ceb2a3fbd3cfc15197c))
+
 ## [0.2.1](https://github.com/bbaldino/diagram-tool/compare/v0.2.0...v0.2.1) (2026-08-03)
 
 
