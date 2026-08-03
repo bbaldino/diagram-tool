@@ -6,7 +6,7 @@
 
 **Architecture:** `NoteNode` in `webapp/src/nodes.tsx` gains one branch on its existing `selected` prop: selected renders today's textarea unchanged, deselected renders a new `NoteMarkdown` component. Rendering lives in its own file so `nodes.tsx` does not absorb markdown configuration. Nothing new is persisted — `Note.text` stays raw markdown and the model, ops, diff, and MCP surface are untouched.
 
-**Tech Stack:** React 19, TypeScript, Vite, vitest, `@testing-library/react` + jsdom (already present), `react-markdown`, `remark-gfm`, `remark-breaks`.
+**Tech Stack:** React 18 (`^18.3.1`), TypeScript, Vite, vitest, `@testing-library/react` + jsdom (already present), `react-markdown` `^10.1.0`, `remark-gfm` `^4.0.1`, `remark-breaks` `^4.0.0`.
 
 ## Global Constraints
 
@@ -14,7 +14,7 @@
 - All commands run from `webapp/`.
 - Component tests need `// @vitest-environment jsdom` as the **first line** of the file. The other 300+ tests run in the node environment and must stay that way — do not add a global vitest `environment` setting.
 - Never add `rehype-raw`. Raw HTML in note text must not execute; notes are writable over MCP.
-- Add dependencies with `npm install` (never hand-edit `package.json`), so latest versions are picked up.
+- Add dependencies with `npm install` (never hand-edit `package.json`), so latest versions are picked up. Expect `react-markdown@^10.1.0`, `remark-gfm@^4.0.1`, `remark-breaks@^4.0.0`. These are deliberately NOT pinned exactly: react-markdown's peer range is `react: >=18` (satisfied by this project's `^18.3.1`), its last publish was 2025-03-07, and the caret range cannot cross to a v11. If `npm install` resolves a v11+, stop and report rather than adapting the code — the API in this plan is written against v10.
 - `npm run typecheck` and `npx vitest run` must both be clean before any commit.
 - Do not point a dev server at `webapp/` as its `DATA_DIR`. Use a scratch directory.
 
