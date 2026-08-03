@@ -309,11 +309,20 @@ export const handlers = {
     const model = store.getState().model
     const diagram = getDiagram(model, a.diagramId)
     if (!diagram) return err(`unknown diagram "${a.diagramId}"`)
-    if (!diagram.nodes.some((n) => n.id === a.from)) {
-      return err(`node "${a.from}" not found in diagram "${a.diagramId}"`)
+    // Any on-diagram element can be an edge endpoint, not just a service node:
+    // NoteNode and GroupNode render the same four connection handles that
+    // ServiceNode does, so the canvas has always allowed connecting notes and
+    // groups. Restricting this to `nodes` made the MCP surface stricter than
+    // both the model (Edge.from/to are plain ids) and the UI.
+    const isEndpoint = (id: string): boolean =>
+      diagram.nodes.some((n) => n.id === id) ||
+      diagram.notes.some((n) => n.id === id) ||
+      diagram.groups.some((g) => g.id === id)
+    if (!isEndpoint(a.from)) {
+      return err(`unknown element "${a.from}" in diagram "${a.diagramId}"`)
     }
-    if (!diagram.nodes.some((n) => n.id === a.to)) {
-      return err(`node "${a.to}" not found in diagram "${a.diagramId}"`)
+    if (!isEndpoint(a.to)) {
+      return err(`unknown element "${a.to}" in diagram "${a.diagramId}"`)
     }
     const edge: Edge = { id: newId(), from: a.from, to: a.to, type: 'talks-to' }
     if (a.label !== undefined) edge.label = a.label
@@ -769,7 +778,7 @@ export function createMcpServer(store: Store): McpServer {
     'connect',
     {
       description:
-        'Add an edge between two nodes in a diagram. Returns the created edge id. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
+        'Add an edge between two elements in a diagram. `from` and `to` may each be a node, a note, or a group — all three carry connection handles on the canvas, so a note can be tethered to the thing it annotates. Returns the created edge id. Edge `orientation` controls which sides an edge connects to once laid out: `horizontal` (left/right) for directional data/request flow (I/O); `vertical` (top/bottom) for "interacts with"/peer/side-channel relationships; `auto` (default) lets the layout pick the side nearest the other node. The side is always chosen by geometry; orientation only fixes the axis.',
       inputSchema: {
         diagramId: z.string(),
         from: z.string(),

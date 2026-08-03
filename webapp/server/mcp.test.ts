@@ -208,6 +208,64 @@ describe('handlers', () => {
       expect('error' in r).toBe(true)
     })
 
+    it('connect joins a note to a node, as the canvas allows', async () => {
+      const store = await mkStore()
+      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string; nodeIds: string[] }
+      const { id: noteId } = handlers.addNote(store, { diagramId, text: 'why' }) as { id: string }
+      const r = handlers.connect(store, { diagramId, from: noteId, to: nodeIds[0] })
+      expect('id' in r).toBe(true)
+      const d = getDiagram(store.getState().model, diagramId)!
+      expect(d.edges.find((e) => e.id === (r as { id: string }).id)).toMatchObject({
+        from: noteId,
+        to: nodeIds[0],
+      })
+    })
+
+    it('connect joins a node to a note (the other direction)', async () => {
+      const store = await mkStore()
+      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string; nodeIds: string[] }
+      const { id: noteId } = handlers.addNote(store, { diagramId, text: 'why' }) as { id: string }
+      expect('id' in handlers.connect(store, { diagramId, from: nodeIds[0], to: noteId })).toBe(
+        true,
+      )
+    })
+
+    it('connect joins a group to a node', async () => {
+      const store = await mkStore()
+      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string; nodeIds: string[] }
+      const { id: groupId } = handlers.addGroup(store, { diagramId, label: 'Media' }) as {
+        id: string
+      }
+      expect('id' in handlers.connect(store, { diagramId, from: groupId, to: nodeIds[0] })).toBe(
+        true,
+      )
+    })
+
+    it('connect still rejects an endpoint that exists nowhere in the diagram', async () => {
+      const store = await mkStore()
+      const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string; nodeIds: string[] }
+      const rev0 = store.getState().rev
+      const r = handlers.connect(store, { diagramId, from: nodeIds[0], to: 'ghost' })
+      expect('error' in r).toBe(true)
+      // The message must name the real rule, not "node" — notes and groups are
+      // valid endpoints, so "node not found" misdescribes why this failed.
+      expect((r as { error: string }).error).toContain('ghost')
+      expect((r as { error: string }).error).not.toContain('node "ghost"')
+      expect(store.getState().rev).toBe(rev0)
+    })
+
     it('editEdge updates an edge', async () => {
       const store = await mkStore()
       const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
