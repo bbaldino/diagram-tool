@@ -48,6 +48,7 @@ describe('NoteMarkdown', () => {
     expect(a.getAttribute('rel')).toContain('noreferrer')
     expect(a.getAttribute('rel')).toContain('noopener')
     expect(a.className).toContain('nodrag')
+    expect(a.hasAttribute('node')).toBe(false)
   })
 
   it('wraps its output in .note__md', () => {

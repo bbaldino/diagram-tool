@@ -35,7 +35,7 @@ export function NoteMarkdown({ text }: { text: string }) {
           // does not stop the others from bubbling. Stop all three so the
           // click never reaches the node wrapper and flips the note into
           // edit mode mid-click.
-          a: ({ children, ...props }) => (
+          a: ({ children, node, ...props }) => (
             <a
               {...props}
               className="nodrag"
