@@ -1507,8 +1507,8 @@ function Flow({
     const excluded = new Set([selectedNode.id, ...descendantsOf(selectedNode.id, nodes)])
     return groupList.filter((g) => !excluded.has(g.id))
   }, [groupList, selectedNode, nodes])
-  // Distinct colors already used in this diagram (edge stroke + group color), for
-  // the "In this diagram" quick-pick section of the edge color picker.
+  // Distinct colors already used in this diagram (edge stroke + group/note/service
+  // color), for the "In this diagram" quick-pick section of the color pickers.
   const diagramColors = useMemo(() => {
     const set = new Set<string>()
     for (const e of edges) {
@@ -1518,7 +1518,10 @@ function Flow({
       if (c) set.add(c.toLowerCase())
     }
     for (const n of nodes) {
-      const c = n.type === 'group' ? ((n.data as any)?.color as string) : undefined
+      const c =
+        n.type === 'group' || n.type === 'note' || n.type === 'service'
+          ? ((n.data as any)?.color as string | undefined)
+          : undefined
       if (c) set.add(c.toLowerCase())
     }
     return [...set]
