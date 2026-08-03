@@ -8,7 +8,7 @@ interface Props {
   defaultLabel: string // hint shown when not overridden, e.g. "via default"
   diagramColors: string[] // distinct colors already present in the diagram
   onChange: (hex: string) => void
-  onReset: () => void
+  onReset?: () => void
 }
 
 // A modern, cohesive palette — distinct but harmonious (Tailwind 500-ish tones).
@@ -89,7 +89,7 @@ export function ColorPicker({
           title="Custom color"
         />
         <span className="colorpick__hint">{overridden ? 'custom' : defaultLabel}</span>
-        {overridden && (
+        {overridden && onReset && (
           <button type="button" className="colorpick__reset" onClick={onReset}>
             reset
           </button>

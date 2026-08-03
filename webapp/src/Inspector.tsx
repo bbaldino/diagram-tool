@@ -205,7 +205,6 @@ export function Inspector({
             defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
-            onReset={() => onNodeData({ color: undefined })}
           />
         </Field>
         <Field label="Group">
@@ -258,7 +257,6 @@ export function Inspector({
             defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
-            onReset={() => onNodeData({ color: undefined })}
           />
         </Field>
         <Field label="Status">

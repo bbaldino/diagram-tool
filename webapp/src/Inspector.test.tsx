@@ -44,12 +44,14 @@ describe('Inspector colour', () => {
     expect(container.querySelector('.colorpick')).not.toBeNull()
   })
 
-  it('clears the colour when reset is used on a coloured note', async () => {
-    const user = userEvent.setup()
-    const onNodeData = vi.fn()
-    render(<Inspector {...baseProps} node={noteNode('#3b82f6')} onNodeData={onNodeData} />)
-    await user.click(screen.getByRole('button', { name: 'reset' }))
-    expect(onNodeData).toHaveBeenCalledWith({ color: undefined })
+  it('does not offer a reset affordance for a coloured note', () => {
+    render(<Inspector {...baseProps} node={noteNode('#3b82f6')} onNodeData={() => {}} />)
+    expect(screen.queryByText('reset')).toBeNull()
+  })
+
+  it('does not offer a reset affordance for a coloured service node', () => {
+    render(<Inspector {...baseProps} node={serviceNode('#3b82f6')} onNodeData={() => {}} />)
+    expect(screen.queryByText('reset')).toBeNull()
   })
 
   it('uses the shared picker for groups instead of a raw colour input', () => {
@@ -57,5 +59,14 @@ describe('Inspector colour', () => {
     const { container } = render(<Inspector {...baseProps} node={group} onNodeData={() => {}} />)
     expect(container.querySelector('.colorpick')).not.toBeNull()
     expect(container.querySelector('input[type="color"].insp__rawcolor')).toBeNull()
+  })
+
+  it('still offers reset for a coloured group and resets to the default slate hex', async () => {
+    const user = userEvent.setup()
+    const onNodeData = vi.fn()
+    const group = { id: 'g1', type: 'group', data: { label: 'Media', color: '#3b82f6' } } as never
+    render(<Inspector {...baseProps} node={group} onNodeData={onNodeData} />)
+    await user.click(screen.getByRole('button', { name: 'reset' }))
+    expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
   })
 })
