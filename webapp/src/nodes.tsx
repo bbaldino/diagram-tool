@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
 
@@ -75,19 +75,47 @@ export function NoteNode({ id, data, selected }: NodeProps) {
   const { setNodes } = useReactFlow()
   const d = data as any
   const noteSpellcheck = useContext(NoteSpellcheckContext)
+  const incoming = (d.text ?? '') as string
+
+  // The textarea is driven by local state, NOT straight off `data.text`.
+  // `data.text` lives in React Flow's store and updates asynchronously, so the
+  // canvas commits at least one render still carrying the pre-keystroke text.
+  // Binding the textarea to that prop meant React wrote the stale string back
+  // into the DOM mid-edit, and the browser then reset the caret to the end —
+  // so typing anywhere but the end jumped after a single character.
+  const [draft, setDraft] = useState(incoming)
+  const editing = useRef(false)
+
+  // Take text from outside (undo/redo, an MCP edit, a diagram switch) only when
+  // we are not the one editing — otherwise the same lagging value clobbers the
+  // keystroke we just accepted.
+  useEffect(() => {
+    if (!editing.current) setDraft(incoming)
+  }, [incoming])
+
   return (
     <div className="note">
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       <textarea
         spellCheck={noteSpellcheck}
-        value={d.text ?? ''}
+        value={draft}
         placeholder="note…"
-        onChange={(e) =>
+        onFocus={() => {
+          editing.current = true
+        }}
+        // Deliberately does NOT reset draft: the store may not have caught up
+        // yet, and resetting here would revert what was just typed.
+        onBlur={() => {
+          editing.current = false
+        }}
+        onChange={(e) => {
+          const next = e.target.value
+          setDraft(next)
           setNodes((ns) =>
-            ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text: e.target.value } } : n)),
+            ns.map((n) => (n.id === id ? { ...n, data: { ...n.data, text: next } } : n)),
           )
-        }
+        }}
       />
     </div>
   )
