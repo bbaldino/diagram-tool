@@ -308,6 +308,54 @@ describe('handlers', () => {
       ).toBe(true)
     })
 
+    it('addNote repairs escaped newlines sent by an agent', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, {
+        diagramId,
+        text: 'tool: npm\\nroot: repo path',
+      }) as { id: string }
+      const note = store
+        .getState()
+        .model.diagrams.find((x) => x.id === diagramId)!
+        .notes.find((n) => n.id === id)!
+      expect(note.text).toBe('tool: npm\nroot: repo path')
+    })
+
+    it('editNote repairs escaped newlines sent by an agent', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, { diagramId, text: 'x' }) as { id: string }
+      handlers.editNote(store, { diagramId, id, patch: { text: 'a\\nb' } })
+      const note = store
+        .getState()
+        .model.diagrams.find((x) => x.id === diagramId)!
+        .notes.find((n) => n.id === id)!
+      expect(note.text).toBe('a\nb')
+    })
+
+    it('editNote leaves a note untouched when the patch has no text', async () => {
+      const store = await mkStore()
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const { id } = handlers.addNote(store, { diagramId, text: 'keep me' }) as { id: string }
+      handlers.editNote(store, { diagramId, id, patch: { size: { width: 200, height: 120 } } })
+      const note = store
+        .getState()
+        .model.diagrams.find((x) => x.id === diagramId)!
+        .notes.find((n) => n.id === id)!
+      expect(note.text).toBe('keep me')
+      expect(note.size).toEqual({ width: 200, height: 120 })
+    })
+
     it('editNote reparents a note into a group, placing it non-overlapping and growing the group via reflow', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {

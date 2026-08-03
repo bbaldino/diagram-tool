@@ -18,6 +18,7 @@ import { applyOps, type Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
 import { reflowContainment, placeInGroup, NODE_EST_SIZE } from '../src/containment'
 import { layoutDiagram, type LayoutEngine, type NodeSizes, DEFAULT_ENGINE } from './layout'
+import { normalizeNoteText } from './noteText'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
 
@@ -344,7 +345,7 @@ export const handlers = {
     }
     const note: Note = {
       id: newId(),
-      text: a.text,
+      text: normalizeNoteText(a.text),
       position: a.position ?? { x: 0, y: 0 },
       size: a.size ?? { width: 160, height: 90 },
     }
@@ -373,6 +374,7 @@ export const handlers = {
     const touchesContainment = 'parentId' in a.patch
     const { parentId, ...rest } = a.patch
     const patch: Partial<Omit<Note, 'id'>> = { ...rest }
+    if (typeof rest.text === 'string') patch.text = normalizeNoteText(rest.text)
     if (touchesContainment) {
       patch.parentId = parentId ?? undefined
       if (parentId != null)
