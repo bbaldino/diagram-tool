@@ -963,13 +963,25 @@ function Flow({
     // Nothing to lay out on an empty canvas — keep every caller (menu, pill,
     // and the ⌘⇧T / ⌘⇧L shortcuts) consistent with the disabled Tidy controls.
     if (nodes.length === 0) return
+    // Send React Flow's MEASURED node heights along. The canvas pins every
+    // node to a fixed width, so height is the only dimension that varies — it
+    // grows as a long label wraps — and only the browser knows it. Without
+    // this the engine spaces every rank as if each box were the default
+    // height, which is wrong for any node whose label is one line or three.
+    // rf.getNodes() rather than the `nodes` state: it carries React Flow's
+    // measurements and keeps this callback off the node array's identity.
+    const sizes: Record<string, { height: number }> = {}
+    for (const n of rf.getNodes()) {
+      const h = Number((n as { measured?: { height?: number } }).measured?.height)
+      if (h > 0) sizes[n.id] = { height: h }
+    }
     // Run the server-side layout (elkjs/Graphviz per the selector); the
     // resulting moves stream back over SSE and re-seed the canvas. Then
     // fit the view once the new positions have landed.
     fetch('/api/layout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ diagramId: activeId, engine: layoutEngine }),
+      body: JSON.stringify({ diagramId: activeId, engine: layoutEngine, sizes }),
     })
       .catch(() => {})
       .finally(() => setTimeout(() => rf.fitView({ padding: 0.2 }), 250))

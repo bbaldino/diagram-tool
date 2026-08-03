@@ -55,12 +55,13 @@ export function registerRoutes(app: Express, store: Store): void {
     const chunks: Buffer[] = []
     for await (const c of req) chunks.push(c as Buffer)
     try {
-      const { diagramId, engine } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
+      const { diagramId, engine, sizes } = JSON.parse(Buffer.concat(chunks).toString('utf8')) as {
         diagramId: string
         engine?: string
+        sizes?: Record<string, { height?: number }>
       }
       const eng: LayoutEngine = engine === 'elk' || engine === 'graphviz' ? engine : DEFAULT_ENGINE
-      const result = await handlers.layout(store, diagramId, eng)
+      const result = await handlers.layout(store, diagramId, eng, sizes)
       res.setHeader('Content-Type', 'application/json')
       if ('error' in result) res.statusCode = 400
       res.end(JSON.stringify(result))

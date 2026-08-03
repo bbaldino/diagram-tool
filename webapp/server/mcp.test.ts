@@ -412,6 +412,37 @@ describe('handlers', () => {
       void nodeIds
     })
 
+    it('layout honours client-measured node heights when spacing a rank', async () => {
+      const spacingWith = async (sizes?: Record<string, { height?: number }>) => {
+        const store = await mkStore()
+        const { diagramId } = (await handlers.authorDiagram(store, {
+          name: 'Flow',
+          nodes: ['Src', 'A', 'B'],
+          // spec.edges reference the slugified node ref, not the label.
+          edges: [
+            ['src', 'a'],
+            ['src', 'b'],
+          ],
+        })) as { diagramId: string }
+        const before = getDiagram(store.getState().model, diagramId)!
+        const byLabel = Object.fromEntries(before.nodes.map((n) => [n.label, n.id]))
+        const measured = sizes
+          ? Object.fromEntries(
+              Object.entries(sizes).map(([label, s]) => [byLabel[label] ?? label, s]),
+            )
+          : undefined
+        await handlers.layout(store, diagramId, 'graphviz', measured)
+        const after = getDiagram(store.getState().model, diagramId)!
+        const y = (label: string) => after.nodes.find((n) => n.label === label)!.position.y
+        return Math.abs(y('A') - y('B'))
+      }
+      // graphviz nodesep = 0.5in = 36px, so a rank gap is node height + 36.
+      expect(await spacingWith()).toBe(64 + 36)
+      expect(await spacingWith({ Src: { height: 40 }, A: { height: 40 }, B: { height: 40 } })).toBe(
+        40 + 36,
+      )
+    })
+
     it('layout accepts the graphviz engine without throwing', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {

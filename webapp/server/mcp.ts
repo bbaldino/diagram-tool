@@ -17,7 +17,7 @@ import { newId } from '../src/ids'
 import { applyOps, type Op } from '../src/ops'
 import { diffToOps } from '../src/diff'
 import { reflowContainment, placeInGroup, NODE_EST_SIZE } from '../src/containment'
-import { layoutDiagram, type LayoutEngine, DEFAULT_ENGINE } from './layout'
+import { layoutDiagram, type LayoutEngine, type NodeSizes, DEFAULT_ENGINE } from './layout'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
 
@@ -487,11 +487,14 @@ export const handlers = {
     store: Store,
     diagramId: string,
     engine: LayoutEngine = DEFAULT_ENGINE,
+    // Client-measured node heights. Absent on an MCP call (no browser to
+    // measure), in which case the engine falls back to its default box.
+    sizes?: NodeSizes,
   ): Promise<OkResult | ErrorResult> {
     const model = store.getState().model
     const diagram = getDiagram(model, diagramId)
     if (!diagram) return err(`unknown diagram "${diagramId}"`)
-    const laid = await layoutDiagram(diagram, engine)
+    const laid = await layoutDiagram(diagram, engine, sizes)
     const nextDiagram: Diagram = {
       ...diagram,
       nodes: laid.nodes,
