@@ -199,7 +199,7 @@ export function Inspector({
         <div className="insp__hint">Edit the text directly on the note.</div>
         <Field label="Color">
           <ColorPicker
-            value={(d.color as string) ?? '#eab308'}
+            value={(d.color as string) ?? '#fef9c3'}
             overridden={typeof d.color === 'string'}
             defaultLabel="default"
             diagramColors={diagramColors}

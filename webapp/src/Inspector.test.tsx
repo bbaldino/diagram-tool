@@ -70,6 +70,20 @@ describe('Inspector colour', () => {
     expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
   })
 
+  it('does not mark any swatch active for an uncoloured note', () => {
+    const { container } = render(
+      <Inspector {...baseProps} node={noteNode()} onNodeData={() => {}} />,
+    )
+    expect(container.querySelector('.swatch--active')).toBeNull()
+  })
+
+  it('marks the yellow swatch active for a note explicitly coloured yellow', () => {
+    const { container } = render(
+      <Inspector {...baseProps} node={noteNode('#eab308')} onNodeData={() => {}} />,
+    )
+    expect(container.querySelector('.swatch--active')).not.toBeNull()
+  })
+
   it('does not offer a reset affordance for a coloured edge', () => {
     const edge = {
       id: 'e1',
