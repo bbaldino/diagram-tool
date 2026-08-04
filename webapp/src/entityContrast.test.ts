@@ -9,6 +9,11 @@ const BACKGROUND_MIX_PERCENT = 15 // color-mix(in srgb, var(--note-color) 15%, w
 const CODE_MIX_PERCENT = 18 // color-mix(in srgb, var(--note-color) 18%, transparent), over the note background
 const TEXT_MIX_PERCENT = 55 // color-mix(in srgb, var(--note-color) TEXT_MIX_PERCENT%, black)
 
+// .node--tinted .node__sub and .node__field-k
+const NODE_SECONDARY_TEXT_MIX_PERCENT = 45
+// .node--tinted .node__icon--placeholder background
+const NODE_PLACEHOLDER_MIX_PERCENT = 20
+
 const MIN_CONTRAST = 4.5 // WCAG AA for normal text
 
 type Rgb = [number, number, number]
@@ -48,7 +53,7 @@ function contrastRatio(a: Rgb, b: Rgb): number {
 const WHITE: Rgb = [255, 255, 255]
 const BLACK: Rgb = [0, 0, 0]
 
-describe('tinted note text contrast', () => {
+describe('tinted entity text contrast', () => {
   it.each(PALETTE)('reaches WCAG AA contrast (>= 4.5:1) for %s on the note background', (hex) => {
     const base = hexToRgb(hex)
     const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
@@ -74,4 +79,26 @@ describe('tinted note text contrast', () => {
       expect(ratio).toBeGreaterThanOrEqual(MIN_CONTRAST)
     },
   )
+
+  it.each(PALETTE)('reaches AA for %s on node primary text over the card tint', (hex) => {
+    const base = hexToRgb(hex)
+    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
+    const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
+    expect(contrastRatio(background, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
+
+  it.each(PALETTE)('reaches AA for %s on node secondary text over the card tint', (hex) => {
+    const base = hexToRgb(hex)
+    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
+    const text = colorMix(base, NODE_SECONDARY_TEXT_MIX_PERCENT, BLACK)
+    expect(contrastRatio(background, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
+
+  it.each(PALETTE)('reaches AA for %s on the icon placeholder', (hex) => {
+    const base = hexToRgb(hex)
+    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
+    const placeholder = colorMix(base, NODE_PLACEHOLDER_MIX_PERCENT, background)
+    const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
+    expect(contrastRatio(placeholder, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
 })
