@@ -17,7 +17,7 @@ describe('ServiceNode colour', () => {
       </ReactFlowProvider>,
     )
     const card = container.querySelector('.node') as HTMLElement
-    expect(card.classList.contains('node--accented')).toBe(true)
+    expect(card.classList.contains('node--tinted')).toBe(true)
     expect(card.style.getPropertyValue('--node-color')).toBe('#10b981')
   })
 
@@ -28,7 +28,7 @@ describe('ServiceNode colour', () => {
       </ReactFlowProvider>,
     )
     const card = container.querySelector('.node') as HTMLElement
-    expect(card.classList.contains('node--accented')).toBe(false)
+    expect(card.classList.contains('node--tinted')).toBe(false)
     expect(card.style.getPropertyValue('--node-color')).toBe('')
   })
 
@@ -39,5 +39,17 @@ describe('ServiceNode colour', () => {
       </ReactFlowProvider>,
     )
     expect(container.querySelector('.node__label')?.textContent).toBe('Plex')
+  })
+
+  it('drops the accent-bar treatment in favour of a tint', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <ServiceNode {...props('#10b981')} />
+      </ReactFlowProvider>,
+    )
+    const card = container.querySelector('.node') as HTMLElement
+    // The tint replaces the bar rather than layering on top of it.
+    expect(card.classList.contains('node--accented')).toBe(false)
+    expect(card.classList.contains('node--tinted')).toBe(true)
   })
 })

@@ -45,17 +45,30 @@ body {
 .node.selected {
   box-shadow: 0 0 0 2px #6366f1;
 }
-/* Accent bar for a coloured service node. The card stays white — its icon,
-   status dot and field text all rely on contrast against white. */
-.node--accented::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  border-radius: 12px 0 0 12px;
-  background: var(--node-color);
+/* Tinted service node. Applied ONLY when a colour is set, so an uncoloured node
+   keeps the literal defaults above byte-for-byte. Same ratios as .note--tinted.
+   The status dot, icon images and the selection ring are deliberately NOT
+   derived — status must stay readable as status, not decoration. */
+.node--tinted {
+  background: color-mix(in srgb, var(--node-color) 15%, white);
+  border-color: color-mix(in srgb, var(--node-color) 45%, white);
+}
+.node--tinted .node__label,
+.node--tinted .node__field,
+.node--tinted .node__icon--placeholder,
+.node--tinted .node__note {
+  color: color-mix(in srgb, var(--node-color) 55%, black);
+}
+.node--tinted .node__sub,
+.node--tinted .node__field-k {
+  color: color-mix(in srgb, var(--node-color) 45%, black);
+}
+.node--tinted .node__icon--placeholder {
+  background: color-mix(in srgb, var(--node-color) 25%, white);
+}
+.node--tinted .node__note {
+  background: color-mix(in srgb, var(--node-color) 18%, transparent);
+  border-top-color: color-mix(in srgb, var(--node-color) 35%, transparent);
 }
 /* Four-sided connection points: hidden until the node is hovered or selected,
    so nodes don't look like pincushions. Still interactive while hidden. */

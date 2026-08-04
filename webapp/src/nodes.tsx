@@ -41,7 +41,7 @@ export function ServiceNode({ data, selected }: NodeProps) {
   const iconUrl = d.icon && !iconBroken ? `${ICON_BASE}/${d.icon}.svg` : null
   return (
     <div
-      className={`node ${selected ? 'selected' : ''}${d.color ? ' node--accented' : ''}`}
+      className={`node ${selected ? 'selected' : ''}${d.color ? ' node--tinted' : ''}`}
       style={d.color ? ({ ['--node-color' as string]: d.color } as CSSProperties) : undefined}
     >
       <SideHandles />
