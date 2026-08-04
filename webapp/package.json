@@ -1,7 +1,7 @@
 {
   "name": "homelab-canvas",
   "private": true,
-  "version": "0.4.0",
+  "version": "0.5.0",
   "type": "module",
   "scripts": {
     "dev": "concurrently -k -n web,api \"npm:dev:web\" \"npm:dev:api\"",
