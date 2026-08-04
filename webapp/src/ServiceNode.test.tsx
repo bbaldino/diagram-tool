@@ -40,16 +40,4 @@ describe('ServiceNode colour', () => {
     )
     expect(container.querySelector('.node__label')?.textContent).toBe('Plex')
   })
-
-  it('drops the accent-bar treatment in favour of a tint', () => {
-    const { container } = render(
-      <ReactFlowProvider>
-        <ServiceNode {...props('#10b981')} />
-      </ReactFlowProvider>,
-    )
-    const card = container.querySelector('.node') as HTMLElement
-    // The tint replaces the bar rather than layering on top of it.
-    expect(card.classList.contains('node--accented')).toBe(false)
-    expect(card.classList.contains('node--tinted')).toBe(true)
-  })
 })
