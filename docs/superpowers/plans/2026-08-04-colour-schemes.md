@@ -596,7 +596,7 @@ In `webapp/src/ColorPicker.test.tsx`, replace the default-swatch tests with:
 In `webapp/server/mcp.test.ts`, add:
 
 ```ts
-    it('add_node accepts a scheme name and a custom hex, and rejects nonsense', async () => {
+    it('add_node stores a scheme name and a custom hex', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow', nodes: ['Plex'],
@@ -607,7 +607,25 @@ In `webapp/server/mcp.test.ts`, add:
       expect(d.nodes.find((n) => n.id === named.id)!.scheme).toBe('blue')
       expect(d.nodes.find((n) => n.id === hex.id)!.scheme).toBe('#7c3aed')
     })
+
+    // The handler does not validate — zod does, at the tool boundary — so the
+    // rejection cases must exercise schemeShape itself. Asserting them through
+    // addNode would pass no matter what schemeShape said.
+    it.each(['nonsense', 'toString', '__proto__', '#ab', 'blue '])(
+      'schemeShape rejects %s',
+      (v) => {
+        expect(schemeShape.safeParse(v).success).toBe(false)
+      },
+    )
+
+    it.each(['blue', 'paper', '#7c3aed', undefined])('schemeShape accepts %s', (v) => {
+      expect(schemeShape.safeParse(v).success).toBe(true)
+    })
 ```
+
+Import `schemeShape` from `./mcp`. The `toString` and `__proto__` cases are the
+regression guard for the amended validator below — they pass with `isSchemeName`
+and fail with the `v in SCHEMES` form this step originally specified.
 
 - [ ] **Step 2: Run the tests to verify they fail**
 
@@ -635,13 +653,27 @@ In `webapp/server/mcp.ts`, rename the `color` parameter to `scheme` on `add_node
 // refused rather than stored and silently falling back at render.
 export const schemeShape = z
   .string()
-  .refine((v) => v in SCHEMES || /^#[0-9a-fA-F]{6}$/.test(v), {
+  .refine((v) => isSchemeName(v) || isCustomHex(v), {
     message: 'scheme must be a known scheme name or a 6-digit hex like #3b82f6',
   })
   .optional()
 ```
 
-importing `SCHEMES` from `../src/schemes`. Then set `scheme: schemeShape` in the `inputSchema` of `add_node` and `add_note`, and in the patch shape used by `edit_node` and `edit_note` — all four, or the validation exists but never runs. Rename the corresponding fields on the handler arg types and in the handler bodies that assign them.
+importing `isSchemeName` and `isCustomHex` from `../src/schemes`.
+
+> **Amended after Task 1's review.** This step originally read
+> `v in SCHEMES || /^#[0-9a-fA-F]{6}$/.test(v)`. Both halves were wrong.
+> `v in SCHEMES` consults the prototype chain, so the validator accepted
+> `'toString'`, `'constructor'` and `'__proto__'` as scheme names — verified
+> against this repo — and each of those resolves to a Function or
+> `Object.prototype` at render time, giving an entity with no background,
+> border or text. The inline regex also put a second copy of the hex rule
+> outside `src/`, which the spec's own Consequences section warns against:
+> the lookup-or-derive branch must live in exactly one place. Task 1 now
+> exports `isSchemeName` (own keys only) and `isCustomHex` for this step to
+> consume. Do not reintroduce either inline check.
+
+Then set `scheme: schemeShape` in the `inputSchema` of `add_node` and `add_note`, and in the patch shape used by `edit_node` and `edit_note` — all four, or the validation exists but never runs. Rename the corresponding fields on the handler arg types and in the handler bodies that assign them.
 
 **Leave `colorShape` in place** — `add_group` and `edit_group` still use it.
 
