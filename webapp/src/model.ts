@@ -134,10 +134,21 @@ export function getDiagram(model: Model, id: string): Diagram | undefined {
 // signal for clearing an optional field, since JSON.stringify drops `undefined`
 // and a plain spread cannot express a deletion. `null` is consumed here and
 // never stored: model types keep `string | undefined`, not `| null`.
+//
+// An explicit `undefined` value is treated the same as `null` (delete the
+// key), not "leave untouched" — a key simply absent from `patch` is what
+// "leave untouched" means; a key present with value `undefined` is a caller
+// saying "clear this". Server-side callers that aren't JSON round-tripped
+// (MCP handlers in webapp/server/mcp.ts, e.g. `patch.parentId = parentId ??
+// undefined`) rely on exactly this to clear an optional field, since their
+// patch types can't express `null`. Skipping the assignment instead (i.e.
+// only writing on a value check) would silently leave the old value in
+// place for those callers — that regressed server/mcp.test.ts's
+// "editNode un-parents a node when parentId is set to null" when tried.
 export function mergePatch<T extends object>(entity: T, patch: Record<string, unknown>): T {
   const out: Record<string, unknown> = { ...entity } as Record<string, unknown>
   for (const [key, value] of Object.entries(patch)) {
-    if (value === null) delete out[key]
+    if (value === null || value === undefined) delete out[key]
     else out[key] = value
   }
   return out as T
