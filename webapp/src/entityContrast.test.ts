@@ -54,6 +54,10 @@ const WHITE: Rgb = [255, 255, 255]
 const BLACK: Rgb = [0, 0, 0]
 
 describe('tinted entity text contrast', () => {
+  // .node--tinted uses the same BACKGROUND_MIX_PERCENT/TEXT_MIX_PERCENT ratios
+  // against the same WHITE/BLACK surfaces as .note--tinted, so this case covers
+  // the node's primary text (.node__label/.node__field/.node__icon--placeholder
+  // text) over the card tint as well — no separate case needed for that pairing.
   it.each(PALETTE)('reaches WCAG AA contrast (>= 4.5:1) for %s on the note background', (hex) => {
     const base = hexToRgb(hex)
     const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
@@ -79,13 +83,6 @@ describe('tinted entity text contrast', () => {
       expect(ratio).toBeGreaterThanOrEqual(MIN_CONTRAST)
     },
   )
-
-  it.each(PALETTE)('reaches AA for %s on node primary text over the card tint', (hex) => {
-    const base = hexToRgb(hex)
-    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
-    const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
-    expect(contrastRatio(background, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
-  })
 
   it.each(PALETTE)('reaches AA for %s on node secondary text over the card tint', (hex) => {
     const base = hexToRgb(hex)
