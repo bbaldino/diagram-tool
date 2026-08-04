@@ -1,6 +1,7 @@
 import { type Node, type Edge } from '@xyflow/react'
 import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
+import { SchemePicker } from './SchemePicker'
 import { IconInput } from './IconInput'
 import { Switch } from './Switch'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
@@ -207,9 +208,9 @@ export function Inspector({
         </div>
         <div className="insp__hint">Edit the text directly on the note.</div>
         <Field label="Color">
-          <ColorPicker
+          <SchemePicker
             value={(d.scheme as string) ?? NEW_NOTE_SCHEME}
-            diagramColors={diagramSchemes}
+            diagramSchemes={diagramSchemes}
             onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>
@@ -257,9 +258,9 @@ export function Inspector({
           />
         </Field>
         <Field label="Color">
-          <ColorPicker
+          <SchemePicker
             value={(d.scheme as string) ?? NEW_NODE_SCHEME}
-            diagramColors={diagramSchemes}
+            diagramSchemes={diagramSchemes}
             onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>
