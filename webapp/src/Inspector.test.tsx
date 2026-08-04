@@ -138,4 +138,20 @@ describe('Inspector default swatch', () => {
     await user.click(defaultSwatchOf(container))
     expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
   })
+
+  it('clears a coloured edge when Default is clicked', async () => {
+    const user = userEvent.setup()
+    const onEdge = vi.fn()
+    const edge = {
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      data: { rel: 'talks-to', color: '#3b82f6' },
+    } as never
+    const { container } = render(
+      <Inspector {...baseProps} node={null} edge={edge} onEdge={onEdge} onNodeData={() => {}} />,
+    )
+    await user.click(defaultSwatchOf(container))
+    expect(onEdge).toHaveBeenCalledWith({ color: undefined })
+  })
 })

@@ -818,7 +818,11 @@ function Flow({
           // stash dir (and, if the patch sets one, the color override) in data so
           // restyleEdge recomputes stroke/arrowheads/label from them.
           let next: Edge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
-          if (patch.color !== undefined) {
+          // Use `'color' in patch`, NOT `patch.color !== undefined` — the Default
+          // swatch clears an override by sending `{ color: undefined }`, and a
+          // value check silently drops that clear (narrowing this to a value
+          // check is exactly what broke the Default swatch for edges before).
+          if ('color' in patch) {
             next = { ...next, data: { ...next.data, color: patch.color } }
           }
           return restyleEdge(next, type, inferred)
