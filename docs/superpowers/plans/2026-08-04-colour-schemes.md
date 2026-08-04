@@ -565,12 +565,31 @@ scheme-independent, as before."
 **Files:**
 - Modify: `webapp/src/ColorPicker.tsx`
 - Modify: `webapp/src/Inspector.tsx` (note and service-node panels)
+- Modify: `webapp/src/App.tsx` (the `diagramColors` memo — see below)
 - Modify: `webapp/server/mcp.ts`
 - Test: `webapp/src/ColorPicker.test.tsx`, `webapp/src/Inspector.test.tsx`, `webapp/server/mcp.test.ts`
 
 **Interfaces:**
-- Consumes: `SCHEMES`, `resolveScheme` from Task 1; `Node.scheme` / `Note.scheme` from Task 2.
+- Consumes: `SCHEMES`, `resolveScheme`, `isSchemeName`, `isCustomHex` from Task 1; `Node.scheme` / `Note.scheme` from Task 2.
 - Produces: the picker lists schemes by name; MCP tools take `scheme` instead of `color`.
+
+> **Added after Task 2's review.** `App.tsx`'s `diagramColors` memo reads
+> `(n.data as any)?.color` for `note` and `service` nodes. Task 2 renamed that
+> field to `scheme`, and the `as any` cast means `tsc` cannot see the break — so
+> the memo now yields `undefined` for every node and note, and the picker's "In
+> this diagram" section silently loses them. No other task touches this file, so
+> without this it ships broken.
+>
+> It is deliberately NOT a Task 2 fix, because the semantics change here rather
+> than just the field name: `diagramColors` currently produces a list of hexes
+> that the picker renders directly as CSS colours, but a scheme value may now be
+> a NAME like `paper`. Feeding names into that memo unchanged would render
+> invalid swatch backgrounds. Rename the read to `scheme` **and** make the picker
+> handle both shapes — resolve a name through `SCHEMES` for display, keep a hex
+> as-is — using `isSchemeName` / `isCustomHex` rather than a new inline check.
+>
+> The edge branch of the same memo still reads `.color` and is correct: edges are
+> out of scope and keep `Edge.color`. Leave it.
 
 - [ ] **Step 1: Write the failing tests**
 
