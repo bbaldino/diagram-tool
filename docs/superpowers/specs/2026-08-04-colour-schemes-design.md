@@ -113,9 +113,19 @@ old name would actively mislead an agent into sending only hexes.
 ### Migration
 
 On load, any node without a value gets `paper` and any note gets `sticky`,
-written back on the next save. In the current live data that is 82 nodes and 8
-notes; the two entities already carrying hexes keep them. Additive and
-idempotent — a second run finds nothing to do.
+written back on the next save. Additive and idempotent — a second run finds
+nothing to do.
+
+Counts, measured against `http://diagram.home/api/model` on 2026-08-04: **83
+nodes and 9 notes, and not one of them carries a colour.** An earlier draft of
+this section said 82 and 8 with "the two entities already carrying hexes keep
+them" — that was wrong, and the local `webapp/model.json` (87 nodes, 5 notes,
+also none coloured) is a different, stale dataset that should not be used to
+check migration counts.
+
+The consequence matters for testing: the "leave an existing value alone" branch
+is not exercised by any real data, so it is covered only by unit-test fixtures.
+Verifying it in-app requires deliberately colouring an entity first.
 
 After migration, absence does not occur. The `--tinted` / `--accented` modifier
 classes disappear, along with the "renders byte-identically when absent"
