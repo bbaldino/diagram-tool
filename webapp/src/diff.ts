@@ -29,7 +29,20 @@ function diffById<T extends { id: string }>(
       continue
     }
     if (changed(before, item)) {
-      const { id, ...patch } = item as T & { id: string }
+      const { id, ...rest } = item as T & { id: string }
+      const patch = rest as Record<string, unknown>
+      // A key that `before` had and the patch no longer carries a value for is
+      // a deliberate clear. Emit null so it survives JSON; `undefined` would be
+      // dropped and the old value would silently persist.
+      //
+      // The test is `patch[key] === undefined`, NOT `!(key in patch)`. Callers
+      // routinely build entities with explicit-undefined keys — e.g.
+      // nodesToDiagramParts writes `color: d.color`, so an uncoloured note has
+      // the key present with value undefined. `'color' in patch` is TRUE there,
+      // so an `in` check would skip exactly the case this exists to handle.
+      for (const key of Object.keys(before as object)) {
+        if (key !== 'id' && patch[key] === undefined) patch[key] = null
+      }
       ops.push(updateOp(id, patch as Partial<Omit<T, 'id'>>))
     }
   }

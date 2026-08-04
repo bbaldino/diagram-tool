@@ -338,3 +338,67 @@ describe('flows data layer', () => {
     expect(diagramContent(d as any).flows).toEqual([flow])
   })
 })
+
+describe('clearing an optional field', () => {
+  const model = (color?: string) =>
+    ({
+      version: 2,
+      templates: [],
+      diagrams: [
+        {
+          id: 'd',
+          name: 'D',
+          title: 'D',
+          type: 'canvas',
+          groups: [],
+          notes: [],
+          edges: [],
+          flows: [],
+          nodes: [
+            {
+              id: 'n1',
+              label: 'Plex',
+              fields: [],
+              position: { x: 0, y: 0 },
+              ...(color ? { color } : {}),
+            },
+          ],
+        },
+      ],
+    }) as never
+
+  it('emits null for a field that was present and is now absent', () => {
+    const ops = diffToOps(model('#3b82f6'), model())
+    const patch = (ops[0] as never as { patch: Record<string, unknown> }).patch
+    expect(patch.color).toBeNull()
+  })
+
+  it('survives JSON serialisation, which undefined does not', () => {
+    const ops = diffToOps(model('#3b82f6'), model())
+    const wire = JSON.parse(JSON.stringify(ops))
+    expect((wire[0] as { patch: Record<string, unknown> }).patch).toHaveProperty('color', null)
+  })
+
+  it('round-trips to a genuinely absent field, not null and not the old value', () => {
+    const before = model('#3b82f6')
+    const ops = JSON.parse(JSON.stringify(diffToOps(before, model())))
+    const after = applyOps(before, ops) as never as {
+      diagrams: { nodes: { color?: string | null }[] }[]
+    }
+    const node = after.diagrams[0].nodes[0]
+    expect('color' in node).toBe(false)
+    expect(node.color).toBeUndefined()
+  })
+
+  it('leaves an existing colour untouched when the patch does not mention it', () => {
+    const before = model('#3b82f6')
+    const renamed = JSON.parse(JSON.stringify(before))
+    renamed.diagrams[0].nodes[0].label = 'Renamed'
+    const ops = JSON.parse(JSON.stringify(diffToOps(before, renamed)))
+    const after = applyOps(before, ops) as never as {
+      diagrams: { nodes: { label: string; color?: string }[] }[]
+    }
+    expect(after.diagrams[0].nodes[0].color).toBe('#3b82f6')
+    expect(after.diagrams[0].nodes[0].label).toBe('Renamed')
+  })
+})

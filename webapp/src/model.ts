@@ -130,6 +130,19 @@ export function getDiagram(model: Model, id: string): Diagram | undefined {
   return model.diagrams.find((d) => d.id === id)
 }
 
+// Apply an update patch. A `null` value means "remove this key" — the wire-level
+// signal for clearing an optional field, since JSON.stringify drops `undefined`
+// and a plain spread cannot express a deletion. `null` is consumed here and
+// never stored: model types keep `string | undefined`, not `| null`.
+export function mergePatch<T extends object>(entity: T, patch: Record<string, unknown>): T {
+  const out: Record<string, unknown> = { ...entity } as Record<string, unknown>
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === null) delete out[key]
+    else out[key] = value
+  }
+  return out as T
+}
+
 function mapDiagram(model: Model, id: string, fn: (d: Diagram) => Diagram): Model {
   return { ...model, diagrams: model.diagrams.map((d) => (d.id === id ? fn(d) : d)) }
 }
@@ -148,7 +161,9 @@ export function updateNode(
 ): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
-    nodes: d.nodes.map((n) => (n.id === id ? { ...n, ...patch, id: n.id } : n)),
+    nodes: d.nodes.map((n) =>
+      n.id === id ? { ...mergePatch(n, patch as Record<string, unknown>), id: n.id } : n,
+    ),
   }))
 }
 
@@ -244,7 +259,9 @@ export function updateNote(
 ): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
-    notes: d.notes.map((n) => (n.id === id ? { ...n, ...patch, id: n.id } : n)),
+    notes: d.notes.map((n) =>
+      n.id === id ? { ...mergePatch(n, patch as Record<string, unknown>), id: n.id } : n,
+    ),
   }))
 }
 
@@ -266,7 +283,9 @@ export function updateEdge(
 ): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
-    edges: d.edges.map((e) => (e.id === id ? { ...e, ...patch, id: e.id } : e)),
+    edges: d.edges.map((e) =>
+      e.id === id ? { ...mergePatch(e, patch as Record<string, unknown>), id: e.id } : e,
+    ),
   }))
 }
 
