@@ -17,6 +17,7 @@ export const PALETTE = [
   '#ef4444', // red
   '#f97316', // orange
   '#f59e0b', // amber
+  '#eab308', // yellow
   '#10b981', // emerald
   '#14b8a6', // teal
   '#3b82f6', // blue
