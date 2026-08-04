@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.5.0](https://github.com/bbaldino/diagram-tool/compare/v0.4.0...v0.5.0) (2026-08-04)
+
+
+### Features
+
+* **color:** add yellow to the colour palette ([294587e](https://github.com/bbaldino/diagram-tool/commit/294587e2f14f19af2f21c98f35a574c6e3c47a35))
+* **color:** tint the whole service node instead of an accent bar ([d951aa0](https://github.com/bbaldino/diagram-tool/commit/d951aa08582502b4491a4af986b19d707e4f7c4b))
+
+
+### Bug Fixes
+
+* **color:** correct the icon-placeholder contrast guard's compositing model ([991a0af](https://github.com/bbaldino/diagram-tool/commit/991a0af0909430247226ebf75ada604dda7bd800))
+* **color:** stop the uncoloured-note picker from pre-selecting yellow ([10c1e43](https://github.com/bbaldino/diagram-tool/commit/10c1e431f528d2b7a923eca80b2dc9a77562421b))
+
 ## [0.4.0](https://github.com/bbaldino/diagram-tool/compare/v0.3.0...v0.4.0) (2026-08-03)
 
 
