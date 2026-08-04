@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
 import { ServiceNode } from './nodes'
+import { SCHEMES, secondaryText, accentFill } from './schemes'
 
 afterEach(cleanup)
 
@@ -23,6 +24,8 @@ describe('ServiceNode colour', () => {
     expect(card.style.getPropertyValue('--scheme-bg')).toBe('#ffffff')
     expect(card.style.getPropertyValue('--scheme-border')).toBe('#cbd5e1')
     expect(card.style.getPropertyValue('--scheme-text')).toBe('#1f2937')
+    expect(card.style.getPropertyValue('--scheme-text-2')).toBe(secondaryText(SCHEMES.paper))
+    expect(card.style.getPropertyValue('--scheme-accent')).toBe(accentFill(SCHEMES.paper))
   })
 
   it('renders a named scheme', () => {

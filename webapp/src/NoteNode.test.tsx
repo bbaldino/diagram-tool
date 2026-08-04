@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
 import { useState } from 'react'
 import { NoteNode } from './nodes'
+import { SCHEMES, secondaryText, accentFill } from './schemes'
 
 afterEach(cleanup)
 
@@ -207,6 +208,8 @@ describe('NoteNode colour', () => {
     )
     const note = container.querySelector('.note') as HTMLElement
     expect(note.style.getPropertyValue('--scheme-bg')).toBe('#fef9c3')
+    expect(note.style.getPropertyValue('--scheme-text-2')).toBe(secondaryText(SCHEMES.sticky))
+    expect(note.style.getPropertyValue('--scheme-accent')).toBe(accentFill(SCHEMES.sticky))
   })
 
   it('renders a named scheme', () => {

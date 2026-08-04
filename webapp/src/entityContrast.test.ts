@@ -44,6 +44,14 @@ describe('scheme contrast', () => {
   it('accentFill mixes the border toward the background', () => {
     expect(accentFill(SCHEMES.paper)).toBe('#edf0f5')
   })
+
+  // Not asserted here: secondaryText against accentFill. It fails for 9 of the
+  // 13 schemes (4.13–4.49) — correctly, since secondaryText never renders on
+  // an accent background. --scheme-text-2 is used only by .node__sub and
+  // .node__field-k, both of which sit on --scheme-bg, not --scheme-accent.
+  it.each(entries)('%s: primary text clears AA on the accent fill', (_name, s) => {
+    expect(contrast(s.text, accentFill(s))).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
 })
 
 describe('resolveScheme', () => {
