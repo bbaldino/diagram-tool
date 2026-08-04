@@ -196,28 +196,49 @@ describe('NoteNode selected vs rendered', () => {
 })
 
 describe('NoteNode colour', () => {
-  const coloured = (text: string, color?: string): NodeProps =>
-    ({ id: 'n1', data: { text, color }, selected: false }) as unknown as NodeProps
+  const coloured = (text: string, scheme?: string): NodeProps =>
+    ({ id: 'n1', data: { text, scheme }, selected: false }) as unknown as NodeProps
 
-  it('applies the tint modifier and custom property when a colour is set', () => {
+  it('renders the starting scheme when the entity has that scheme', () => {
     const { container } = render(
       <ReactFlowProvider>
-        <NoteNode {...coloured('hi', '#3b82f6')} />
+        <NoteNode {...coloured('hi', 'sticky')} />
       </ReactFlowProvider>,
     )
     const note = container.querySelector('.note') as HTMLElement
-    expect(note.classList.contains('note--tinted')).toBe(true)
-    expect(note.style.getPropertyValue('--note-color')).toBe('#3b82f6')
+    expect(note.style.getPropertyValue('--scheme-bg')).toBe('#fef9c3')
   })
 
-  it('renders exactly as before when no colour is set', () => {
+  it('renders a named scheme', () => {
     const { container } = render(
       <ReactFlowProvider>
-        <NoteNode {...coloured('hi')} />
+        <NoteNode {...coloured('hi', 'blue')} />
+      </ReactFlowProvider>,
+    )
+    expect(
+      (container.querySelector('.note') as HTMLElement).style.getPropertyValue('--scheme-bg'),
+    ).toBe('#e2ecfe')
+  })
+
+  it('has no tinted/accented modifier class — every note renders one way', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...coloured('hi', 'blue')} />
       </ReactFlowProvider>,
     )
     const note = container.querySelector('.note') as HTMLElement
     expect(note.classList.contains('note--tinted')).toBe(false)
-    expect(note.style.getPropertyValue('--note-color')).toBe('')
+    expect(note.classList.contains('note--accented')).toBe(false)
+  })
+
+  it('falls back to the starting scheme for an unknown value rather than rendering unstyled', () => {
+    const { container } = render(
+      <ReactFlowProvider>
+        <NoteNode {...coloured('hi', 'nonsense')} />
+      </ReactFlowProvider>,
+    )
+    expect(
+      (container.querySelector('.note') as HTMLElement).style.getPropertyValue('--scheme-bg'),
+    ).toBe('#fef9c3')
   })
 })

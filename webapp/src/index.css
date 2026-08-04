@@ -36,41 +36,14 @@ body {
 /* ---------- Service node ---------- */
 .node {
   width: 180px;
-  border: 1.5px solid #cbd5e1;
+  border: 1.5px solid var(--scheme-border);
   border-radius: 12px;
-  background: #ffffff;
+  background: var(--scheme-bg);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
   font-size: 12px;
 }
 .node.selected {
   box-shadow: 0 0 0 2px #6366f1;
-}
-/* Tinted service node. Applied ONLY when a colour is set, so an uncoloured node
-   keeps the literal defaults above byte-for-byte. Same ratios as .note--tinted.
-   The status dot, icon images, the selection ring, and .node__flow-badge (the
-   step-number badge shown during flow playback) are deliberately NOT derived —
-   status must stay readable as status, not decoration, and the flow badge is
-   transient playback chrome, not part of the node's own appearance. */
-.node--tinted {
-  background: color-mix(in srgb, var(--node-color) 15%, white);
-  border-color: color-mix(in srgb, var(--node-color) 45%, white);
-}
-.node--tinted .node__label,
-.node--tinted .node__field,
-.node--tinted .node__icon--placeholder,
-.node--tinted .node__note {
-  color: color-mix(in srgb, var(--node-color) 55%, black);
-}
-.node--tinted .node__sub,
-.node--tinted .node__field-k {
-  color: color-mix(in srgb, var(--node-color) 45%, black);
-}
-.node--tinted .node__icon--placeholder {
-  background: color-mix(in srgb, var(--node-color) 25%, white);
-}
-.node--tinted .node__note {
-  background: color-mix(in srgb, var(--node-color) 18%, transparent);
-  border-top-color: color-mix(in srgb, var(--node-color) 35%, transparent);
 }
 /* Four-sided connection points: hidden until the node is hovered or selected,
    so nodes don't look like pincushions. Still interactive while hidden. */
@@ -107,8 +80,8 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  background: #eef2f7;
-  color: #64748b;
+  background: var(--scheme-accent);
+  color: var(--scheme-text);
   font-weight: 700;
   font-size: 11px;
 }
@@ -118,9 +91,10 @@ body {
 .node__label {
   font-weight: 600;
   line-height: 1.15;
+  color: var(--scheme-text);
 }
 .node__sub {
-  color: #64748b;
+  color: var(--scheme-text-2);
   font-size: 10.5px;
   line-height: 1.15;
 }
@@ -148,24 +122,24 @@ body {
 }
 .node__field {
   font-size: 10px;
-  color: #475569;
+  color: var(--scheme-text);
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .node__field-k {
-  color: #94a3b8;
+  color: var(--scheme-text-2);
   margin-right: 4px;
 }
 /* Per-placement inline note — shown inside the box, this diagram only */
 .node__note {
-  border-top: 1px solid #fde68a;
-  background: #fffbeb;
+  border-top: 1px solid var(--scheme-border);
+  background: var(--scheme-accent);
   padding: 5px 10px 6px;
   font-size: 11px;
   line-height: 1.35;
-  color: #92610a;
+  color: var(--scheme-text);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   border-radius: 0 0 11px 11px;
@@ -177,8 +151,8 @@ body {
   min-height: 90px;
   width: 100%;
   height: 100%;
-  background: #fef9c3;
-  border: 1px solid #fde047;
+  background: var(--scheme-bg);
+  border: 1px solid var(--scheme-border);
   border-radius: 8px;
   padding: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
@@ -192,36 +166,7 @@ body {
   background: transparent;
   font: inherit;
   font-size: 12px;
-  color: #713f12;
-}
-/* Tinted note. Applied ONLY when a colour is set, so an uncoloured note keeps
-   the literal defaults above byte-for-byte. Derivations mirror the existing
-   --group-color approach. */
-.note--tinted {
-  background: color-mix(in srgb, var(--note-color) 15%, white);
-  border-color: color-mix(in srgb, var(--note-color) 45%, white);
-}
-.note--tinted textarea,
-.note--tinted .note__md,
-.note--tinted .note__placeholder {
-  /* 55% (vs. background's 15%) so every PALETTE colour, including pale
-     amber, clears WCAG AA (4.5:1) against BOTH the tinted background and the
-     tinted code/pre background (18% over that) — see noteContrast.test.ts. */
-  color: color-mix(in srgb, var(--note-color) 55%, black);
-}
-.note--tinted .note__md code,
-.note--tinted .note__md pre {
-  background: color-mix(in srgb, var(--note-color) 18%, transparent);
-}
-.note--tinted .note__md blockquote {
-  border-left-color: color-mix(in srgb, var(--note-color) 40%, transparent);
-}
-.note--tinted .note__md th,
-.note--tinted .note__md td {
-  border-color: color-mix(in srgb, var(--note-color) 35%, transparent);
-}
-.note--tinted .note__md hr {
-  border-top-color: color-mix(in srgb, var(--note-color) 35%, transparent);
+  color: var(--scheme-text);
 }
 /* Rendered (deselected) note. Metrics deliberately match .note textarea so
    text does not shift when selection flips between the two. */
@@ -231,7 +176,7 @@ body {
   height: 100%;
   overflow: auto;
   font-size: 12px;
-  color: #713f12;
+  color: var(--scheme-text);
 }
 .note__placeholder {
   opacity: 0.55;
@@ -283,7 +228,7 @@ body {
 .note__md code {
   padding: 0 3px;
   border-radius: 3px;
-  background: rgba(113, 63, 18, 0.1);
+  background: var(--scheme-accent);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
 }
@@ -292,7 +237,7 @@ body {
   padding: 6px;
   overflow-x: auto;
   border-radius: 4px;
-  background: rgba(113, 63, 18, 0.1);
+  background: var(--scheme-accent);
 }
 .note__md pre code {
   padding: 0;
@@ -301,7 +246,7 @@ body {
 .note__md blockquote {
   margin: 0 0 6px;
   padding-left: 8px;
-  border-left: 3px solid rgba(113, 63, 18, 0.3);
+  border-left: 3px solid var(--scheme-border);
 }
 .note__md a {
   color: #4f46e5;
@@ -314,12 +259,12 @@ body {
 .note__md th,
 .note__md td {
   padding: 2px 6px;
-  border: 1px solid rgba(113, 63, 18, 0.25);
+  border: 1px solid var(--scheme-border);
 }
 .note__md hr {
   margin: 6px 0;
   border: 0;
-  border-top: 1px solid rgba(113, 63, 18, 0.25);
+  border-top: 1px solid var(--scheme-border);
 }
 
 /* ---------- Group node ---------- */

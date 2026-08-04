@@ -2,6 +2,13 @@ import { createContext, type CSSProperties, useContext, useEffect, useRef, useSt
 import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
 import { NoteMarkdown } from './NoteMarkdown'
+import {
+  resolveScheme,
+  secondaryText,
+  accentFill,
+  NEW_NODE_SCHEME,
+  NEW_NOTE_SCHEME,
+} from './schemes'
 
 // Global toggle for the browser's native spellcheck on note textareas.
 // Provided by App from a persisted view preference; default off = clean viewing.
@@ -39,11 +46,16 @@ export function ServiceNode({ data, selected }: NodeProps) {
   const [iconBroken, setIconBroken] = useState(false)
   useEffect(() => setIconBroken(false), [d.icon])
   const iconUrl = d.icon && !iconBroken ? `${ICON_BASE}/${d.icon}.svg` : null
+  const scheme = resolveScheme((d.scheme as string) ?? NEW_NODE_SCHEME, NEW_NODE_SCHEME)
+  const schemeVars = {
+    ['--scheme-bg']: scheme.background,
+    ['--scheme-border']: scheme.border,
+    ['--scheme-text']: scheme.text,
+    ['--scheme-text-2']: secondaryText(scheme),
+    ['--scheme-accent']: accentFill(scheme),
+  } as CSSProperties
   return (
-    <div
-      className={`node ${selected ? 'selected' : ''}${d.color ? ' node--tinted' : ''}`}
-      style={d.color ? ({ ['--node-color' as string]: d.color } as CSSProperties) : undefined}
-    >
+    <div className={`node ${selected ? 'selected' : ''}`} style={schemeVars}>
       <SideHandles />
       <div className="node__row">
         {iconUrl ? (
@@ -106,11 +118,17 @@ export function NoteNode({ id, data, selected }: NodeProps) {
     if (!selected) editing.current = false
   }, [selected])
 
+  const scheme = resolveScheme((d.scheme as string) ?? NEW_NOTE_SCHEME, NEW_NOTE_SCHEME)
+  const schemeVars = {
+    ['--scheme-bg']: scheme.background,
+    ['--scheme-border']: scheme.border,
+    ['--scheme-text']: scheme.text,
+    ['--scheme-text-2']: secondaryText(scheme),
+    ['--scheme-accent']: accentFill(scheme),
+  } as CSSProperties
+
   return (
-    <div
-      className={`note${d.color ? ' note--tinted' : ''}`}
-      style={d.color ? ({ ['--note-color' as string]: d.color } as CSSProperties) : undefined}
-    >
+    <div className="note" style={schemeVars}>
       <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
       <SideHandles />
       {selected ? (
