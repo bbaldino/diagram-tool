@@ -37,8 +37,8 @@ function diffById<T extends { id: string }>(
       //
       // The test is `patch[key] === undefined`, NOT `!(key in patch)`. Callers
       // routinely build entities with explicit-undefined keys — e.g.
-      // nodesToDiagramParts writes `color: d.color`, so an uncoloured note has
-      // the key present with value undefined. `'color' in patch` is TRUE there,
+      // nodesToDiagramParts writes `scheme: d.scheme`, so a schemeless note has
+      // the key present with value undefined. `'scheme' in patch` is TRUE there,
       // so an `in` check would skip exactly the case this exists to handle.
       for (const key of Object.keys(before as object)) {
         if (key !== 'id' && patch[key] === undefined) patch[key] = null

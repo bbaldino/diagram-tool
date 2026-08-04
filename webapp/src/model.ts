@@ -132,15 +132,20 @@ export function getDiagram(model: Model, id: string): Diagram | undefined {
 }
 
 // Give every node and note a scheme. The field is optional in the type so data
-// written before schemes existed still loads, but nothing reaches the renderer
-// without one — so there is no absent case to handle downstream. Idempotent.
+// written before schemes existed still loads. This back-fill covers everything
+// loaded from disk; entities created during a session (new nodes/notes added
+// via the UI or MCP, or an imported file) may still lack a scheme until the
+// next load, so the render path still needs its own fallback. Idempotent, and
+// total over malformed input — a diagram missing `nodes`/`notes` (or a model
+// missing `diagrams`) is treated as empty rather than throwing, so a single
+// corrupt diagram can't blow away the whole store on load.
 export function backfillSchemes(model: Model): Model {
   return {
     ...model,
-    diagrams: model.diagrams.map((d) => ({
+    diagrams: (model.diagrams ?? []).map((d) => ({
       ...d,
-      nodes: d.nodes.map((n) => (n.scheme ? n : { ...n, scheme: NEW_NODE_SCHEME })),
-      notes: d.notes.map((t) => (t.scheme ? t : { ...t, scheme: NEW_NOTE_SCHEME })),
+      nodes: (d.nodes ?? []).map((n) => (n.scheme ? n : { ...n, scheme: NEW_NODE_SCHEME })),
+      notes: (d.notes ?? []).map((t) => (t.scheme ? t : { ...t, scheme: NEW_NOTE_SCHEME })),
     })),
   }
 }

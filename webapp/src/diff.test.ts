@@ -340,7 +340,7 @@ describe('flows data layer', () => {
 })
 
 describe('clearing an optional field', () => {
-  const model = (color?: string) =>
+  const model = (scheme?: string) =>
     ({
       version: 2,
       templates: [],
@@ -360,7 +360,7 @@ describe('clearing an optional field', () => {
               label: 'Plex',
               fields: [],
               position: { x: 0, y: 0 },
-              ...(color ? { color } : {}),
+              ...(scheme ? { scheme } : {}),
             },
           ],
         },
@@ -370,24 +370,24 @@ describe('clearing an optional field', () => {
   it('emits null for a field that was present and is now absent', () => {
     const ops = diffToOps(model('#3b82f6'), model())
     const patch = (ops[0] as never as { patch: Record<string, unknown> }).patch
-    expect(patch.color).toBeNull()
+    expect(patch.scheme).toBeNull()
   })
 
   it('survives JSON serialisation, which undefined does not', () => {
     const ops = diffToOps(model('#3b82f6'), model())
     const wire = JSON.parse(JSON.stringify(ops))
-    expect((wire[0] as { patch: Record<string, unknown> }).patch).toHaveProperty('color', null)
+    expect((wire[0] as { patch: Record<string, unknown> }).patch).toHaveProperty('scheme', null)
   })
 
   it('round-trips to a genuinely absent field, not null and not the old value', () => {
     const before = model('#3b82f6')
     const ops = JSON.parse(JSON.stringify(diffToOps(before, model())))
     const after = applyOps(before, ops) as never as {
-      diagrams: { nodes: { color?: string | null }[] }[]
+      diagrams: { nodes: { scheme?: string | null }[] }[]
     }
     const node = after.diagrams[0].nodes[0]
-    expect('color' in node).toBe(false)
-    expect(node.color).toBeUndefined()
+    expect('scheme' in node).toBe(false)
+    expect(node.scheme).toBeUndefined()
   })
 
   it('leaves an existing colour untouched when the patch does not mention it', () => {
@@ -396,16 +396,16 @@ describe('clearing an optional field', () => {
     renamed.diagrams[0].nodes[0].label = 'Renamed'
     const ops = JSON.parse(JSON.stringify(diffToOps(before, renamed)))
     const after = applyOps(before, ops) as never as {
-      diagrams: { nodes: { label: string; color?: string }[] }[]
+      diagrams: { nodes: { label: string; scheme?: string }[] }[]
     }
-    expect(after.diagrams[0].nodes[0].color).toBe('#3b82f6')
+    expect(after.diagrams[0].nodes[0].scheme).toBe('#3b82f6')
     expect(after.diagrams[0].nodes[0].label).toBe('Renamed')
   })
 })
 
 // Group.color is required and can never be cleared, but Group.parentId is
 // optional (dragging a nested group out to top level clears it). This
-// mirrors the Node.color suite above but exercises updateGroup, which was
+// mirrors the Node.scheme suite above but exercises updateGroup, which was
 // left on a plain spread on the (wrong) theory that groups have nothing
 // clearable.
 describe('clearing an optional field on a group', () => {

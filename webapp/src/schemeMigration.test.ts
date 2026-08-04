@@ -62,4 +62,21 @@ describe('backfillSchemes', () => {
     const once = backfillSchemes(model())
     expect(backfillSchemes(once)).toEqual(once)
   })
+
+  it('survives a diagram missing its collections rather than throwing', () => {
+    const raw = {
+      version: 2,
+      templates: [],
+      diagrams: [{ id: 'd1', name: 'D', title: 'D', type: 'canvas', groups: [], edges: [] }],
+    } as never
+    expect(() => backfillSchemes(raw)).not.toThrow()
+    const d = (backfillSchemes(raw) as { diagrams: { nodes: unknown[]; notes: unknown[] }[] })
+      .diagrams[0]
+    expect(d.nodes).toEqual([])
+    expect(d.notes).toEqual([])
+  })
+
+  it('tolerates a model with no diagrams key', () => {
+    expect(() => backfillSchemes({ version: 2, templates: [] } as never)).not.toThrow()
+  })
 })
