@@ -818,10 +818,9 @@ function Flow({
           // stash dir (and, if the patch sets one, the color override) in data so
           // restyleEdge recomputes stroke/arrowheads/label from them.
           let next: Edge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
-          // Use `'color' in patch`, NOT `patch.color !== undefined` — the Default
-          // swatch clears an override by sending `{ color: undefined }`, and a
-          // value check silently drops that clear (narrowing this to a value
-          // check is exactly what broke the Default swatch for edges before).
+          // Use `'color' in patch`, NOT `patch.color !== undefined` — a caller
+          // clearing the override sends `{ color: undefined }`, and a value
+          // check would silently drop that clear.
           if ('color' in patch) {
             next = { ...next, data: { ...next.data, color: patch.color } }
           }
@@ -1512,8 +1511,9 @@ function Flow({
     const excluded = new Set([selectedNode.id, ...descendantsOf(selectedNode.id, nodes)])
     return groupList.filter((g) => !excluded.has(g.id))
   }, [groupList, selectedNode, nodes])
-  // Distinct colors already used in this diagram (edge stroke + group/note/service
-  // color), for the "In this diagram" quick-pick section of the color pickers.
+  // Distinct values already used in this diagram — edge stroke + group color
+  // (plain hex), plus note/service scheme (a scheme name or a custom hex) —
+  // for the "In this diagram" quick-pick section of the color pickers.
   const diagramColors = useMemo(() => {
     const set = new Set<string>()
     for (const e of edges) {
@@ -1524,9 +1524,11 @@ function Flow({
     }
     for (const n of nodes) {
       const c =
-        n.type === 'group' || n.type === 'note' || n.type === 'service'
+        n.type === 'group'
           ? ((n.data as any)?.color as string | undefined)
-          : undefined
+          : n.type === 'note' || n.type === 'service'
+            ? ((n.data as any)?.scheme as string | undefined)
+            : undefined
       if (c) set.add(c.toLowerCase())
     }
     return [...set]

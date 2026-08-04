@@ -1,88 +1,61 @@
 // A compact color picker: quick-pick swatches for colors already used in the
-// diagram and a curated palette, plus a native color input as the escape hatch
-// for any custom color. Used by the edge Inspector; reusable elsewhere.
+// diagram and the scheme palette, plus a native color input as the escape
+// hatch for any custom color. Used by the edge/group Inspector panels (plain
+// hex) and the note/service-node panels (a scheme name or a custom hex).
+import { SCHEMES, isSchemeName, type SchemeName } from './schemes'
 
 interface Props {
-  value: string // current effective color (hex)
-  diagramColors: string[] // distinct colors already present in the diagram
-  onChange: (hex: string) => void
-  // How this entity kind looks with no colour set, drawn on the Default swatch.
-  defaultSwatch: { background: string; border: string }
-  isDefault: boolean // true when the entity has no colour of its own
-  onSelectDefault: () => void
+  value: string // current effective value: a scheme name or a hex
+  diagramColors: string[] // distinct values already present in the diagram
+  onChange: (value: string) => void
 }
 
-// A modern, cohesive palette — distinct but harmonious (Tailwind 500-ish tones).
-export const PALETTE = [
-  '#64748b', // slate
-  '#ef4444', // red
-  '#f97316', // orange
-  '#f59e0b', // amber
-  '#eab308', // yellow
-  '#10b981', // emerald
-  '#14b8a6', // teal
-  '#3b82f6', // blue
-  '#6366f1', // indigo
-  '#8b5cf6', // violet
-  '#ec4899', // pink
-]
+// A scheme name renders from its table entry; anything else (a custom hex, or
+// a raw color like Edge.color/Group.color) renders as itself.
+function swatchStyle(value: string): { background: string; borderColor?: string } {
+  if (isSchemeName(value)) {
+    const s = SCHEMES[value]
+    return { background: s.background, borderColor: s.border }
+  }
+  return { background: value }
+}
 
 function Swatch({
-  color,
+  value,
+  title,
   active,
   onClick,
+  variant,
 }: {
-  color: string
+  value: string
+  title: string
   active: boolean
   onClick: () => void
+  variant?: string
 }) {
   return (
     <button
       type="button"
-      className={`swatch${active ? ' swatch--active' : ''}`}
-      style={{ background: color }}
-      title={color}
+      className={`swatch${variant ? ` swatch--${variant}` : ''}${active ? ' swatch--active' : ''}`}
+      style={swatchStyle(value)}
+      title={title}
       onClick={onClick}
     />
   )
 }
 
-export function ColorPicker({
-  value,
-  diagramColors,
-  onChange,
-  defaultSwatch,
-  isDefault,
-  onSelectDefault,
-}: Props) {
+export function ColorPicker({ value, diagramColors, onChange }: Props) {
   const cur = value.toLowerCase()
   const inDiagram = diagramColors.map((c) => c.toLowerCase())
 
   return (
     <div className="colorpick">
-      <div className="colorpick__section">
-        <div className="colorpick__label">Default</div>
-        <div className="colorpick__swatches">
-          <button
-            type="button"
-            className={`swatch swatch--default${isDefault ? ' swatch--active' : ''}`}
-            style={{ background: defaultSwatch.background, borderColor: defaultSwatch.border }}
-            title="Default"
-            onClick={onSelectDefault}
-          />
-        </div>
-      </div>
       {inDiagram.length > 0 && (
         <div className="colorpick__section">
           <div className="colorpick__label">In this diagram</div>
           <div className="colorpick__swatches">
             {inDiagram.map((c) => (
-              <Swatch
-                key={c}
-                color={c}
-                active={!isDefault && c === cur}
-                onClick={() => onChange(c)}
-              />
+              <Swatch key={c} value={c} title={c} active={c === cur} onClick={() => onChange(c)} />
             ))}
           </div>
         </div>
@@ -90,12 +63,14 @@ export function ColorPicker({
       <div className="colorpick__section">
         <div className="colorpick__label">Palette</div>
         <div className="colorpick__swatches">
-          {PALETTE.map((c) => (
+          {(Object.keys(SCHEMES) as SchemeName[]).map((name) => (
             <Swatch
-              key={c}
-              color={c}
-              active={!isDefault && c.toLowerCase() === cur}
-              onClick={() => onChange(c)}
+              key={name}
+              value={name}
+              title={name}
+              active={name === value}
+              onClick={() => onChange(name)}
+              variant="scheme"
             />
           ))}
         </div>
@@ -103,7 +78,7 @@ export function ColorPicker({
       <div className="colorpick__custom">
         <input
           type="color"
-          value={value}
+          value={isSchemeName(value) ? SCHEMES[value].border : value}
           onChange={(e) => onChange(e.target.value)}
           title="Custom color"
         />

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { handlers, createMcpServer, edgeAttrsShape, wrap } from './mcp'
+import { handlers, createMcpServer, edgeAttrsShape, schemeShape, wrap } from './mcp'
 import { createStore, type Store } from './store'
 import { getDiagram } from '../src/model'
 
@@ -325,47 +325,35 @@ describe('handlers', () => {
       expect('type' in edgeAttrsShape).toBe(false)
     })
 
-    // Asserts against the REAL registered tool schemas (via the MCP server's
-    // internal _registeredTools, same introspection as the 'createMcpServer'
-    // tests below), not a local reimplementation of the regex. A local
-    // z.string().regex(...) copy would still pass even if `colorShape` were
-    // swapped out of all four `registerTool` calls (e.g. replaced by a bare
-    // z.string().optional()) — this test would not.
-    it('add_note, edit_note, add_node, and edit_node reject a malformed colour at the actual registered tool schema, and accept a valid hex or undefined', async () => {
+    it('add_node stores a scheme name and a custom hex', async () => {
       const store = await mkStore()
-      const server = createMcpServer(store)
-      const tools = (
-        server as unknown as {
-          _registeredTools: Record<string, { inputSchema: z.ZodTypeAny }>
-        }
-      )._registeredTools
-
-      const cases: { name: string; args: (color: unknown) => Record<string, unknown> }[] = [
-        { name: 'add_note', args: (color) => ({ diagramId: 'd', text: 'x', color }) },
-        {
-          name: 'edit_note',
-          args: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
-        },
-        { name: 'add_node', args: (color) => ({ diagramId: 'd', label: 'x', color }) },
-        {
-          name: 'edit_node',
-          args: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
-        },
-      ]
-
-      for (const { name, args } of cases) {
-        const schema = tools[name].inputSchema
-        expect(schema, `${name} must be registered`).toBeDefined()
-        expect(schema.safeParse(args('blue')).success, `${name} should reject 'blue'`).toBe(false)
-        expect(
-          schema.safeParse(args('#3b82f6')).success,
-          `${name} should accept a valid 6-digit hex`,
-        ).toBe(true)
-        expect(
-          schema.safeParse(args(undefined)).success,
-          `${name} should accept an absent/undefined color`,
-        ).toBe(true)
+      const { diagramId } = (await handlers.authorDiagram(store, {
+        name: 'Flow',
+        nodes: ['Plex'],
+      })) as { diagramId: string }
+      const named = handlers.addNode(store, { diagramId, label: 'A', scheme: 'blue' }) as {
+        id: string
       }
+      const hex = handlers.addNode(store, { diagramId, label: 'B', scheme: '#7c3aed' }) as {
+        id: string
+      }
+      const d = getDiagram(store.getState().model, diagramId)!
+      expect(d.nodes.find((n) => n.id === named.id)!.scheme).toBe('blue')
+      expect(d.nodes.find((n) => n.id === hex.id)!.scheme).toBe('#7c3aed')
+    })
+
+    // The handler does not validate — zod does, at the tool boundary — so the
+    // rejection cases must exercise schemeShape itself. Asserting them through
+    // addNode would pass no matter what schemeShape said.
+    it.each(['nonsense', 'toString', '__proto__', '#ab', 'blue '])(
+      'schemeShape rejects %s',
+      (v) => {
+        expect(schemeShape.safeParse(v).success).toBe(false)
+      },
+    )
+
+    it.each(['blue', 'paper', '#7c3aed', undefined])('schemeShape accepts %s', (v) => {
+      expect(schemeShape.safeParse(v).success).toBe(true)
     })
 
     it('addNote creates a new sticky note and returns its uuid', async () => {
@@ -624,7 +612,7 @@ describe('handlers', () => {
       expect(note.parentId).toBe(groupId) // still grouped after tidy
     })
 
-    it('add_note stores a colour when given one', async () => {
+    it('add_note stores a scheme when given one', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -633,13 +621,13 @@ describe('handlers', () => {
       const { id } = handlers.addNote(store, {
         diagramId,
         text: 'x',
-        color: '#3b82f6',
+        scheme: '#3b82f6',
       }) as { id: string }
       const note = getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
       expect(note.scheme).toBe('#3b82f6')
     })
 
-    it('add_note leaves colour absent when not given one', async () => {
+    it('add_note leaves scheme absent when not given one', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -650,14 +638,14 @@ describe('handlers', () => {
       expect(note.scheme).toBeUndefined()
     })
 
-    it('edit_note sets a colour, and omitting it leaves the existing one', async () => {
+    it('edit_note sets a scheme, and omitting it leaves the existing one', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
         nodes: ['Plex'],
       })) as { diagramId: string }
       const { id } = handlers.addNote(store, { diagramId, text: 'x' }) as { id: string }
-      handlers.editNote(store, { diagramId, id, patch: { color: '#10b981' } })
+      handlers.editNote(store, { diagramId, id, patch: { scheme: '#10b981' } })
       const read = () =>
         getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
       expect(read().scheme).toBe('#10b981')
@@ -666,13 +654,13 @@ describe('handlers', () => {
       expect(read().text).toBe('changed')
     })
 
-    // Both addNote/addNode assign `color` BEFORE the `if (a.parentId) { ... return }`
+    // Both addNote/addNode assign `scheme` BEFORE the `if (a.parentId) { ... return }`
     // early-return that reflows containment for a grouped child. That's correct
     // today, but nothing exercised the grouped path, so a future refactor that
-    // moved the color assignment after that block would silently drop colour
-    // for grouped entities while every other colour test (which adds ungrouped)
-    // kept passing.
-    it('add_note and add_node carry colour for an entity created inside a group', async () => {
+    // moved the scheme assignment after that block would silently drop the
+    // scheme for grouped entities while every other scheme test (which adds
+    // ungrouped) kept passing.
+    it('add_note and add_node carry scheme for an entity created inside a group', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -685,13 +673,13 @@ describe('handlers', () => {
       const { id: noteId } = handlers.addNote(store, {
         diagramId,
         text: 'x',
-        color: '#3b82f6',
+        scheme: '#3b82f6',
         parentId: groupId,
       }) as { id: string }
       const { id: nodeId } = handlers.addNode(store, {
         diagramId,
         label: 'Grouped',
-        color: '#ec4899',
+        scheme: '#ec4899',
         parentId: groupId,
       }) as { id: string }
 
@@ -704,7 +692,7 @@ describe('handlers', () => {
       expect(node.parentId).toBe(groupId)
     })
 
-    it('add_node and edit_node carry colour the same way', async () => {
+    it('add_node and edit_node carry scheme the same way', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -713,7 +701,7 @@ describe('handlers', () => {
       const { id } = handlers.addNode(store, {
         diagramId,
         label: 'Sonarr',
-        color: '#ec4899',
+        scheme: '#ec4899',
       }) as { id: string }
       const read = () =>
         getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === id)!

@@ -3,6 +3,7 @@ import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { IconInput } from './IconInput'
 import { Switch } from './Switch'
+import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 
 interface Props {
   node: Node | null
@@ -53,8 +54,7 @@ export function Inspector({
     const d = (edge.data ?? {}) as any
     const type = (d.rel as RelType) ?? 'talks-to'
     const dir = (d.dir as EdgeDir) ?? 'forward'
-    const colorOverridden = typeof d.color === 'string'
-    const color = colorOverridden ? (d.color as string) : REL[type].color
+    const color = typeof d.color === 'string' ? (d.color as string) : REL[type].color
     const DIRS: { v: EdgeDir; glyph: string; title: string }[] = [
       { v: 'forward', glyph: '→', title: 'one-way (arrow at target)' },
       { v: 'backward', glyph: '←', title: 'reversed (arrow at source)' },
@@ -89,9 +89,6 @@ export function Inspector({
             value={color}
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
-            defaultSwatch={{ background: REL[type].color, border: REL[type].color }}
-            isDefault={!colorOverridden}
-            onSelectDefault={() => onEdge({ color: undefined })}
           />
         </Field>
         <Field label="Label">
@@ -137,9 +134,6 @@ export function Inspector({
             value={d.color ?? '#64748b'}
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
-            defaultSwatch={{ background: '#64748b', border: '#64748b' }}
-            isDefault={d.color === '#64748b'}
-            onSelectDefault={() => onNodeData({ color: '#64748b' })}
           />
         </Field>
         <div className="insp__row2">
@@ -200,12 +194,9 @@ export function Inspector({
         <div className="insp__hint">Edit the text directly on the note.</div>
         <Field label="Color">
           <ColorPicker
-            value={(d.color as string) ?? '#fef9c3'}
+            value={(d.scheme as string) ?? NEW_NOTE_SCHEME}
             diagramColors={diagramColors}
-            onChange={(hex) => onNodeData({ color: hex })}
-            defaultSwatch={{ background: '#fef9c3', border: '#fde047' }}
-            isDefault={typeof d.color !== 'string'}
-            onSelectDefault={() => onNodeData({ color: undefined })}
+            onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>
         <Field label="Group">
@@ -253,12 +244,9 @@ export function Inspector({
         </Field>
         <Field label="Color">
           <ColorPicker
-            value={(d.color as string) ?? '#ffffff'}
+            value={(d.scheme as string) ?? NEW_NODE_SCHEME}
             diagramColors={diagramColors}
-            onChange={(hex) => onNodeData({ color: hex })}
-            defaultSwatch={{ background: '#ffffff', border: '#cbd5e1' }}
-            isDefault={typeof d.color !== 'string'}
-            onSelectDefault={() => onNodeData({ color: undefined })}
+            onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>
         <Field label="Status">

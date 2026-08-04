@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Inspector } from './Inspector'
+import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 
 afterEach(cleanup)
 
@@ -19,24 +20,26 @@ const baseProps = {
   onFieldShow: () => {},
 }
 
-const noteNode = (color?: string) =>
-  ({ id: 'n1', type: 'note', data: { text: 'hi', color } }) as never
-const serviceNode = (color?: string) =>
-  ({ id: 's1', type: 'service', data: { label: 'Plex', color } }) as never
+const noteNode = (scheme?: string) =>
+  ({ id: 'n1', type: 'note', data: { text: 'hi', scheme } }) as never
+const serviceNode = (scheme?: string) =>
+  ({ id: 's1', type: 'service', data: { label: 'Plex', scheme } }) as never
+const groupNode = (color?: string) =>
+  ({ id: 'g1', type: 'group', data: { label: 'Media', color } }) as never
+const edgeWith = (color?: string) =>
+  ({ id: 'e1', source: 'a', target: 'b', data: { rel: 'talks-to', color } }) as never
 
 describe('Inspector colour', () => {
-  it('offers a colour picker for a note and writes the chosen hex', async () => {
+  it('offers a colour picker for a note and writes the chosen scheme', async () => {
     const user = userEvent.setup()
     const onNodeData = vi.fn()
     const { container } = render(
       <Inspector {...baseProps} node={noteNode()} onNodeData={onNodeData} />,
     )
-    const swatch = container.querySelector(
-      '.colorpick .swatch:not(.swatch--default)',
-    ) as HTMLElement
+    const swatch = container.querySelector('.colorpick .swatch--scheme') as HTMLElement
     expect(swatch).not.toBeNull()
     await user.click(swatch)
-    expect(onNodeData).toHaveBeenCalledWith({ color: expect.stringMatching(/^#[0-9a-f]{6}$/i) })
+    expect(onNodeData).toHaveBeenCalledWith({ scheme: expect.any(String) })
   })
 
   it('offers a colour picker for a service node', () => {
@@ -46,96 +49,65 @@ describe('Inspector colour', () => {
     expect(container.querySelector('.colorpick')).not.toBeNull()
   })
 
-  it('does not offer a reset affordance for a coloured service node', () => {
-    render(<Inspector {...baseProps} node={serviceNode('#3b82f6')} onNodeData={() => {}} />)
-    expect(screen.queryByText('reset')).toBeNull()
-  })
-
   it('uses the shared picker for groups instead of a raw colour input', () => {
-    const group = { id: 'g1', type: 'group', data: { label: 'Media', color: '#64748b' } } as never
-    const { container } = render(<Inspector {...baseProps} node={group} onNodeData={() => {}} />)
+    const { container } = render(
+      <Inspector {...baseProps} node={groupNode('#64748b')} onNodeData={() => {}} />,
+    )
     expect(container.querySelector('.colorpick')).not.toBeNull()
     expect(container.querySelector('input[type="color"].insp__rawcolor')).toBeNull()
   })
 
-  it('still offers a Default affordance for a coloured group and sets it to the default slate hex', async () => {
-    const user = userEvent.setup()
-    const onNodeData = vi.fn()
-    const group = { id: 'g1', type: 'group', data: { label: 'Media', color: '#3b82f6' } } as never
-    const { container } = render(<Inspector {...baseProps} node={group} onNodeData={onNodeData} />)
-    await user.click(container.querySelector('.swatch--default') as HTMLElement)
-    expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
-  })
-
-  it('marks only the Default swatch active for an uncoloured note', () => {
-    const { container } = render(
+  it('defaults an uncoloured note to the sticky scheme and a service node to the paper scheme', () => {
+    const { container: noteC } = render(
       <Inspector {...baseProps} node={noteNode()} onNodeData={() => {}} />,
     )
-    expect(container.querySelector('.swatch--active:not(.swatch--default)')).toBeNull()
-    expect(container.querySelector('.swatch--default.swatch--active')).not.toBeNull()
+    const noteActive = noteC.querySelector('.swatch--active')
+    expect(noteActive?.getAttribute('title')).toBe(NEW_NOTE_SCHEME)
+
+    const { container: svcC } = render(
+      <Inspector {...baseProps} node={serviceNode()} onNodeData={() => {}} />,
+    )
+    const svcActive = svcC.querySelector('.swatch--active')
+    expect(svcActive?.getAttribute('title')).toBe(NEW_NODE_SCHEME)
   })
 
-  it('marks the yellow swatch active for a note explicitly coloured yellow', () => {
+  it('marks the blue swatch active for a note explicitly set to the blue scheme', () => {
     const { container } = render(
-      <Inspector {...baseProps} node={noteNode('#eab308')} onNodeData={() => {}} />,
+      <Inspector {...baseProps} node={noteNode('blue')} onNodeData={() => {}} />,
     )
-    expect(container.querySelector('.swatch--active')).not.toBeNull()
+    const active = container.querySelector('.swatch--active')
+    expect(active?.getAttribute('title')).toBe('blue')
   })
 })
 
-describe('Inspector default swatch', () => {
-  const defaultSwatchOf = (c: HTMLElement) => c.querySelector('.swatch--default') as HTMLElement
-
-  it('shows Default active for an uncoloured note and clears when clicked', async () => {
-    const user = userEvent.setup()
-    const onNodeData = vi.fn()
-    const { container } = render(
-      <Inspector {...baseProps} node={noteNode()} onNodeData={onNodeData} />,
-    )
-    expect(defaultSwatchOf(container).className).toContain('swatch--active')
-    await user.click(defaultSwatchOf(container))
-    expect(onNodeData).toHaveBeenCalledWith({ color: undefined })
+// There must be no "default" as a named or special-cased thing anywhere in
+// the picker or the panels that host it — no Default swatch, no separate
+// Default section, no reset control — for any of the four entity kinds that
+// use ColorPicker (note, service node, group, edge).
+describe('Inspector has no default swatch/section/reset', () => {
+  it('renders no .swatch--default for a note, a service node, a group, or an edge', () => {
+    const cases = [
+      <Inspector key="note" {...baseProps} node={noteNode()} onNodeData={() => {}} />,
+      <Inspector key="svc" {...baseProps} node={serviceNode()} onNodeData={() => {}} />,
+      <Inspector key="group" {...baseProps} node={groupNode('#3b82f6')} onNodeData={() => {}} />,
+      <Inspector
+        key="edge"
+        {...baseProps}
+        node={null}
+        edge={edgeWith('#3b82f6')}
+        onNodeData={() => {}}
+      />,
+    ]
+    for (const el of cases) {
+      const { container, unmount } = render(el)
+      expect(container.querySelector('.swatch--default')).toBeNull()
+      expect(container.querySelector('.colorpick__label')?.textContent).not.toBe('Default')
+      unmount()
+    }
   })
 
-  it('shows Default inactive for a coloured note', () => {
-    const { container } = render(
-      <Inspector {...baseProps} node={noteNode('#3b82f6')} onNodeData={() => {}} />,
-    )
-    expect(defaultSwatchOf(container).className).not.toContain('swatch--active')
-  })
-
-  it('clears a service node colour when Default is clicked', async () => {
-    const user = userEvent.setup()
-    const onNodeData = vi.fn()
-    const { container } = render(
-      <Inspector {...baseProps} node={serviceNode('#10b981')} onNodeData={onNodeData} />,
-    )
-    await user.click(defaultSwatchOf(container))
-    expect(onNodeData).toHaveBeenCalledWith({ color: undefined })
-  })
-
-  it('SETS the default hex for a group rather than clearing, since Group.color is required', async () => {
-    const user = userEvent.setup()
-    const onNodeData = vi.fn()
-    const group = { id: 'g1', type: 'group', data: { label: 'Media', color: '#3b82f6' } } as never
-    const { container } = render(<Inspector {...baseProps} node={group} onNodeData={onNodeData} />)
-    await user.click(defaultSwatchOf(container))
-    expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
-  })
-
-  it('clears a coloured edge when Default is clicked', async () => {
-    const user = userEvent.setup()
-    const onEdge = vi.fn()
-    const edge = {
-      id: 'e1',
-      source: 'a',
-      target: 'b',
-      data: { rel: 'talks-to', color: '#3b82f6' },
-    } as never
-    const { container } = render(
-      <Inspector {...baseProps} node={null} edge={edge} onEdge={onEdge} onNodeData={() => {}} />,
-    )
-    await user.click(defaultSwatchOf(container))
-    expect(onEdge).toHaveBeenCalledWith({ color: undefined })
+  it('offers no reset affordance anywhere in the picker', () => {
+    render(<Inspector {...baseProps} node={serviceNode('blue')} onNodeData={() => {}} />)
+    expect(screen.queryByText('reset')).toBeNull()
   })
 })
