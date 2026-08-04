@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { SCHEMES, secondaryText, type Scheme } from './schemes'
+import { SCHEMES, secondaryText, resolveScheme, accentFill, type Scheme } from './schemes'
 
 const MIN_CONTRAST = 4.5 // WCAG AA for normal text
 
@@ -39,5 +39,26 @@ describe('scheme contrast', () => {
     const [sr, sg, sb] = rgb(secondaryText(s))
     const gap = Math.abs(sr - pr) + Math.abs(sg - pg) + Math.abs(sb - pb)
     expect(gap).toBeGreaterThanOrEqual(MIN_TONE_GAP)
+  })
+
+  it('accentFill mixes the border toward the background', () => {
+    expect(accentFill(SCHEMES.paper)).toBe('#edf0f5')
+  })
+})
+
+describe('resolveScheme', () => {
+  it.each(['toString', 'constructor', 'valueOf', '__proto__', 'hasOwnProperty'])(
+    'falls back for the inherited key %s rather than returning a prototype member',
+    (key) => {
+      expect(resolveScheme(key, 'paper')).toEqual(SCHEMES.paper)
+    },
+  )
+
+  it('resolves a known name', () => {
+    expect(resolveScheme('blue', 'paper')).toEqual(SCHEMES.blue)
+  })
+
+  it('derives a scheme from a custom hex', () => {
+    expect(resolveScheme('#7c3aed', 'paper').background).toBe('#ebe1fc')
   })
 })

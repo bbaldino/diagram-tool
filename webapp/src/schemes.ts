@@ -11,7 +11,7 @@ export interface Scheme {
   text: string
 }
 
-export const SCHEMES: Record<string, Scheme> = {
+export const SCHEMES = {
   // The two starting schemes, byte-identical to the previous literal defaults.
   paper: { background: '#ffffff', border: '#cbd5e1', text: '#1f2937' },
   sticky: { background: '#fef9c3', border: '#fde047', text: '#713f12' },
@@ -27,11 +27,27 @@ export const SCHEMES: Record<string, Scheme> = {
   indigo: { background: '#e8e8fd', border: '#b9baf9', text: '#232454' },
   violet: { background: '#eee7fe', border: '#cbb6fb', text: '#312056' },
   pink: { background: '#fce4f0', border: '#f6add1', text: '#531936' },
+} as const satisfies Record<string, Scheme>
+
+export type SchemeName = keyof typeof SCHEMES
+
+export const SCHEME_NAMES = Object.keys(SCHEMES) as SchemeName[]
+
+const NAME_SET = new Set<string>(SCHEME_NAMES)
+
+// Own keys only — `value in SCHEMES` and `SCHEMES[value]` are both truthy for
+// Object.prototype members, which would resolve a scheme to a Function.
+export function isSchemeName(value: string): value is SchemeName {
+  return NAME_SET.has(value)
+}
+
+export function isCustomHex(value: string): boolean {
+  return HEX.test(value)
 }
 
 // The ONLY place "default" exists: which scheme a new entity starts with.
-export const NEW_NODE_SCHEME = 'paper'
-export const NEW_NOTE_SCHEME = 'sticky'
+export const NEW_NODE_SCHEME: SchemeName = 'paper'
+export const NEW_NOTE_SCHEME: SchemeName = 'sticky'
 
 const HEX = /^#[0-9a-fA-F]{6}$/
 
@@ -81,9 +97,9 @@ function deriveScheme(hex: string): Scheme {
 // A stored value is either a scheme name or a custom hex. Anything else — a
 // typo, hand-edited data, a bad MCP call — falls back rather than rendering
 // unstyled.
-export function resolveScheme(value: string, fallback: string): Scheme {
-  if (SCHEMES[value]) return SCHEMES[value]
-  if (HEX.test(value)) return deriveScheme(value)
+export function resolveScheme(value: string, fallback: SchemeName): Scheme {
+  if (isSchemeName(value)) return SCHEMES[value]
+  if (isCustomHex(value)) return deriveScheme(value)
   return SCHEMES[fallback]
 }
 
