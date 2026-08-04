@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.6.0](https://github.com/bbaldino/diagram-tool/compare/v0.5.0...v0.6.0) (2026-08-04)
+
+
+### Features
+
+* **color:** add a Default swatch to ColorPicker ([48c7126](https://github.com/bbaldino/diagram-tool/commit/48c71267da610a80d7104db2f76a270ae7e035d6))
+* **color:** wire the Default swatch for every entity kind ([517567d](https://github.com/bbaldino/diagram-tool/commit/517567d14927961c14b4a6739a531760ead55373))
+
+
+### Bug Fixes
+
+* **colorpicker:** stop double-highlighting swatches at default state ([289e2a0](https://github.com/bbaldino/diagram-tool/commit/289e2a0469e4a111811306a031a1e33bb6212824))
+* **edges:** restore edge Default swatch clearing colour override ([f86924c](https://github.com/bbaldino/diagram-tool/commit/f86924cc128e2070bec31549a57b84bc40e7049f))
+* **model:** mergePatch deletes on undefined, not just null ([fb34ec6](https://github.com/bbaldino/diagram-tool/commit/fb34ec6245a7e0ab2764bf4db06f0c3de43077a1))
+* **model:** route updateGroup/updateFlow through mergePatch ([c89f23f](https://github.com/bbaldino/diagram-tool/commit/c89f23f2edeabcb3a174a084809fa056c70c8418))
+* **ops:** let a cleared optional field persist ([cc6b2a1](https://github.com/bbaldino/diagram-tool/commit/cc6b2a1b83f9f42b660f58711d229d623863ce35))
+
 ## [0.5.0](https://github.com/bbaldino/diagram-tool/compare/v0.4.0...v0.5.0) (2026-08-04)
 
 
