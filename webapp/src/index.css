@@ -47,8 +47,10 @@ body {
 }
 /* Tinted service node. Applied ONLY when a colour is set, so an uncoloured node
    keeps the literal defaults above byte-for-byte. Same ratios as .note--tinted.
-   The status dot, icon images and the selection ring are deliberately NOT
-   derived — status must stay readable as status, not decoration. */
+   The status dot, icon images, the selection ring, and .node__flow-badge (the
+   step-number badge shown during flow playback) are deliberately NOT derived —
+   status must stay readable as status, not decoration, and the flow badge is
+   transient playback chrome, not part of the node's own appearance. */
 .node--tinted {
   background: color-mix(in srgb, var(--node-color) 15%, white);
   border-color: color-mix(in srgb, var(--node-color) 45%, white);
