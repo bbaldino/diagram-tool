@@ -174,8 +174,8 @@ describe('buildDiagramGraph', () => {
   })
 })
 
-describe('color passthrough', () => {
-  it('carries a note color onto the canvas node data', () => {
+describe('scheme passthrough', () => {
+  it('carries a note scheme onto the canvas node data', () => {
     const d = {
       id: 'd',
       name: 'D',
@@ -189,7 +189,7 @@ describe('color passthrough', () => {
         {
           id: 'n1',
           text: 'x',
-          color: '#3b82f6',
+          scheme: '#3b82f6',
           position: { x: 0, y: 0 },
           size: { width: 160, height: 90 },
         },
@@ -197,15 +197,15 @@ describe('color passthrough', () => {
       ],
     }
     const g = buildDiagramGraph(d as never, [])
-    expect((g.nodes.find((n) => n.id === 'n1')!.data as never as { color?: string }).color).toBe(
+    expect((g.nodes.find((n) => n.id === 'n1')!.data as never as { scheme?: string }).scheme).toBe(
       '#3b82f6',
     )
     expect(
-      (g.nodes.find((n) => n.id === 'n2')!.data as never as { color?: string }).color,
+      (g.nodes.find((n) => n.id === 'n2')!.data as never as { scheme?: string }).scheme,
     ).toBeUndefined()
   })
 
-  it('carries a service node color onto the canvas node data', () => {
+  it('carries a service node scheme onto the canvas node data', () => {
     const d = {
       id: 'd',
       name: 'D',
@@ -216,16 +216,16 @@ describe('color passthrough', () => {
       edges: [],
       flows: [],
       nodes: [
-        { id: 's1', label: 'Plex', fields: [], color: '#10b981', position: { x: 0, y: 0 } },
+        { id: 's1', label: 'Plex', fields: [], scheme: '#10b981', position: { x: 0, y: 0 } },
         { id: 's2', label: 'Sonarr', fields: [], position: { x: 0, y: 0 } },
       ],
     }
     const g = buildDiagramGraph(d as never, [])
-    expect((g.nodes.find((n) => n.id === 's1')!.data as never as { color?: string }).color).toBe(
+    expect((g.nodes.find((n) => n.id === 's1')!.data as never as { scheme?: string }).scheme).toBe(
       '#10b981',
     )
     expect(
-      (g.nodes.find((n) => n.id === 's2')!.data as never as { color?: string }).color,
+      (g.nodes.find((n) => n.id === 's2')!.data as never as { scheme?: string }).scheme,
     ).toBeUndefined()
   })
 })

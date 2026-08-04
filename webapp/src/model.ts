@@ -1,4 +1,5 @@
 import type { RelType, EdgeDir } from './graph'
+import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 export type { RelType }
 
 export type Status = 'up' | 'down' | 'idle'
@@ -36,7 +37,7 @@ export interface Node extends Entity {
   template?: string // Template id
   fields: Field[]
   note?: string
-  color?: string // per-entity accent colour (hex); absent = default styling
+  scheme?: string // colour scheme name or a custom hex; absent = default styling
   position: { x: number; y: number }
   parentId?: string // containing Group id
 }
@@ -49,7 +50,7 @@ export interface Group extends Entity {
 }
 export interface Note extends Entity {
   text: string
-  color?: string // sticky colour (hex); absent = default yellow
+  scheme?: string // colour scheme name or a custom hex; absent = default yellow
   position: { x: number; y: number }
   size: { width: number; height: number }
   parentId?: string
@@ -128,6 +129,20 @@ export function normalizeModel(m: any): Model {
 
 export function getDiagram(model: Model, id: string): Diagram | undefined {
   return model.diagrams.find((d) => d.id === id)
+}
+
+// Give every node and note a scheme. The field is optional in the type so data
+// written before schemes existed still loads, but nothing reaches the renderer
+// without one — so there is no absent case to handle downstream. Idempotent.
+export function backfillSchemes(model: Model): Model {
+  return {
+    ...model,
+    diagrams: model.diagrams.map((d) => ({
+      ...d,
+      nodes: d.nodes.map((n) => (n.scheme ? n : { ...n, scheme: NEW_NODE_SCHEME })),
+      notes: d.notes.map((t) => (t.scheme ? t : { ...t, scheme: NEW_NOTE_SCHEME })),
+    })),
+  }
 }
 
 // Apply an update patch. A `null` value means "remove this key" — the wire-level

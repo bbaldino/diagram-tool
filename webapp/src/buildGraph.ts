@@ -59,7 +59,7 @@ export function buildDiagramGraph(
         sub: n.sub,
         icon: n.icon,
         status: n.status,
-        color: n.color,
+        scheme: n.scheme,
         kind: n.actor ? 'actor' : undefined,
         shownFields: shownFields(n, tmpl),
         note: n.note,
@@ -74,7 +74,7 @@ export function buildDiagramGraph(
       position: nt.position,
       parentId: nt.parentId ?? undefined,
       extent: clampExtent(nt.parentId, nt.size),
-      data: { text: nt.text, color: nt.color },
+      data: { text: nt.text, scheme: nt.scheme },
       style: { width: nt.size.width, height: nt.size.height },
       zIndex: 2,
     })

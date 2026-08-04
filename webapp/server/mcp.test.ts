@@ -636,7 +636,7 @@ describe('handlers', () => {
         color: '#3b82f6',
       }) as { id: string }
       const note = getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
-      expect(note.color).toBe('#3b82f6')
+      expect(note.scheme).toBe('#3b82f6')
     })
 
     it('add_note leaves colour absent when not given one', async () => {
@@ -647,7 +647,7 @@ describe('handlers', () => {
       })) as { diagramId: string }
       const { id } = handlers.addNote(store, { diagramId, text: 'x' }) as { id: string }
       const note = getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
-      expect(note.color).toBeUndefined()
+      expect(note.scheme).toBeUndefined()
     })
 
     it('edit_note sets a colour, and omitting it leaves the existing one', async () => {
@@ -660,9 +660,9 @@ describe('handlers', () => {
       handlers.editNote(store, { diagramId, id, patch: { color: '#10b981' } })
       const read = () =>
         getDiagram(store.getState().model, diagramId)!.notes.find((n) => n.id === id)!
-      expect(read().color).toBe('#10b981')
+      expect(read().scheme).toBe('#10b981')
       handlers.editNote(store, { diagramId, id, patch: { text: 'changed' } })
-      expect(read().color).toBe('#10b981')
+      expect(read().scheme).toBe('#10b981')
       expect(read().text).toBe('changed')
     })
 
@@ -698,9 +698,9 @@ describe('handlers', () => {
       const d = getDiagram(store.getState().model, diagramId)!
       const note = d.notes.find((n) => n.id === noteId)!
       const node = d.nodes.find((n) => n.id === nodeId)!
-      expect(note.color).toBe('#3b82f6')
+      expect(note.scheme).toBe('#3b82f6')
       expect(note.parentId).toBe(groupId)
-      expect(node.color).toBe('#ec4899')
+      expect(node.scheme).toBe('#ec4899')
       expect(node.parentId).toBe(groupId)
     })
 
@@ -717,9 +717,9 @@ describe('handlers', () => {
       }) as { id: string }
       const read = () =>
         getDiagram(store.getState().model, diagramId)!.nodes.find((n) => n.id === id)!
-      expect(read().color).toBe('#ec4899')
+      expect(read().scheme).toBe('#ec4899')
       handlers.editNode(store, { diagramId, id, patch: { label: 'Renamed' } })
-      expect(read().color).toBe('#ec4899')
+      expect(read().scheme).toBe('#ec4899')
     })
   })
 })

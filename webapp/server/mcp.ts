@@ -298,7 +298,7 @@ export const handlers = {
     }
     if (a.icon !== undefined) node.icon = a.icon
     if (a.status !== undefined) node.status = a.status
-    if (a.color !== undefined) node.color = a.color
+    if (a.color !== undefined) node.scheme = a.color
     if (a.parentId) {
       node.parentId = a.parentId
       if (a.position === undefined)
@@ -363,7 +363,7 @@ export const handlers = {
       position: a.position ?? { x: 0, y: 0 },
       size: a.size ?? { width: 160, height: 90 },
     }
-    if (a.color !== undefined) note.color = a.color
+    if (a.color !== undefined) note.scheme = a.color
     if (a.parentId) {
       note.parentId = a.parentId
       if (a.position === undefined)
@@ -387,9 +387,10 @@ export const handlers = {
       return err(`unknown group "${a.patch.parentId}"`)
     }
     const touchesContainment = 'parentId' in a.patch
-    const { parentId, ...rest } = a.patch
+    const { parentId, color, ...rest } = a.patch
     const patch: Partial<Omit<Note, 'id'>> = { ...rest }
     if (typeof rest.text === 'string') patch.text = normalizeNoteText(rest.text)
+    if (color !== undefined) patch.scheme = color
     if (touchesContainment) {
       patch.parentId = parentId ?? undefined
       if (parentId != null)
@@ -440,8 +441,9 @@ export const handlers = {
       return err(`unknown group "${a.patch.parentId}"`)
     }
     const touchesContainment = 'parentId' in a.patch
-    const { parentId, ...rest } = a.patch
+    const { parentId, color, ...rest } = a.patch
     const patch: Partial<Omit<Node, 'id'>> = { ...rest }
+    if (color !== undefined) patch.scheme = color
     if (touchesContainment) {
       patch.parentId = parentId ?? undefined
       if (parentId != null) patch.position = positionInGroup(diagram, parentId, a.id, NODE_EST_SIZE)
