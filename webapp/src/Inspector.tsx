@@ -87,10 +87,11 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={color}
-            overridden={colorOverridden}
-            defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
+            defaultSwatch={{ background: REL[type].color, border: REL[type].color }}
+            isDefault={!colorOverridden}
+            onSelectDefault={() => onEdge({ color: undefined })}
           />
         </Field>
         <Field label="Label">
@@ -134,11 +135,11 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={d.color ?? '#64748b'}
-            overridden={typeof d.color === 'string'}
-            defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
-            onReset={() => onNodeData({ color: '#64748b' })}
+            defaultSwatch={{ background: '#64748b', border: '#64748b' }}
+            isDefault={d.color === '#64748b'}
+            onSelectDefault={() => onNodeData({ color: '#64748b' })}
           />
         </Field>
         <div className="insp__row2">
@@ -200,10 +201,11 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={(d.color as string) ?? '#fef9c3'}
-            overridden={typeof d.color === 'string'}
-            defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
+            defaultSwatch={{ background: '#fef9c3', border: '#fde047' }}
+            isDefault={typeof d.color !== 'string'}
+            onSelectDefault={() => onNodeData({ color: undefined })}
           />
         </Field>
         <Field label="Group">
@@ -252,10 +254,11 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={(d.color as string) ?? '#64748b'}
-            overridden={typeof d.color === 'string'}
-            defaultLabel="default"
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
+            defaultSwatch={{ background: '#ffffff', border: '#cbd5e1' }}
+            isDefault={typeof d.color !== 'string'}
+            onSelectDefault={() => onNodeData({ color: undefined })}
           />
         </Field>
         <Field label="Status">
