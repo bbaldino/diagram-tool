@@ -54,7 +54,8 @@ export function Inspector({
     const d = (edge.data ?? {}) as any
     const type = (d.rel as RelType) ?? 'talks-to'
     const dir = (d.dir as EdgeDir) ?? 'forward'
-    const color = typeof d.color === 'string' ? (d.color as string) : REL[type].color
+    const colorOverridden = typeof d.color === 'string'
+    const color = colorOverridden ? (d.color as string) : REL[type].color
     const DIRS: { v: EdgeDir; glyph: string; title: string }[] = [
       { v: 'forward', glyph: '→', title: 'one-way (arrow at target)' },
       { v: 'backward', glyph: '←', title: 'reversed (arrow at source)' },
@@ -89,6 +90,9 @@ export function Inspector({
             value={color}
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
+            defaultSwatch={{ background: REL[type].color, border: REL[type].color }}
+            isDefault={!colorOverridden}
+            onSelectDefault={() => onEdge({ color: undefined })}
           />
         </Field>
         <Field label="Label">
@@ -134,6 +138,9 @@ export function Inspector({
             value={d.color ?? '#64748b'}
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
+            defaultSwatch={{ background: '#64748b', border: '#64748b' }}
+            isDefault={d.color === '#64748b'}
+            onSelectDefault={() => onNodeData({ color: '#64748b' })}
           />
         </Field>
         <div className="insp__row2">

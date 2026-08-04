@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { ColorPicker } from './ColorPicker'
 import { SCHEMES } from './schemes'
 
@@ -27,5 +28,22 @@ describe('ColorPicker', () => {
     const active = container.querySelectorAll('.swatch--active')
     expect(active.length).toBe(1)
     expect(active[0].getAttribute('title')).toBe('blue')
+  })
+
+  it('renders a Default swatch when defaultSwatch/onSelectDefault are supplied, and calls onSelectDefault when clicked', async () => {
+    const user = userEvent.setup()
+    const onSelectDefault = vi.fn()
+    const { container } = render(
+      <ColorPicker
+        {...props()}
+        defaultSwatch={{ background: '#3b82f6', border: '#3b82f6' }}
+        isDefault={false}
+        onSelectDefault={onSelectDefault}
+      />,
+    )
+    const defaultSwatch = container.querySelector('.swatch--default')
+    expect(defaultSwatch).not.toBeNull()
+    await user.click(defaultSwatch as HTMLElement)
+    expect(onSelectDefault).toHaveBeenCalledTimes(1)
   })
 })

@@ -80,23 +80,15 @@ describe('Inspector colour', () => {
   })
 })
 
-// There must be no "default" as a named or special-cased thing anywhere in
-// the picker or the panels that host it — no Default swatch, no separate
-// Default section, no reset control — for any of the four entity kinds that
-// use ColorPicker (note, service node, group, edge).
-describe('Inspector has no default swatch/section/reset', () => {
-  it('renders no .swatch--default for a note, a service node, a group, or an edge', () => {
+// Nodes and notes now always have a scheme — there is no absence, so a
+// "default" swatch would just be a second name for paper/sticky. That was
+// rejected and stays rejected. No Default swatch, no separate Default
+// section, no reset control for either of these two entity kinds.
+describe('Inspector has no default swatch/section/reset for nodes and notes', () => {
+  it('renders no .swatch--default for a note or a service node', () => {
     const cases = [
       <Inspector key="note" {...baseProps} node={noteNode()} onNodeData={() => {}} />,
       <Inspector key="svc" {...baseProps} node={serviceNode()} onNodeData={() => {}} />,
-      <Inspector key="group" {...baseProps} node={groupNode('#3b82f6')} onNodeData={() => {}} />,
-      <Inspector
-        key="edge"
-        {...baseProps}
-        node={null}
-        edge={edgeWith('#3b82f6')}
-        onNodeData={() => {}}
-      />,
     ]
     for (const el of cases) {
       const { container, unmount } = render(el)
@@ -109,5 +101,41 @@ describe('Inspector has no default swatch/section/reset', () => {
   it('offers no reset affordance anywhere in the picker', () => {
     render(<Inspector {...baseProps} node={serviceNode('blue')} onNodeData={() => {}} />)
     expect(screen.queryByText('reset')).toBeNull()
+  })
+})
+
+// Edges and groups are different: an edge with no colour follows its
+// relationship type (which can change later), and a group's colour field is
+// required. Both need a real reset affordance, which is not the same thing
+// as the node/note "default" above.
+describe('Inspector keeps the edge and group reset', () => {
+  it('renders a Default swatch for the edge panel and resets to the relationship colour on click', async () => {
+    const user = userEvent.setup()
+    const onEdge = vi.fn()
+    const { container } = render(
+      <Inspector
+        {...baseProps}
+        node={null}
+        edge={edgeWith('#3b82f6')}
+        onEdge={onEdge}
+        onNodeData={() => {}}
+      />,
+    )
+    const defaultSwatch = container.querySelector('.swatch--default')
+    expect(defaultSwatch).not.toBeNull()
+    await user.click(defaultSwatch as HTMLElement)
+    expect(onEdge).toHaveBeenCalledWith({ color: undefined })
+  })
+
+  it('renders a Default swatch for the group panel and resets to slate on click', async () => {
+    const user = userEvent.setup()
+    const onNodeData = vi.fn()
+    const { container } = render(
+      <Inspector {...baseProps} node={groupNode('#3b82f6')} onNodeData={onNodeData} />,
+    )
+    const defaultSwatch = container.querySelector('.swatch--default')
+    expect(defaultSwatch).not.toBeNull()
+    await user.click(defaultSwatch as HTMLElement)
+    expect(onNodeData).toHaveBeenCalledWith({ color: '#64748b' })
   })
 })

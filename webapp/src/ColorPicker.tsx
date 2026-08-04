@@ -8,6 +8,14 @@ interface Props {
   value: string // current effective value: a scheme name or a hex
   diagramColors: string[] // distinct values already present in the diagram
   onChange: (value: string) => void
+  // Supplied only by the edge and group panels, whose colour is a plain hex
+  // and whose "default" is a real state: an edge with no colour follows its
+  // relationship type, and a group resets to slate. Nodes and notes never
+  // pass these — under schemes a colour is always set, so there is no
+  // absence to return to and no default swatch to show.
+  defaultSwatch?: { background: string; border: string }
+  isDefault?: boolean
+  onSelectDefault?: () => void
 }
 
 // A scheme name renders from its table entry; anything else (a custom hex, or
@@ -44,12 +52,33 @@ function Swatch({
   )
 }
 
-export function ColorPicker({ value, diagramColors, onChange }: Props) {
+export function ColorPicker({
+  value,
+  diagramColors,
+  onChange,
+  defaultSwatch,
+  isDefault,
+  onSelectDefault,
+}: Props) {
   const cur = value.toLowerCase()
   const inDiagram = diagramColors.map((c) => c.toLowerCase())
 
   return (
     <div className="colorpick">
+      {defaultSwatch && onSelectDefault && (
+        <div className="colorpick__section">
+          <div className="colorpick__label">Default</div>
+          <div className="colorpick__swatches">
+            <button
+              type="button"
+              className={`swatch swatch--default${isDefault ? ' swatch--active' : ''}`}
+              style={{ background: defaultSwatch.background, borderColor: defaultSwatch.border }}
+              title="Default"
+              onClick={onSelectDefault}
+            />
+          </div>
+        </div>
+      )}
       {inDiagram.length > 0 && (
         <div className="colorpick__section">
           <div className="colorpick__label">In this diagram</div>
