@@ -16,17 +16,17 @@ export const SCHEMES: Record<string, Scheme> = {
   paper: { background: '#ffffff', border: '#cbd5e1', text: '#1f2937' },
   sticky: { background: '#fef9c3', border: '#fde047', text: '#713f12' },
   // The former PALETTE, resolved once at authoring time.
-  slate: { background: '#e8eaee', border: '#b9c0cb', text: '#37404c' },
-  red: { background: '#fde3e3', border: '#f8abab', text: '#832525' },
-  orange: { background: '#feeadc', border: '#fcc096', text: '#893f0c' },
-  amber: { background: '#fef0da', border: '#fad391', text: '#875706' },
-  yellow: { background: '#fcf4da', border: '#f6dd90', text: '#816204' },
-  emerald: { background: '#dbf4ec', border: '#93e0c6', text: '#096647' },
-  teal: { background: '#dcf4f2', border: '#95dfd7', text: '#0b655b' },
-  blue: { background: '#e2ecfe', border: '#a7c7fb', text: '#204887' },
-  indigo: { background: '#e8e8fd', border: '#b9baf9', text: '#363885' },
-  violet: { background: '#eee7fe', border: '#cbb6fb', text: '#4c3387' },
-  pink: { background: '#fce4f0', border: '#f6add1', text: '#822854' },
+  slate: { background: '#e8eaee', border: '#b9c0cb', text: '#232931' },
+  red: { background: '#fde3e3', border: '#f8abab', text: '#541818' },
+  orange: { background: '#feeadc', border: '#fcc096', text: '#572808' },
+  amber: { background: '#fef0da', border: '#fad391', text: '#563704' },
+  yellow: { background: '#fcf4da', border: '#f6dd90', text: '#523f03' },
+  emerald: { background: '#dbf4ec', border: '#93e0c6', text: '#06412d' },
+  teal: { background: '#dcf4f2', border: '#95dfd7', text: '#07403a' },
+  blue: { background: '#e2ecfe', border: '#a7c7fb', text: '#152e56' },
+  indigo: { background: '#e8e8fd', border: '#b9baf9', text: '#232454' },
+  violet: { background: '#eee7fe', border: '#cbb6fb', text: '#312056' },
+  pink: { background: '#fce4f0', border: '#f6add1', text: '#531936' },
 }
 
 // The ONLY place "default" exists: which scheme a new entity starts with.
@@ -54,6 +54,23 @@ function mix(a: [number, number, number], pct: number, b: [number, number, numbe
 const WHITE: [number, number, number] = [255, 255, 255]
 const BLACK: [number, number, number] = [0, 0, 0]
 
+// WCAG relative luminance / contrast ratio. Deliberately independent of the
+// copy in entityContrast.test.ts, so that test can catch a bug in this one.
+function linearize(channel: number): number {
+  const c = channel / 255
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
+}
+
+function luminance([r, g, b]: [number, number, number]): number {
+  return 0.2126 * linearize(r) + 0.7152 * linearize(g) + 0.0722 * linearize(b)
+}
+
+function contrastRatio(a: [number, number, number], b: [number, number, number]): number {
+  const la = luminance(a)
+  const lb = luminance(b)
+  return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+}
+
 // A custom hex derives a scheme using the ratios the old renderer used, so a
 // custom colour looks exactly as it did before this change.
 function deriveScheme(hex: string): Scheme {
@@ -71,11 +88,18 @@ export function resolveScheme(value: string, fallback: string): Scheme {
 }
 
 // Secondary tones are derived from the scheme rather than stored, so a scheme
-// stays the three things a user is actually choosing.
+// stays the three things a user is actually choosing. No single ratio works
+// for every scheme (paper sits on white and has room to lighten a long way;
+// sticky sits on #fef9c3 and has very little), so start close to the
+// background and step back toward the text until AA is met.
 export function secondaryText(s: Scheme): string {
-  // 95, not 70: at 70 twelve of the thirteen schemes failed AA (yellow as low
-  // as 2.9:1). 95 clears every scheme, worst case yellow at ~4.7:1.
-  return mix(rgb(s.text), 95, rgb(s.background))
+  const text = rgb(s.text)
+  const background = rgb(s.background)
+  for (let pct = 70; pct <= 100; pct += 5) {
+    const candidate = mix(text, pct, background)
+    if (contrastRatio(rgb(candidate), background) >= 4.5) return candidate
+  }
+  return s.text
 }
 
 export function accentFill(s: Scheme): string {

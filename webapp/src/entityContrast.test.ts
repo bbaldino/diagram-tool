@@ -23,6 +23,8 @@ function contrast(a: string, b: string): number {
 
 const entries = Object.entries(SCHEMES) as [string, Scheme][]
 
+const MIN_TONE_GAP = 60 // sum of per-channel deltas; 95%-toward-bg scored 24
+
 describe('scheme contrast', () => {
   it.each(entries)('%s: primary text clears AA on its own background', (_name, s) => {
     expect(contrast(s.text, s.background)).toBeGreaterThanOrEqual(MIN_CONTRAST)
@@ -30,5 +32,12 @@ describe('scheme contrast', () => {
 
   it.each(entries)('%s: secondary text clears AA on its own background', (_name, s) => {
     expect(contrast(secondaryText(s), s.background)).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
+
+  it.each(entries)('%s: secondary text is visibly lighter than primary', (_name, s) => {
+    const [pr, pg, pb] = rgb(s.text)
+    const [sr, sg, sb] = rgb(secondaryText(s))
+    const gap = Math.abs(sr - pr) + Math.abs(sg - pg) + Math.abs(sb - pb)
+    expect(gap).toBeGreaterThanOrEqual(MIN_TONE_GAP)
   })
 })
