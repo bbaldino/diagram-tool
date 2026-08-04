@@ -14,7 +14,10 @@ export interface Scheme {
 export const SCHEMES = {
   // The two starting schemes, byte-identical to the previous literal defaults.
   paper: { background: '#ffffff', border: '#cbd5e1', text: '#1f2937' },
-  sticky: { background: '#fef9c3', border: '#fde047', text: '#713f12' },
+  // Text darkened from the historic #713f12 (8.07:1) at the user's request —
+  // the old brown read as faint against the yellow. 12.01:1, still warm rather
+  // than the near-black nodes use.
+  sticky: { background: '#fef9c3', border: '#fde047', text: '#4a2a0c' },
   // The former PALETTE, resolved once at authoring time.
   slate: { background: '#e8eaee', border: '#b9c0cb', text: '#232931' },
   red: { background: '#fde3e3', border: '#f8abab', text: '#541818' },

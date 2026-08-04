@@ -19,12 +19,15 @@ describe('scheme table', () => {
     })
   })
 
-  it('reproduces the current note default exactly', () => {
-    expect(SCHEMES.sticky).toEqual({
-      background: '#fef9c3',
-      border: '#fde047',
-      text: '#713f12',
-    })
+  // The sticky background and border still reproduce the historic note exactly.
+  // Its text does NOT: the original #713f12 cleared AA at 8.07:1 but read as
+  // faint against the yellow, and was darkened deliberately. Pinned so the
+  // change stays intentional rather than drifting.
+  it('keeps the note background and border, with deliberately darker text', () => {
+    expect(SCHEMES.sticky.background).toBe('#fef9c3')
+    expect(SCHEMES.sticky.border).toBe('#fde047')
+    expect(SCHEMES.sticky.text).toBe('#4a2a0c')
+    expect(SCHEMES.sticky.text).not.toBe('#713f12')
   })
 })
 

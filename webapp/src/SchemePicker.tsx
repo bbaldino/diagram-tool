@@ -21,10 +21,16 @@ interface Props {
 }
 
 // A name renders from its table entry; a custom hex renders as itself.
+//
+// The swatch fills with `border`, not `background`. Every scheme's background
+// is a 15%-strength tint — #e2ecfe, #fde3e3, #dbf4ec — which at 20px reads as
+// "off-white" for all thirteen and gives the eye nothing to tell them apart.
+// `border` is the chromatic mid tone, and the ring in `text` gives the swatch
+// definition against the panel.
 function swatchStyle(value: string): { background: string; borderColor?: string } {
   if (isSchemeName(value)) {
     const s = SCHEMES[value]
-    return { background: s.background, borderColor: s.border }
+    return { background: s.border, borderColor: s.text }
   }
   return { background: value }
 }
