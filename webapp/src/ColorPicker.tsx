@@ -62,17 +62,23 @@ export function ColorPicker({
 }: Props) {
   const cur = value.toLowerCase()
   const inDiagram = diagramColors.map((c) => c.toLowerCase())
+  // Same signal the "Default" section below already keys off of: only the
+  // edge and group panels pass defaultSwatch/onSelectDefault, and their
+  // value is a plain hex — the scheme Palette below must never be offered to
+  // them, or clicking a scheme swatch would write a scheme name into a field
+  // rendered straight as CSS (see ColorPicker's file comment).
+  const isHexOnly = Boolean(defaultSwatch && onSelectDefault)
 
   return (
     <div className="colorpick">
-      {defaultSwatch && onSelectDefault && (
+      {isHexOnly && (
         <div className="colorpick__section">
           <div className="colorpick__label">Default</div>
           <div className="colorpick__swatches">
             <button
               type="button"
               className={`swatch swatch--default${isDefault ? ' swatch--active' : ''}`}
-              style={{ background: defaultSwatch.background, borderColor: defaultSwatch.border }}
+              style={{ background: defaultSwatch!.background, borderColor: defaultSwatch!.border }}
               title="Default"
               onClick={onSelectDefault}
             />
@@ -89,21 +95,23 @@ export function ColorPicker({
           </div>
         </div>
       )}
-      <div className="colorpick__section">
-        <div className="colorpick__label">Palette</div>
-        <div className="colorpick__swatches">
-          {(Object.keys(SCHEMES) as SchemeName[]).map((name) => (
-            <Swatch
-              key={name}
-              value={name}
-              title={name}
-              active={name === value}
-              onClick={() => onChange(name)}
-              variant="scheme"
-            />
-          ))}
+      {!isHexOnly && (
+        <div className="colorpick__section">
+          <div className="colorpick__label">Palette</div>
+          <div className="colorpick__swatches">
+            {(Object.keys(SCHEMES) as SchemeName[]).map((name) => (
+              <Swatch
+                key={name}
+                value={name}
+                title={name}
+                active={name === value}
+                onClick={() => onChange(name)}
+                variant="scheme"
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
       <div className="colorpick__custom">
         <input
           type="color"

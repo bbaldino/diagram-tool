@@ -846,6 +846,108 @@ describe('createMcpServer', () => {
     expect(names).not.toContain('set_note')
     expect(names).not.toContain('set_edge')
   })
+
+  // Asserts against the REAL registered tool schemas (via the MCP server's
+  // internal _registeredTools), not a local reimplementation of schemeShape's
+  // regex/refine. A local copy would still pass even if `scheme: schemeShape`
+  // were swapped out of a `registerTool` call for a bare
+  // `z.string().optional()` — this test would not. Also covers Finding 2: an
+  // agent sending the old `color` field must get an explicit rejection, not a
+  // silently-stripped-and-ignored success.
+  it('add_note, edit_note, add_node, and edit_node reject a bad scheme and an explicit color field at the actual registered tool schema, and accept a valid scheme, hex, or undefined', async () => {
+    const store = await mkStore()
+    const server = createMcpServer(store)
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<string, { inputSchema: z.ZodTypeAny }>
+      }
+    )._registeredTools
+
+    const cases: {
+      name: string
+      withScheme: (scheme: unknown) => Record<string, unknown>
+      withColor: (color: unknown) => Record<string, unknown>
+    }[] = [
+      {
+        name: 'add_note',
+        withScheme: (scheme) => ({ diagramId: 'd', text: 'x', scheme }),
+        withColor: (color) => ({ diagramId: 'd', text: 'x', color }),
+      },
+      {
+        name: 'edit_note',
+        withScheme: (scheme) => ({ diagramId: 'd', id: 'n', patch: { scheme } }),
+        withColor: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
+      },
+      {
+        name: 'add_node',
+        withScheme: (scheme) => ({ diagramId: 'd', label: 'x', scheme }),
+        withColor: (color) => ({ diagramId: 'd', label: 'x', color }),
+      },
+      {
+        name: 'edit_node',
+        withScheme: (scheme) => ({ diagramId: 'd', id: 'n', patch: { scheme } }),
+        withColor: (color) => ({ diagramId: 'd', id: 'n', patch: { color } }),
+      },
+    ]
+
+    for (const { name, withScheme, withColor } of cases) {
+      const schema = tools[name].inputSchema
+      expect(schema, `${name} must be registered`).toBeDefined()
+      expect(
+        schema.safeParse(withScheme('nonsense')).success,
+        `${name} should reject 'nonsense'`,
+      ).toBe(false)
+      expect(schema.safeParse(withScheme('blue')).success, `${name} should accept 'blue'`).toBe(
+        true,
+      )
+      expect(
+        schema.safeParse(withScheme('#3b82f6')).success,
+        `${name} should accept a valid 6-digit hex`,
+      ).toBe(true)
+      expect(
+        schema.safeParse(withScheme(undefined)).success,
+        `${name} should accept an absent/undefined scheme`,
+      ).toBe(true)
+
+      // Finding 2: the old `color` field must fail loudly, not vanish.
+      const rejected = schema.safeParse(withColor('#ff0000'))
+      expect(rejected.success, `${name} should reject the removed 'color' field`).toBe(false)
+      if (!rejected.success) {
+        const message = rejected.error.issues.find(
+          (i) => i.path[i.path.length - 1] === 'color',
+        )?.message
+        expect(message, `${name}'s color-rejection message`).toContain('use `scheme`')
+      }
+      expect(
+        schema.safeParse({ ...withColor(undefined), color: undefined }).success,
+        `${name} should still succeed when color is simply omitted`,
+      ).toBe(true)
+    }
+  })
+
+  // Groups are explicitly out of scope for the scheme change — they still
+  // take a plain `color` and must keep accepting it.
+  it('add_group and edit_group still accept a plain color (unaffected by the scheme change)', async () => {
+    const store = await mkStore()
+    const server = createMcpServer(store)
+    const tools = (
+      server as unknown as {
+        _registeredTools: Record<string, { inputSchema: z.ZodTypeAny }>
+      }
+    )._registeredTools
+
+    expect(
+      tools['add_group'].inputSchema.safeParse({ diagramId: 'd', label: 'g', color: '#ff0000' })
+        .success,
+    ).toBe(true)
+    expect(
+      tools['edit_group'].inputSchema.safeParse({
+        diagramId: 'd',
+        id: 'g',
+        patch: { color: '#ff0000' },
+      }).success,
+    ).toBe(true)
+  })
 })
 
 describe('author_flow', () => {

@@ -13,6 +13,7 @@ const baseProps = {
   onNodeParent: () => {},
   onEdge: () => {},
   diagramColors: [],
+  diagramSchemes: [],
   onShrink: () => {},
   onGroupSize: () => {},
   onDelete: () => {},
@@ -80,6 +81,44 @@ describe('Inspector colour', () => {
   })
 })
 
+// Finding 1 (fix round 2): the edge and group colour pickers must only ever
+// see plain hexes. A scheme name belonging to some other node/note in the
+// diagram must never leak into their quick-pick list or reach onEdge/onNodeData.
+describe('Inspector keeps scheme names out of the edge and group colour pickers', () => {
+  it('never shows a scheme name as a swatch in the edge panel, even when the diagram also has a paper node', async () => {
+    const user = userEvent.setup()
+    const onEdge = vi.fn()
+    // Simulates a diagram that also contains a `paper` node: `diagramColors`
+    // (edges/groups only) stays plain hex, but `diagramSchemes` (notes/service
+    // nodes) carries the scheme name — and must never reach the edge panel.
+    const { container } = render(
+      <Inspector
+        {...baseProps}
+        node={null}
+        edge={edgeWith('#3b82f6')}
+        onEdge={onEdge}
+        onNodeData={() => {}}
+        diagramColors={['#22c55e']}
+        diagramSchemes={['paper']}
+      />,
+    )
+    const swatches = Array.from(container.querySelectorAll('.colorpick .swatch'))
+    expect(swatches.some((s) => s.getAttribute('title') === 'paper')).toBe(false)
+
+    // More directly: clicking through every swatch in the edge picker can
+    // never hand onEdge a non-hex value.
+    for (const swatch of swatches) {
+      await user.click(swatch as HTMLElement)
+    }
+    for (const call of onEdge.mock.calls) {
+      const color = (call[0] as { color?: string }).color
+      if (color !== undefined) {
+        expect(color).toMatch(/^#[0-9a-fA-F]{6}$/)
+      }
+    }
+  })
+})
+
 // Nodes and notes now always have a scheme — there is no absence, so a
 // "default" swatch would just be a second name for paper/sticky. That was
 // rejected and stays rejected. No Default swatch, no separate Default
@@ -98,7 +137,7 @@ describe('Inspector has no default swatch/section/reset for nodes and notes', ()
     }
   })
 
-  it('offers no reset affordance anywhere in the picker', () => {
+  it('offers no reset affordance in the service-node colour picker', () => {
     render(<Inspector {...baseProps} node={serviceNode('blue')} onNodeData={() => {}} />)
     expect(screen.queryByText('reset')).toBeNull()
   })

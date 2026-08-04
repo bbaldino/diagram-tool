@@ -18,7 +18,13 @@ interface Props {
     dir?: EdgeDir
     color?: string
   }) => void
+  // Plain hexes only — from edges and groups. For the edge/group pickers.
   diagramColors: string[]
+  // Scheme names or custom hexes — from notes and service nodes. For the
+  // note/service-node pickers. Never pass diagramColors to those pickers or
+  // diagramSchemes to the edge/group pickers: a scheme name rendered as a
+  // CSS color, or vice versa, corrupts the stored value.
+  diagramSchemes: string[]
   onShrink: () => void
   onGroupSize: (size: { width?: number; height?: number }) => void
   onDelete: () => void
@@ -48,6 +54,7 @@ export function Inspector({
   fields,
   onFieldShow,
   diagramColors,
+  diagramSchemes,
 }: Props) {
   // ----- edge selected -----
   if (edge && !node) {
@@ -202,7 +209,7 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={(d.scheme as string) ?? NEW_NOTE_SCHEME}
-            diagramColors={diagramColors}
+            diagramColors={diagramSchemes}
             onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>
@@ -252,7 +259,7 @@ export function Inspector({
         <Field label="Color">
           <ColorPicker
             value={(d.scheme as string) ?? NEW_NODE_SCHEME}
-            diagramColors={diagramColors}
+            diagramColors={diagramSchemes}
             onChange={(v) => onNodeData({ scheme: v })}
           />
         </Field>

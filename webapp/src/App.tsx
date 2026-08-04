@@ -1511,27 +1511,32 @@ function Flow({
     const excluded = new Set([selectedNode.id, ...descendantsOf(selectedNode.id, nodes)])
     return groupList.filter((g) => !excluded.has(g.id))
   }, [groupList, selectedNode, nodes])
-  // Distinct values already used in this diagram — edge stroke + group color
-  // (plain hex), plus note/service scheme (a scheme name or a custom hex) —
-  // for the "In this diagram" quick-pick section of the color pickers.
-  const diagramColors = useMemo(() => {
-    const set = new Set<string>()
+  // Distinct values already used in this diagram, for the "In this diagram"
+  // quick-pick section of the color pickers. Edges and groups store a plain
+  // hex in `color`; notes and service nodes store a scheme name or a custom
+  // hex in `scheme`. These are NOT interchangeable — a scheme name written
+  // into Edge.color or Group.color is rendered straight as a CSS color and
+  // corrupts the data — so they're split by which entity kind contributed
+  // the value (not by "looks like a hex"), and never merged into one list.
+  const { diagramColors, diagramSchemes } = useMemo(() => {
+    const colors = new Set<string>()
+    const schemes = new Set<string>()
     for (const e of edges) {
       const c =
         ((e.data as any)?.color as string) ??
         REL[((e.data as any)?.rel as RelType) ?? 'talks-to']?.color
-      if (c) set.add(c.toLowerCase())
+      if (c) colors.add(c.toLowerCase())
     }
     for (const n of nodes) {
-      const c =
-        n.type === 'group'
-          ? ((n.data as any)?.color as string | undefined)
-          : n.type === 'note' || n.type === 'service'
-            ? ((n.data as any)?.scheme as string | undefined)
-            : undefined
-      if (c) set.add(c.toLowerCase())
+      if (n.type === 'group') {
+        const c = (n.data as any)?.color as string | undefined
+        if (c) colors.add(c.toLowerCase())
+      } else if (n.type === 'note' || n.type === 'service') {
+        const s = (n.data as any)?.scheme as string | undefined
+        if (s) schemes.add(s.toLowerCase())
+      }
     }
-    return [...set]
+    return { diagramColors: [...colors], diagramSchemes: [...schemes] }
   }, [edges, nodes])
 
   // The selected service node's model-side record (fields/template) — these
@@ -1772,6 +1777,7 @@ function Flow({
                   fields={inspectorFields}
                   onFieldShow={onFieldShow}
                   diagramColors={diagramColors}
+                  diagramSchemes={diagramSchemes}
                 />
               }
               flows={

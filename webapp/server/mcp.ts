@@ -691,15 +691,6 @@ export const edgeAttrsShape = {
   orientation: z.enum(['auto', 'horizontal', 'vertical']).optional(),
 }
 
-// A 6-digit hex colour. Validated at the schema so a malformed value is
-// rejected rather than stored and rendered as a broken CSS custom property.
-// Exported so tests can assert against the real schema rather than a
-// reimplementation of it.
-export const colorShape = z
-  .string()
-  .regex(/^#[0-9a-fA-F]{6}$/, 'color must be a 6-digit hex like #3b82f6')
-  .optional()
-
 // A scheme name or a custom 6-digit hex. Rejected at the boundary so a typo is
 // refused rather than stored and silently falling back at render.
 export const schemeShape = z
@@ -708,6 +699,21 @@ export const schemeShape = z
     message: 'scheme must be a known scheme name or a 6-digit hex like #3b82f6',
   })
   .optional()
+
+// `color` was replaced by `scheme` on nodes and notes. zod's default object
+// parsing silently strips unknown keys, so a bare omission here would let an
+// agent send `color`, have it vanish with no error, and get back a success
+// response for a request that did nothing. Reject it explicitly instead, with
+// a message that names the replacement — added to add_node/add_note and the
+// patch shapes of edit_node/edit_note. Groups still use `color` for real
+// (out of scope here), so this is NOT added to add_group/edit_group.
+const rejectedColorShape = z
+  .any()
+  .optional()
+  .refine((v) => v === undefined, {
+    message:
+      '`color` is no longer accepted on nodes and notes — use `scheme`, which takes a scheme name (for example `blue` or `paper`) or a 6-digit hex like `#3b82f6`.',
+  })
 
 // spec.nodes entries mint brand-new nodes (uuid ids) — there is no catalog to
 // resolve an "existing" node against. spec.edges/groups/positions refer back
@@ -795,6 +801,7 @@ export function createMcpServer(store: Store): McpServer {
         icon: z.string().optional().describe(ICON_FIELD_DESC),
         status: z.enum(['up', 'down', 'idle']).optional(),
         scheme: schemeShape,
+        color: rejectedColorShape,
         position: positionShape.optional(),
         parentId: z.string().nullable().optional(),
       },
@@ -841,6 +848,7 @@ export function createMcpServer(store: Store): McpServer {
         position: positionShape.optional(),
         size: z.object({ width: z.number(), height: z.number() }).optional(),
         scheme: schemeShape,
+        color: rejectedColorShape,
         parentId: z.string().nullable().optional(),
       },
     },
@@ -860,6 +868,7 @@ export function createMcpServer(store: Store): McpServer {
           position: positionShape.optional(),
           size: z.object({ width: z.number(), height: z.number() }).optional(),
           scheme: schemeShape,
+          color: rejectedColorShape,
           parentId: z
             .string()
             .nullable()
@@ -896,6 +905,7 @@ export function createMcpServer(store: Store): McpServer {
       .array(z.object({ key: z.string(), value: z.string(), showOnNode: z.boolean().optional() }))
       .optional(),
     scheme: schemeShape,
+    color: rejectedColorShape,
     parentId: z
       .string()
       .nullable()
