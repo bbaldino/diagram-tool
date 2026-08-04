@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.7.0](https://github.com/bbaldino/diagram-tool/compare/v0.6.0...v0.7.0) (2026-08-04)
+
+
+### Features
+
+* **schemes:** add the named colour scheme table and resolver ([312eb31](https://github.com/bbaldino/diagram-tool/commit/312eb31c2417f1f4f394e2e8758d92be1ae48799))
+* **schemes:** pick schemes by name in the inspector and over MCP ([4e1203a](https://github.com/bbaldino/diagram-tool/commit/4e1203ab52a7ccf34c84059adde950e73b37acf7))
+* **schemes:** rename color -&gt; scheme on nodes and notes, back-fill on load ([f6bc90c](https://github.com/bbaldino/diagram-tool/commit/f6bc90c189fe75776d45b3715c25a017d8b619cd))
+* **schemes:** render nodes and notes from a resolved scheme ([14177fa](https://github.com/bbaldino/diagram-tool/commit/14177fa6997422c7fbe4b0344ce64a8c4772f051))
+
+
+### Bug Fixes
+
+* derive secondary text with a contrast clamp ([bd7f2cc](https://github.com/bbaldino/diagram-tool/commit/bd7f2ccf8f7fbb21cc4a5072700c802b99eca34f))
+* **schemes:** keep the edge and group reset, which is not a scheme default ([da3360c](https://github.com/bbaldino/diagram-tool/commit/da3360ca23b645ba56bf773015b22fa5b5def198))
+* **schemes:** make backfillSchemes total so a bad diagram cannot wipe the model ([1cfcb20](https://github.com/bbaldino/diagram-tool/commit/1cfcb20cf8e073ad97004dd6ddfb052921a836fc))
+* **schemes:** make palette swatches legible and darken note text ([0749743](https://github.com/bbaldino/diagram-tool/commit/074974329cd18da6e0aea1719cc8978ea63e8ebf))
+* **schemes:** resolve own keys only, and export the name/hex seam ([ae5b004](https://github.com/bbaldino/diagram-tool/commit/ae5b004ee1dc40b37ceb2e5cd418f5598b07bb3c))
+* **schemes:** separate scheme and colour quick-picks, reject the removed color field ([69a8a3a](https://github.com/bbaldino/diagram-tool/commit/69a8a3a0fdc8228e37f9ab925582d6e281afdd4b))
+
 ## [0.6.0](https://github.com/bbaldino/diagram-tool/compare/v0.5.0...v0.6.0) (2026-08-04)
 
 
