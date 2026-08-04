@@ -402,3 +402,67 @@ describe('clearing an optional field', () => {
     expect(after.diagrams[0].nodes[0].label).toBe('Renamed')
   })
 })
+
+// Group.color is required and can never be cleared, but Group.parentId is
+// optional (dragging a nested group out to top level clears it). This
+// mirrors the Node.color suite above but exercises updateGroup, which was
+// left on a plain spread on the (wrong) theory that groups have nothing
+// clearable.
+describe('clearing an optional field on a group', () => {
+  const model = (parentId?: string) =>
+    ({
+      version: 2,
+      templates: [],
+      diagrams: [
+        {
+          id: 'd',
+          name: 'D',
+          title: 'D',
+          type: 'canvas',
+          notes: [],
+          edges: [],
+          flows: [],
+          nodes: [],
+          groups: [
+            {
+              id: 'g1',
+              label: 'Inner',
+              color: '#64748b',
+              position: { x: 0, y: 0 },
+              size: { width: 200, height: 120 },
+              ...(parentId ? { parentId } : {}),
+            },
+          ],
+        },
+      ],
+    }) as never
+
+  it('emits null for a parentId that was present and is now absent', () => {
+    const ops = diffToOps(model('g0'), model())
+    const patch = (ops[0] as never as { patch: Record<string, unknown> }).patch
+    expect(patch.parentId).toBeNull()
+  })
+
+  it('round-trips to a genuinely absent parentId, not null and not the old value', () => {
+    const before = model('g0')
+    const ops = JSON.parse(JSON.stringify(diffToOps(before, model())))
+    const after = applyOps(before, ops) as never as {
+      diagrams: { groups: { parentId?: string | null }[] }[]
+    }
+    const group = after.diagrams[0].groups[0]
+    expect('parentId' in group).toBe(false)
+    expect(group.parentId).toBeUndefined()
+  })
+
+  it('leaves an existing parentId untouched when the patch does not mention it', () => {
+    const before = model('g0')
+    const renamed = JSON.parse(JSON.stringify(before))
+    renamed.diagrams[0].groups[0].label = 'Renamed'
+    const ops = JSON.parse(JSON.stringify(diffToOps(before, renamed)))
+    const after = applyOps(before, ops) as never as {
+      diagrams: { groups: { label: string; parentId?: string }[] }[]
+    }
+    expect(after.diagrams[0].groups[0].parentId).toBe('g0')
+    expect(after.diagrams[0].groups[0].label).toBe('Renamed')
+  })
+})

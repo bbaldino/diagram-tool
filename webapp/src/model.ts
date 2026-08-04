@@ -206,7 +206,9 @@ export function updateGroup(
 ): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
-    groups: d.groups.map((g) => (g.id === id ? { ...g, ...patch, id: g.id } : g)),
+    groups: d.groups.map((g) =>
+      g.id === id ? { ...mergePatch(g, patch as Record<string, unknown>), id: g.id } : g,
+    ),
   }))
 }
 
@@ -237,7 +239,9 @@ export function updateFlow(
 ): Model {
   return mapDiagram(model, diagramId, (d) => ({
     ...d,
-    flows: d.flows.map((f) => (f.id === id ? { ...f, ...patch, id: f.id } : f)),
+    flows: d.flows.map((f) =>
+      f.id === id ? { ...mergePatch(f, patch as Record<string, unknown>), id: f.id } : f,
+    ),
   }))
 }
 
