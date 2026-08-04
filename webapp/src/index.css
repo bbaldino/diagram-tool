@@ -736,12 +736,6 @@ textarea,
 /* The Default swatch draws the entity's own default appearance, so it needs a
    real border rather than the palette swatches' uniform one — a white node
    default would otherwise be invisible against the picker. */
-/* Scheme swatches carry a heavier ring than plain colour swatches: the ring is
-   the scheme's own text colour, which is what separates one pastel from the
-   next at this size. */
-.swatch--scheme {
-  border-width: 2px;
-}
 .swatch--default {
   border-style: solid;
   border-width: 2px;

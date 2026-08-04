@@ -25,13 +25,13 @@ interface Props {
 // The swatch fills with `border`, not `background`. Every scheme's background
 // is a 15%-strength tint — #e2ecfe, #fde3e3, #dbf4ec — which at 20px reads as
 // "off-white" for all thirteen and gives the eye nothing to tell them apart.
-// `border` is the chromatic mid tone, and the ring in `text` gives the swatch
-// definition against the panel.
-function swatchStyle(value: string): { background: string; borderColor?: string } {
-  if (isSchemeName(value)) {
-    const s = SCHEMES[value]
-    return { background: s.border, borderColor: s.text }
-  }
+// `border` is the chromatic mid tone.
+//
+// No per-scheme ring: the neutral hairline from `.swatch` is left to do that
+// job, so these read as solid colour chips like the plain palette's. Ringing
+// them in `text` was tried and looked heavy — thirteen dark outlines in a row.
+function swatchStyle(value: string): { background: string } {
+  if (isSchemeName(value)) return { background: SCHEMES[value].border }
   return { background: value }
 }
 
