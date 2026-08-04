@@ -64,7 +64,7 @@ body {
   color: color-mix(in srgb, var(--node-color) 45%, black);
 }
 .node--tinted .node__icon--placeholder {
-  background: color-mix(in srgb, var(--node-color) 20%, white);
+  background: color-mix(in srgb, var(--node-color) 25%, white);
 }
 .node--tinted .node__note {
   background: color-mix(in srgb, var(--node-color) 18%, transparent);

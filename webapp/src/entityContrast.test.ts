@@ -12,7 +12,7 @@ const TEXT_MIX_PERCENT = 55 // color-mix(in srgb, var(--note-color) TEXT_MIX_PER
 // .node--tinted .node__sub and .node__field-k
 const NODE_SECONDARY_TEXT_MIX_PERCENT = 45
 // .node--tinted .node__icon--placeholder background
-const NODE_PLACEHOLDER_MIX_PERCENT = 20
+const NODE_PLACEHOLDER_MIX_PERCENT = 25
 
 const MIN_CONTRAST = 4.5 // WCAG AA for normal text
 
@@ -94,10 +94,14 @@ describe('tinted entity text contrast', () => {
     expect(contrastRatio(background, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
   })
 
+  // .node--tinted .node__icon--placeholder paints an OPAQUE background —
+  // color-mix(in srgb, var(--node-color) 25%, white) — so it replaces whatever is
+  // behind it rather than compositing over the card tint. This is unlike the
+  // code/pre case above, which mixes with `transparent` and therefore genuinely
+  // does composite over `background`. The placeholder must be mixed against WHITE.
   it.each(PALETTE)('reaches AA for %s on the icon placeholder', (hex) => {
     const base = hexToRgb(hex)
-    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
-    const placeholder = colorMix(base, NODE_PLACEHOLDER_MIX_PERCENT, background)
+    const placeholder = colorMix(base, NODE_PLACEHOLDER_MIX_PERCENT, WHITE)
     const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
     expect(contrastRatio(placeholder, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
   })
