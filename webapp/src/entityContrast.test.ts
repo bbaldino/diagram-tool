@@ -13,6 +13,11 @@ const TEXT_MIX_PERCENT = 55 // color-mix(in srgb, var(--note-color) TEXT_MIX_PER
 const NODE_SECONDARY_TEXT_MIX_PERCENT = 45
 // .node--tinted .node__icon--placeholder background
 const NODE_PLACEHOLDER_MIX_PERCENT = 25
+// .node--tinted .node__note background: color-mix(in srgb, var(--node-color)
+// 18%, transparent), over the card tint. Named separately from CODE_MIX_PERCENT
+// even though the value is currently the same 18 — they guard unrelated CSS
+// declarations and must be free to drift independently.
+const NODE_NOTE_MIX_PERCENT = 18
 
 const MIN_CONTRAST = 4.5 // WCAG AA for normal text
 
@@ -89,6 +94,19 @@ describe('tinted entity text contrast', () => {
     const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
     const text = colorMix(base, NODE_SECONDARY_TEXT_MIX_PERCENT, BLACK)
     expect(contrastRatio(background, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
+  })
+
+  // .node--tinted .node__note background is color-mix(in srgb, var(--node-color)
+  // 18%, transparent). Mixing with `transparent` keeps the colour's own RGB
+  // channels and only scales alpha, so — like the code/pre case above — this
+  // genuinely composites as an 18%-alpha wash OVER the card tint (`background`),
+  // not over WHITE. Text on it is the node's primary 55% text.
+  it.each(PALETTE)('reaches AA for %s on the node__note background', (hex) => {
+    const base = hexToRgb(hex)
+    const background = colorMix(base, BACKGROUND_MIX_PERCENT, WHITE)
+    const noteBackground = colorMix(base, NODE_NOTE_MIX_PERCENT, background)
+    const text = colorMix(base, TEXT_MIX_PERCENT, BLACK)
+    expect(contrastRatio(noteBackground, text)).toBeGreaterThanOrEqual(MIN_CONTRAST)
   })
 
   // .node--tinted .node__icon--placeholder paints an OPAQUE background —
