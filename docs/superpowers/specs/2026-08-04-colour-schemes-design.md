@@ -49,6 +49,21 @@ to spell out six values would make the table unmaintainable and easy to get
 subtly wrong. Secondary text is `text` mixed toward `background`; accent fills are
 `border` mixed toward `background`.
 
+Secondary text mixes by a **clamp, not a fixed ratio**: it starts at 70% and
+steps back toward `text` until the result clears 4.5:1. No single ratio serves
+every scheme — `paper` sits on white and can lighten a long way, `sticky` sits on
+`#fef9c3` and can barely lighten at all, so a fixed ratio must satisfy the
+tightest scheme and over-darkens all the others. At a uniform 95% the secondary
+tone lands within 24 RGB units of primary, which clears AA while erasing the
+label/sub-label distinction entirely. The clamp gives each scheme the most
+hierarchy its own background can afford: worst case 101 units, worst contrast
+4.60.
+
+This is also why the eleven colour schemes' `text` values are derived at 35%
+toward black rather than the 55% the old renderer used — at 55% they sit near
+5:1, leaving no headroom to lighten a secondary tone that still clears AA. The
+custom-hex path keeps 55%, since a custom colour must look as it did before.
+
 ### The scheme table
 
 One exported map, shared by every entity kind:
@@ -130,6 +145,10 @@ so a bad value is refused at the boundary rather than stored.
   secondary text against its own background. The existing contrast guard is
   repointed from derived palette hexes to the scheme table, which is now the
   complete set of what can render.
+- Secondary text is **visibly lighter** than primary — at least 60 RGB units of
+  summed per-channel difference. AA alone does not catch the failure that
+  matters here: a secondary tone can clear 4.5:1 while being indistinguishable
+  from primary, which is exactly what a uniform 95% mix produced.
 - A hex value still derives a scheme equal to what the current code produces, so
   custom colours are unchanged.
 - Migration: a node with no value becomes `paper`, a note becomes `sticky`, an
@@ -144,6 +163,15 @@ path. That removes the largest source of "looks right until it doesn't" bugs on
 this feature, but it does mean every entity's appearance is touched by this
 change — the migration must produce visually identical results for the 90
 entities that currently render as defaults. That is the thing to verify in-app.
+
+**With one known exception: secondary text shifts slightly.** A node's sub-label
+is `#64748b` today, and the `paper` scheme derives `#626973`. These cannot be
+made equal — `#64748b` is bluer than any mix of `#1f2937` and white (matching it
+would need 69% on the red channel and 58% on blue), so no derivation reproduces
+it. Forcing a match would mean storing a sixth value per scheme, which is the
+thing "secondary tones are derived, not stored" exists to avoid. The shift is a
+near-match in practice and was accepted deliberately; it applies equally to
+field keys and values.
 
 **Breaking MCP change.** Any agent sending `color` will be rejected. That is
 deliberate and preferable to silently accepting a field that no longer describes
