@@ -253,7 +253,7 @@ export function Inspector({
         </Field>
         <Field label="Color">
           <ColorPicker
-            value={(d.color as string) ?? '#64748b'}
+            value={(d.color as string) ?? '#ffffff'}
             diagramColors={diagramColors}
             onChange={(hex) => onNodeData({ color: hex })}
             defaultSwatch={{ background: '#ffffff', border: '#cbd5e1' }}

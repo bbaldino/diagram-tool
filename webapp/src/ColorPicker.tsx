@@ -77,7 +77,12 @@ export function ColorPicker({
           <div className="colorpick__label">In this diagram</div>
           <div className="colorpick__swatches">
             {inDiagram.map((c) => (
-              <Swatch key={c} color={c} active={c === cur} onClick={() => onChange(c)} />
+              <Swatch
+                key={c}
+                color={c}
+                active={!isDefault && c === cur}
+                onClick={() => onChange(c)}
+              />
             ))}
           </div>
         </div>
@@ -89,7 +94,7 @@ export function ColorPicker({
             <Swatch
               key={c}
               color={c}
-              active={c.toLowerCase() === cur}
+              active={!isDefault && c.toLowerCase() === cur}
               onClick={() => onChange(c)}
             />
           ))}

@@ -52,4 +52,19 @@ describe('ColorPicker default swatch', () => {
     )
     expect(reset).toBeUndefined()
   })
+
+  // A palette (or "in this diagram") swatch that happens to equal the
+  // fallback `value` used for an uncoloured entity must NOT double-highlight
+  // alongside the Default swatch — active-ness of those swatches has to be
+  // gated on `!isDefault`, not just on a value match. A `value` outside the
+  // palette would pass without the fix, which is why this uses '#64748b' —
+  // it is both the fallback value AND a PALETTE entry.
+  it('marks only the Default swatch active when isDefault is true, even if value matches a palette entry', () => {
+    const { container } = render(
+      <ColorPicker {...props({ value: '#64748b', isDefault: true, diagramColors: ['#64748b'] })} />,
+    )
+    const active = container.querySelectorAll('.swatch--active')
+    expect(active.length).toBe(1)
+    expect(active[0].className).toContain('swatch--default')
+  })
 })
