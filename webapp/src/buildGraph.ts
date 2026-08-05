@@ -1,5 +1,6 @@
 import { type Node } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
+import { LAYER } from './layers'
 import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
 import type { Diagram, Field, Node as DNode, Template } from '../shared/model'
 
@@ -44,7 +45,9 @@ export function buildDiagramGraph(
       extent: clampExtent(g.parentId, g.size),
       data: { label: g.label, color: g.color },
       style: { width: g.size.width, height: g.size.height },
-      zIndex: -1, // group panes sit BEHIND edges (elevateNodesOnSelect lifts a selected group above them so its resize handles stay grabbable)
+      // React Flow adds +1 per nesting level, so a child group lands above its
+      // parent and still below the edge layer. See layers.ts.
+      zIndex: LAYER.groupPane,
     })
   }
   for (const n of diagram.nodes) {
@@ -65,7 +68,7 @@ export function buildDiagramGraph(
         shownFields: shownFields(n, tmpl),
         note: n.note,
       },
-      zIndex: 2, // node cards sit ABOVE edges/labels
+      zIndex: LAYER.nodeCard,
     })
   }
   for (const nt of diagram.notes) {
@@ -77,7 +80,7 @@ export function buildDiagramGraph(
       extent: clampExtent(nt.parentId, nt.size),
       data: { text: nt.text, scheme: nt.scheme },
       style: { width: nt.size.width, height: nt.size.height },
-      zIndex: 2,
+      zIndex: LAYER.nodeCard,
     })
   }
 

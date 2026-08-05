@@ -18,11 +18,13 @@ body {
   color: #1f2937;
 }
 
-/* Paint order (in the viewport stacking context): group panes (node zIndex -1)
-   < edges < edge labels < service/note nodes (node zIndex 2). The nodes layer
-   must NOT form its own stacking context (z-index:auto), so each node's own
-   z-index interleaves with the edges/label layers below — that's what lets a
-   group pane sit BEHIND edges while node cards stay in front of them. */
+/* Paint order: group panes < edges < edge labels < node cards. The numbers for
+   the node layers live in src/layers.ts (LAYER.groupPane / LAYER.nodeCard);
+   these two are React Flow's own layers and must line up with LAYER.edge and
+   LAYER.edgeLabel.
+   The nodes layer must NOT form its own stacking context (z-index:auto), so
+   each node's own z-index interleaves with the edge layers below — that is
+   what lets a group pane sit behind edges while node cards stay in front. */
 .react-flow__nodes {
   z-index: auto;
 }

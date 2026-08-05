@@ -29,6 +29,7 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
+import { LAYER } from './layers'
 import { applyEdgePatch, reparentNodes, resizeGroup, type EdgePatch } from './canvasEdits'
 import { buildMenus } from './menus'
 import { keyContextFrom, resolveShortcut } from './keyboardShortcuts'
@@ -535,7 +536,7 @@ function Flow({
         position: pos,
         data: { label: 'New Group', color: '#64748b' },
         style: { width: 320, height: 200 },
-        zIndex: -1, // matches buildGraph: group panes sit behind edges
+        zIndex: LAYER.groupPane,
         selected: true,
       } as Node
       setNodes((ns) =>
@@ -557,7 +558,7 @@ function Flow({
           position: at ?? rf.screenToFlowPosition({ x: window.innerWidth / 2, y: 220 }),
           data: { text: '' },
           style: { width: 190, height: 110 },
-          zIndex: 2,
+          zIndex: LAYER.nodeCard,
         } as Node),
       )
     },
