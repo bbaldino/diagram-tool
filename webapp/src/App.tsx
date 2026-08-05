@@ -1129,7 +1129,6 @@ function Flow({
     return changed ? next : edges
   }, [edges, selEdge])
 
-  const groupEditing = selectedNode?.type === 'group'
   return (
     <div className="shell">
       <MenuBar
@@ -1167,7 +1166,6 @@ function Flow({
         <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
           <div
             ref={wrapperRef}
-            className={groupEditing ? 'group-editing' : undefined}
             style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}
             onMouseMove={(e) => {
               pointer.current = { x: e.clientX, y: e.clientY }

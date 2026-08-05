@@ -483,10 +483,15 @@ textarea,
   margin-right: -7px;
 }
 
-/* While a group is selected, edges stop competing with its resize handles for clicks. */
-.group-editing .react-flow__edge path {
-  pointer-events: none !important;
-}
+/* Deliberately NOT disabling edge pointer-events while a group is selected.
+   That rule used to exist so edges would not compete with a group's resize
+   handles, but it applied to EVERY edge in the diagram, so selecting any group
+   made every edge unclickable — and selecting a group is exactly what happens
+   when you click near an edge that runs inside one. Measured: with the rule,
+   the edge was reachable at 0 of 9 points along its length; without it, 5 of 9,
+   and the group's resize controls stayed reachable at the same 4 of 8 either
+   way. The controls already win on z-index (11/12, above the edge layer), so
+   the rule cost edge selection and bought nothing. */
 
 /* make a selected edge obvious */
 .react-flow__edge.selected .react-flow__edge-path {
