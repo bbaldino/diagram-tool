@@ -33,6 +33,7 @@ import {
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
 import { reparentNodes, resizeGroup } from './canvasEdits'
+import { buildMenus } from './menus'
 import { useViewPrefs } from './useViewPrefs'
 import { useFlowPlayback } from './useFlowPlayback'
 import { flushCanvasInto } from './canvasToModel'
@@ -49,7 +50,7 @@ import { MenuBar } from './MenuBar'
 import { OpenDiagramDialog } from './OpenDiagramDialog'
 import { DestructiveDialog } from './DestructiveDialog'
 import { ImportDialog } from './ImportDialog'
-import type { MenuItem } from './menuNav'
+
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
 import {
@@ -782,29 +783,6 @@ function Flow({
     if (name) renameDiagramById(activeId, name)
   }, [showPrompt, model, activeId, renameDiagramById])
 
-  const fileMenuItems: MenuItem[] = useMemo(
-    () => [
-      { id: 'new', label: 'New diagram', shortcut: '⌘N' },
-      { id: 'open', label: 'Open diagram…', shortcut: '⌘O' },
-      { id: 'rename', label: 'Rename…' },
-      { id: 'duplicate', label: 'Duplicate', disabled: true },
-      { id: 'import', label: 'Import JSON…', separatorBefore: true },
-      {
-        id: 'export',
-        label: 'Export',
-        submenu: [
-          { id: 'export-json', label: 'JSON', shortcut: '⌘⇧E' },
-          { id: 'export-png-view', label: 'PNG (current view)', disabled: true },
-          { id: 'export-png-all', label: 'PNG (whole diagram)', disabled: true },
-          { id: 'export-svg', label: 'SVG', disabled: true },
-        ],
-      },
-      { id: 'reset', label: 'Reset diagram…', danger: true, separatorBefore: true },
-      { id: 'delete', label: 'Delete diagram…', danger: true },
-    ],
-    [],
-  )
-
   // Group/Ungroup are top-level only this phase. canGroup: 2+ selected non-group
   // nodes, all top-level. canUngroup: exactly one selected top-level group.
   const groupableIds = useMemo(
@@ -845,104 +823,42 @@ function Flow({
     setSelEdge(null)
   }, [selectedTopGroup, setNodes])
 
-  const arrangeMenuItems: MenuItem[] = useMemo(
-    () => [
-      { id: 'tidy-up', label: 'Tidy up', shortcut: '⌘⇧T', disabled: !canTidy },
-      {
-        id: 'auto-layout',
-        label: 'Auto-layout',
-        submenu: [
-          { id: 'engine-graphviz', label: 'Graphviz', checked: layoutEngine === 'graphviz' },
-          { id: 'engine-elk', label: 'elkjs', checked: layoutEngine === 'elk' },
-          {
-            id: 'rerun-layout',
-            label: 'Re-run layout',
-            shortcut: '⌘⇧L',
-            separatorBefore: true,
-            disabled: !canTidy,
-          },
-        ],
-      },
-      {
-        id: 'edge-style',
-        label: 'Edge style',
-        submenu: [
-          { id: 'edge-default', label: 'Curved', checked: edgeStyle === 'default' },
-          { id: 'edge-smoothstep', label: 'Angular', checked: edgeStyle === 'smoothstep' },
-          { id: 'edge-straight', label: 'Straight', checked: edgeStyle === 'straight' },
-        ],
-      },
-      {
-        id: 'group',
-        label: 'Group selection',
-        shortcut: '⌘G',
-        disabled: !canGroup,
-        separatorBefore: true,
-      },
-      { id: 'ungroup', label: 'Ungroup', shortcut: '⇧⌘G', disabled: !canUngroup },
-      { id: 'bring-front', label: 'Bring to front', disabled: true, separatorBefore: true },
-      { id: 'send-back', label: 'Send to back', disabled: true },
-    ],
-    [layoutEngine, edgeStyle, canGroup, canUngroup, canTidy],
-  )
-
-  const viewMenuItems: MenuItem[] = useMemo(
-    () => [
-      { id: 'zoom-in', label: 'Zoom in' },
-      { id: 'zoom-out', label: 'Zoom out' },
-      { id: 'zoom-fit', label: 'Zoom to fit' },
-      { id: 'zoom-actual', label: 'Actual size' },
-      { id: 'legend', label: 'Legend', checked: showLegend, separatorBefore: true },
-      { id: 'minimap', label: 'Minimap', checked: showMinimap },
-      {
-        id: 'inspector',
-        label: 'Inspector',
-        shortcut: '⌘I',
-        checked: railVisible && railTab === 'inspector',
-      },
-      { id: 'snap', label: 'Snap to grid', checked: snapToGrid },
-      { id: 'note-spellcheck', label: 'Spellcheck notes', checked: noteSpellcheck },
-      {
-        id: 'flows-panel',
-        label: 'Flows panel',
-        shortcut: '⌘⇧F',
-        checked: railVisible && railTab === 'flows',
-        separatorBefore: true,
-      },
-    ],
-    [showLegend, showMinimap, snapToGrid, noteSpellcheck, railVisible, railTab],
-  )
-
   const hasSelection = selNode != null || selEdge != null
-  const editMenuItems: MenuItem[] = useMemo(
-    () => [
-      { id: 'undo', label: 'Undo', shortcut: '⌘Z', disabled: !undoFlags.canUndo },
-      { id: 'redo', label: 'Redo', shortcut: '⇧⌘Z', disabled: !undoFlags.canRedo },
-      { id: 'cut', label: 'Cut', shortcut: '⌘X', disabled: true, separatorBefore: true },
-      { id: 'copy', label: 'Copy', shortcut: '⌘C', disabled: true },
-      { id: 'paste', label: 'Paste', shortcut: '⌘V', disabled: true },
-      { id: 'duplicate', label: 'Duplicate', shortcut: '⌘D', disabled: true },
-      { id: 'delete', label: 'Delete', shortcut: '⌫', disabled: !hasSelection },
-      {
-        id: 'select-all',
-        label: 'Select all',
-        shortcut: '⌘A',
-        disabled: true,
-        separatorBefore: true,
-      },
-      { id: 'deselect', label: 'Deselect', shortcut: 'Esc', disabled: true },
-    ],
-    [undoFlags.canUndo, undoFlags.canRedo, hasSelection],
-  )
 
   const menus = useMemo(
-    () => [
-      { id: 'file' as const, title: 'File', items: fileMenuItems },
-      { id: 'edit' as const, title: 'Edit', items: editMenuItems },
-      { id: 'view' as const, title: 'View', items: viewMenuItems },
-      { id: 'arrange' as const, title: 'Arrange', items: arrangeMenuItems },
+    () =>
+      buildMenus({
+        canUndo: undoFlags.canUndo,
+        canRedo: undoFlags.canRedo,
+        hasSelection,
+        canGroup,
+        canUngroup,
+        canTidy,
+        layoutEngine,
+        edgeStyle,
+        showLegend,
+        showMinimap,
+        snapToGrid,
+        noteSpellcheck,
+        railVisible,
+        railTab,
+      }),
+    [
+      undoFlags.canUndo,
+      undoFlags.canRedo,
+      hasSelection,
+      canGroup,
+      canUngroup,
+      canTidy,
+      layoutEngine,
+      edgeStyle,
+      showLegend,
+      showMinimap,
+      snapToGrid,
+      noteSpellcheck,
+      railVisible,
+      railTab,
     ],
-    [fileMenuItems, editMenuItems, viewMenuItems, arrangeMenuItems],
   )
 
   const onMenuItem = useCallback(
