@@ -11,7 +11,9 @@
 // as before. Only what computes the next array moved.
 import type { Node } from '@xyflow/react'
 import { descendantsOf, groupsFirst } from './canvasNodes'
-import { liveFootprint, reflowGroups } from './graph'
+import { liveFootprint, reflowGroups, restyleEdge } from './graph'
+import type { AppEdge, EdgeData } from './canvasData'
+import type { EdgeDir, RelType } from '../shared/relationships'
 import { placeInGroup } from '../shared/containment'
 
 /**
@@ -134,5 +136,40 @@ export function resizeGroup(
     const width = size.width ?? curW
     const height = size.height ?? curH
     return { ...n, width, height, style: { ...n.style, width, height } }
+  })
+}
+
+export interface EdgePatch {
+  type?: RelType
+  label?: string
+  inferred?: boolean
+  dir?: EdgeDir
+  color?: string
+}
+
+/**
+ * Apply an inspector patch to one edge, restyling it from the result.
+ *
+ * Colour is read with `'color' in patch`, NOT `patch.color !== undefined`.
+ * Clearing the per-edge override means sending `{ color: undefined }` so the
+ * edge falls back to its relationship type's colour, and a value check drops
+ * that clear silently. That exact narrowing shipped once and turned the edge
+ * Default swatch into a no-op; the tests below pin it.
+ */
+export function applyEdgePatch(es: AppEdge[], id: string, patch: EdgePatch): AppEdge[] {
+  return es.map((e) => {
+    if (e.id !== id) return e
+    const cur: EdgeData = e.data ?? {}
+    const type = patch.type ?? cur.rel ?? 'talks-to'
+    const inferred = patch.inferred ?? !!cur.inferred
+    const dir = patch.dir ?? cur.dir ?? 'forward'
+    const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
+    // Stash dir (and, if the patch sets one, the colour override) in data so
+    // restyleEdge recomputes stroke/arrowheads/label from them.
+    let next: AppEdge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
+    if ('color' in patch) {
+      next = { ...next, data: { ...next.data, color: patch.color } }
+    }
+    return restyleEdge(next, type, inferred)
   })
 }

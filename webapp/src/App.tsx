@@ -20,25 +20,22 @@ import { NoteSpellcheckContext, nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
 import {
   makeEdge,
-  restyleEdge,
   applyReconnect,
   shrinkGroupToChildren,
   recomputeChildExtents,
   REL,
   GROUP_COLOR,
   parentGroup,
-  type RelType,
-  type EdgeDir,
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
-import { reparentNodes, resizeGroup } from './canvasEdits'
+import { applyEdgePatch, reparentNodes, resizeGroup, type EdgePatch } from './canvasEdits'
 import { buildMenus } from './menus'
 import { keyContextFrom, resolveShortcut } from './keyboardShortcuts'
 import { useViewPrefs } from './useViewPrefs'
 import { useFlowPlayback } from './useFlowPlayback'
 import { flushCanvasInto } from './canvasToModel'
-import { isGroupNode, isNoteNode, isServiceNode, type AppEdge, type EdgeData } from './canvasData'
+import { isGroupNode, isNoteNode, isServiceNode, type AppEdge } from './canvasData'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
 import { FlowsTab } from './FlowsTab'
@@ -504,34 +501,9 @@ function Flow({
   )
 
   const updateEdge = useCallback(
-    (patch: {
-      type?: RelType
-      label?: string
-      inferred?: boolean
-      dir?: EdgeDir
-      color?: string
-    }) => {
+    (patch: EdgePatch) => {
       if (!selEdge) return
-      setEdges((es) =>
-        es.map((e) => {
-          if (e.id !== selEdge) return e
-          const cur: EdgeData = e.data ?? {}
-          const type = patch.type ?? cur.rel ?? 'talks-to'
-          const inferred = patch.inferred ?? !!cur.inferred
-          const dir = patch.dir ?? cur.dir ?? 'forward'
-          const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
-          // stash dir (and, if the patch sets one, the color override) in data so
-          // restyleEdge recomputes stroke/arrowheads/label from them.
-          let next: Edge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
-          // Use `'color' in patch`, NOT `patch.color !== undefined` — a caller
-          // clearing the override sends `{ color: undefined }`, and a value
-          // check would silently drop that clear.
-          if ('color' in patch) {
-            next = { ...next, data: { ...next.data, color: patch.color } }
-          }
-          return restyleEdge(next, type, inferred)
-        }),
-      )
+      setEdges((es) => applyEdgePatch(es, selEdge, patch))
     },
     [selEdge, setEdges],
   )

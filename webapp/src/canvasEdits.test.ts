@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import type { Node } from '@xyflow/react'
-import { reparentNodes, resizeGroup } from './canvasEdits'
+import { applyEdgePatch, reparentNodes, resizeGroup } from './canvasEdits'
+import type { AppEdge } from './canvasData'
+import { REL } from '../shared/relationships'
 
 const svc = (id: string, over: Partial<Node> = {}): Node =>
   ({
@@ -235,5 +237,97 @@ describe('resizeGroup', () => {
   it('is a no-op when the id is not present', () => {
     const ns = [grp('g1')]
     expect(resizeGroup(ns, 'nope', { width: 999 })).toEqual(ns)
+  })
+})
+
+describe('applyEdgePatch', () => {
+  const edge = (over: Partial<AppEdge> = {}): AppEdge =>
+    ({
+      id: 'e1',
+      source: 'a',
+      target: 'b',
+      type: 'waypoint',
+      data: { rel: 'talks-to', dir: 'forward', inferred: false, shape: 'default' },
+      ...over,
+    }) as AppEdge
+
+  const only = (es: AppEdge[]) => es.find((e) => e.id === 'e1')!
+
+  it('leaves other edges untouched by identity', () => {
+    const other = edge({ id: 'e2' })
+    const out = applyEdgePatch([edge(), other], 'e1', { type: 'via' })
+    expect(out.find((e) => e.id === 'e2')).toBe(other)
+  })
+
+  it('changes the relationship type and restyles the stroke from it', () => {
+    const out = only(applyEdgePatch([edge()], 'e1', { type: 'via' }))
+    expect(out.data!.rel).toBe('via')
+    expect((out.style as { stroke?: string }).stroke).toBe(REL.via.color)
+  })
+
+  it('sets the label only when the patch carries one', () => {
+    expect(only(applyEdgePatch([edge({ label: 'keep' })], 'e1', { type: 'via' })).label).toBe(
+      'keep',
+    )
+    expect(only(applyEdgePatch([edge({ label: 'keep' })], 'e1', { label: 'new' })).label).toBe(
+      'new',
+    )
+  })
+
+  it('allows an empty label, which is not the same as omitting it', () => {
+    expect(only(applyEdgePatch([edge({ label: 'x' })], 'e1', { label: '' })).label).toBe('')
+  })
+
+  it('stores dir so restyleEdge can recompute the arrowheads', () => {
+    expect(only(applyEdgePatch([edge()], 'e1', { dir: 'both' })).data!.dir).toBe('both')
+  })
+
+  it('keeps the current value for anything the patch omits', () => {
+    const start = edge({ data: { rel: 'via', dir: 'both', inferred: true, shape: 'default' } })
+    const out = only(applyEdgePatch([start], 'e1', {}))
+    expect(out.data!.rel).toBe('via')
+    expect(out.data!.dir).toBe('both')
+    expect((out.style as { strokeDasharray?: string }).strokeDasharray).toBeTruthy()
+  })
+
+  it('applies a colour override on top of the type colour', () => {
+    const out = only(applyEdgePatch([edge()], 'e1', { color: '#ff0000' }))
+    expect(out.data!.color).toBe('#ff0000')
+    expect((out.style as { stroke?: string }).stroke).toBe('#ff0000')
+  })
+
+  // THE regression. Clearing the override sends { color: undefined }, which is
+  // a present key with an undefined value. Reading it as
+  // `patch.color !== undefined` drops the clear and the edge keeps its old
+  // colour — the edge Default swatch silently did nothing. This shipped once.
+  it('clears the override when color is explicitly undefined', () => {
+    const coloured = edge({
+      data: { rel: 'via', dir: 'forward', inferred: false, shape: 'default', color: '#ff0000' },
+    })
+    const out = only(applyEdgePatch([coloured], 'e1', { color: undefined }))
+    expect(out.data!.color).toBeUndefined()
+    expect((out.style as { stroke?: string }).stroke).toBe(REL.via.color)
+  })
+
+  // The other half of the same rule: a patch that never mentions colour must
+  // not wipe an existing override.
+  it('keeps an existing override when the patch omits color entirely', () => {
+    const coloured = edge({
+      data: {
+        rel: 'talks-to',
+        dir: 'forward',
+        inferred: false,
+        shape: 'default',
+        color: '#ff0000',
+      },
+    })
+    const out = only(applyEdgePatch([coloured], 'e1', { type: 'via' }))
+    expect(out.data!.color).toBe('#ff0000')
+    expect((out.style as { stroke?: string }).stroke).toBe('#ff0000')
+  })
+
+  it('is a no-op when the id is not present', () => {
+    const es = [edge()]
+    expect(applyEdgePatch(es, 'nope', { type: 'via' })).toEqual(es)
   })
 })
