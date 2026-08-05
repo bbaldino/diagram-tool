@@ -32,7 +32,7 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
-import { reparentNodes } from './canvasEdits'
+import { reparentNodes, resizeGroup } from './canvasEdits'
 import { useViewPrefs } from './useViewPrefs'
 import { useFlowPlayback } from './useFlowPlayback'
 import { flushCanvasInto } from './canvasToModel'
@@ -707,22 +707,7 @@ function Flow({
   const setGroupSize = useCallback(
     (size: { width?: number; height?: number }) => {
       if (!selNode) return
-      setNodes((ns) =>
-        ns.map((n) => {
-          if (n.id !== selNode) return n
-          const g = n as any
-          const curW =
-            Number(g.measured?.width) || Number(g.width) || Number((n.style as any)?.width) || 320
-          const curH =
-            Number(g.measured?.height) ||
-            Number(g.height) ||
-            Number((n.style as any)?.height) ||
-            200
-          const width = size.width ?? curW
-          const height = size.height ?? curH
-          return { ...n, width, height, style: { ...n.style, width, height } }
-        }),
-      )
+      setNodes((ns) => resizeGroup(ns, selNode, size))
       // Resizing a group changes its children's allowed drag region — recompute
       // their extents from the new size. recomputeChildExtents (not reflowGroups)
       // so the user's chosen size stands, without re-growing/re-slacking it.

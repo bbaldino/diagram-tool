@@ -102,3 +102,37 @@ export function reparentNodes(
   })
   return reflowGroups(sized)
 }
+
+/**
+ * Set an explicit size on one group, leaving every other node alone.
+ *
+ * The current size is read measured -> width -> style -> default, because the
+ * three disagree depending on how the group last changed: a NodeResizer drag
+ * writes `width`/`height` and `measured` but never `style`, while a group built
+ * from the model has only `style`. Reading any single one of them dropped
+ * resizes. An omitted dimension keeps the current value, so the width and
+ * height inputs can be edited independently.
+ *
+ * Writes both the top-level width/height and style so the next read agrees
+ * whichever source it consults.
+ */
+export function resizeGroup(
+  ns: Node[],
+  id: string,
+  size: { width?: number; height?: number },
+): Node[] {
+  return ns.map((n) => {
+    if (n.id !== id) return n
+    const g = n as Node & {
+      measured?: { width?: number; height?: number }
+      width?: number
+      height?: number
+    }
+    const style = n.style as { width?: number | string; height?: number | string } | undefined
+    const curW = Number(g.measured?.width) || Number(g.width) || Number(style?.width) || 320
+    const curH = Number(g.measured?.height) || Number(g.height) || Number(style?.height) || 200
+    const width = size.width ?? curW
+    const height = size.height ?? curH
+    return { ...n, width, height, style: { ...n.style, width, height } }
+  })
+}

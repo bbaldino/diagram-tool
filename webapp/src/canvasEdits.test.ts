@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { Node } from '@xyflow/react'
-import { reparentNodes } from './canvasEdits'
+import { reparentNodes, resizeGroup } from './canvasEdits'
 
 const svc = (id: string, over: Partial<Node> = {}): Node =>
   ({
@@ -157,5 +157,83 @@ describe('reparentNodes — array ordering', () => {
   it('loses no nodes', () => {
     const ns = [grp('g1'), svc('a', { selected: true }), svc('b')]
     expect(reparentNodes(ns, 'g1', null)).toHaveLength(3)
+  })
+})
+
+describe('resizeGroup', () => {
+  const at = (ns: Node[], id: string) =>
+    ns.find((n) => n.id === id) as Node & { width?: number; height?: number }
+
+  it('sets both dimensions on the target group only', () => {
+    const out = resizeGroup([grp('g1'), grp('g2')], 'g1', { width: 500, height: 400 })
+    expect(at(out, 'g1').width).toBe(500)
+    expect(at(out, 'g1').height).toBe(400)
+    expect(at(out, 'g2').width).toBe(400)
+  })
+
+  // The width and height inputs are edited independently, so an omitted
+  // dimension must keep its current value rather than falling to the default.
+  it('keeps the other dimension when only one is given', () => {
+    const out = resizeGroup(
+      [grp('g1', { width: 640, height: 480, style: { width: 640, height: 480 } })],
+      'g1',
+      { width: 500 },
+    )
+    expect(at(out, 'g1').width).toBe(500)
+    expect(at(out, 'g1').height).toBe(480)
+  })
+
+  // A NodeResizer drag writes width/height and measured but never style, while
+  // a group built from the model has only style. Reading one source dropped
+  // resizes, so the fallback order is load-bearing.
+  it('prefers measured over width over style', () => {
+    const n = {
+      ...grp('g1', { width: 500, style: { width: 400, height: 300 } }),
+      measured: { width: 600, height: 300 },
+    } as Node
+    expect(at(resizeGroup([n], 'g1', {}), 'g1').width).toBe(600)
+  })
+
+  it('falls back to width when measured is absent', () => {
+    const n = grp('g1', { width: 500, style: { width: 400, height: 300 } })
+    expect(at(resizeGroup([n], 'g1', {}), 'g1').width).toBe(500)
+  })
+
+  it('falls back to style when neither measured nor width is set', () => {
+    const n = {
+      id: 'g1',
+      type: 'group',
+      position: { x: 0, y: 0 },
+      data: {},
+      style: { width: 456, height: 321 },
+    } as Node
+    const out = at(resizeGroup([n], 'g1', {}), 'g1')
+    expect(out.width).toBe(456)
+    expect(out.height).toBe(321)
+  })
+
+  it('falls back to 320x200 when the group carries no size at all', () => {
+    const n = { id: 'g1', type: 'group', position: { x: 0, y: 0 }, data: {} } as Node
+    const out = at(resizeGroup([n], 'g1', {}), 'g1')
+    expect(out.width).toBe(320)
+    expect(out.height).toBe(200)
+  })
+
+  // Writing only one of them leaves the two sources disagreeing, which is what
+  // made a resize appear to revert on the next read.
+  it('writes the size to both the top level and style', () => {
+    const out = at(resizeGroup([grp('g1')], 'g1', { width: 500, height: 400 }), 'g1')
+    expect(out.style).toMatchObject({ width: 500, height: 400 })
+  })
+
+  it('returns other nodes untouched by identity', () => {
+    const other = svc('a')
+    const out = resizeGroup([grp('g1'), other], 'g1', { width: 500 })
+    expect(out.find((n) => n.id === 'a')).toBe(other)
+  })
+
+  it('is a no-op when the id is not present', () => {
+    const ns = [grp('g1')]
+    expect(resizeGroup(ns, 'nope', { width: 999 })).toEqual(ns)
   })
 })
