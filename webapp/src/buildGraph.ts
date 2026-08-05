@@ -1,4 +1,5 @@
 import { type Node, type Edge } from '@xyflow/react'
+import type { AppEdge } from './canvasData'
 import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
 import type { Diagram, Field, Node as DNode, Template } from './model'
 
@@ -17,7 +18,7 @@ function shownFields(node: DNode, tmpl: Template | undefined): { key: string; va
 export function buildDiagramGraph(
   diagram: Diagram,
   templates: Template[] = [],
-): { nodes: Node[]; edges: Edge[] } {
+): { nodes: Node[]; edges: AppEdge[] } {
   const templatesById = new Map(templates.map((t) => [t.id, t]))
   const groupsById = new Map(diagram.groups.map((g) => [g.id, g]))
   const nodes: Node[] = []
@@ -80,7 +81,7 @@ export function buildDiagramGraph(
     })
   }
 
-  const edges: Edge[] = diagram.edges.map((de, i) => {
+  const edges: AppEdge[] = diagram.edges.map((de, i) => {
     // Existing edges predate multi-side handles → default to right→left forward.
     let edge = makeEdge(de.from, de.to, de.type, de.label, de.inferred, i, {
       sourceHandle: de.sourceHandle ?? 'right',

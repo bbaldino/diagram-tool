@@ -2,7 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
-import type { ServiceNode as ServiceNodeType } from './nodeData'
+import type { ServiceNode as ServiceNodeType } from './canvasData'
 import { ServiceNode } from './nodes'
 import { SCHEMES, secondaryText, accentFill } from './schemes'
 

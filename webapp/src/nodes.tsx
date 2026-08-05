@@ -5,7 +5,7 @@ import type {
   GroupNode as GroupNodeType,
   NoteNode as NoteNodeType,
   ServiceNode as ServiceNodeType,
-} from './nodeData'
+} from './canvasData'
 import { NoteMarkdown } from './NoteMarkdown'
 import {
   resolveScheme,
@@ -51,7 +51,7 @@ export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
   const [iconBroken, setIconBroken] = useState(false)
   useEffect(() => setIconBroken(false), [d.icon])
   const iconUrl = d.icon && !iconBroken ? `${ICON_BASE}/${d.icon}.svg` : null
-  const scheme = resolveScheme((d.scheme as string) ?? NEW_NODE_SCHEME, NEW_NODE_SCHEME)
+  const scheme = resolveScheme(d.scheme ?? NEW_NODE_SCHEME, NEW_NODE_SCHEME)
   const schemeVars = {
     ['--scheme-bg']: scheme.background,
     ['--scheme-border']: scheme.border,
@@ -76,9 +76,9 @@ export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
         </div>
         {d.status ? <div className={`node__status status-${d.status}`} title={d.status} /> : null}
       </div>
-      {Array.isArray((d as any).shownFields) && (d as any).shownFields.length > 0 && (
+      {d.shownFields && d.shownFields.length > 0 && (
         <div className="node__fields">
-          {(d as any).shownFields.map((f: { key: string; value: string }) => (
+          {d.shownFields.map((f) => (
             <div className="node__field" key={f.key}>
               <span className="node__field-k">{f.key}</span>
               {f.value}
@@ -86,8 +86,8 @@ export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
           ))}
         </div>
       )}
-      {(d as any).note ? <div className="node__note">{(d as any).note}</div> : null}
-      {(d as any).flowBadge ? <div className="node__flow-badge">{(d as any).flowBadge}</div> : null}
+      {d.note ? <div className="node__note">{d.note}</div> : null}
+      {d.flowBadge ? <div className="node__flow-badge">{d.flowBadge}</div> : null}
     </div>
   )
 }
@@ -96,7 +96,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   const { setNodes } = useReactFlow()
   const d = data
   const noteSpellcheck = useContext(NoteSpellcheckContext)
-  const incoming = (d.text ?? '') as string
+  const incoming = d.text ?? ''
 
   // The textarea is driven by local state, NOT straight off `data.text`.
   // `data.text` lives in React Flow's store and updates asynchronously, so the
@@ -123,7 +123,7 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
     if (!selected) editing.current = false
   }, [selected])
 
-  const scheme = resolveScheme((d.scheme as string) ?? NEW_NOTE_SCHEME, NEW_NOTE_SCHEME)
+  const scheme = resolveScheme(d.scheme ?? NEW_NOTE_SCHEME, NEW_NOTE_SCHEME)
   const schemeVars = {
     ['--scheme-bg']: scheme.background,
     ['--scheme-border']: scheme.border,

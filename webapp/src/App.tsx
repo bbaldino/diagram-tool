@@ -35,7 +35,7 @@ import {
   type EdgeDir,
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
-import { isGroupNode, isNoteNode, isServiceNode } from './nodeData'
+import { isGroupNode, isNoteNode, isServiceNode, type AppEdge, type EdgeData } from './canvasData'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
 import { FlowsTab } from './FlowsTab'
@@ -151,21 +151,21 @@ function nodesToDiagramParts(
 
 // `orientation` has no on-canvas UI either (server-side layout hint only) —
 // preserve it from the diagram's previous edge, same reasoning as fields/template above.
-function edgesToDiagramEdges(edges: Edge[], prevEdgesById: Map<string, MEdge>): MEdge[] {
+function edgesToDiagramEdges(edges: AppEdge[], prevEdgesById: Map<string, MEdge>): MEdge[] {
   return edges.map((e) => ({
     id: e.id,
     from: e.source,
     to: e.target,
-    type: (e.data as any)?.rel ?? 'talks-to',
+    type: e.data?.rel ?? 'talks-to',
     label: typeof e.label === 'string' ? e.label : undefined,
-    inferred: !!(e.data as any)?.inferred,
-    shape: (e.data as any)?.shape ?? 'default',
-    points: (e.data as any)?.points,
+    inferred: !!e.data?.inferred,
+    shape: e.data?.shape ?? 'default',
+    points: e.data?.points,
     sourceHandle: e.sourceHandle ?? undefined,
     targetHandle: e.targetHandle ?? undefined,
-    dir: (e.data as any)?.dir ?? 'forward',
-    color: (e.data as any)?.color ?? undefined,
-    labelPos: (e.data as any)?.labelPos,
+    dir: e.data?.dir ?? 'forward',
+    color: e.data?.color ?? undefined,
+    labelPos: e.data?.labelPos,
     orientation: prevEdgesById.get(e.id)?.orientation,
   }))
 }
@@ -234,7 +234,7 @@ function Flow({
 }) {
   const { showPrompt } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
@@ -419,7 +419,7 @@ function Flow({
         return { ...e, className: fc, data: { ...e.data, flowState: fc } }
       }),
     )
-    setEdgeStyle(((built.edges[0]?.data as any)?.shape as any) || 'default')
+    setEdgeStyle(built.edges[0]?.data?.shape || 'default')
     loaded.current = true
     lastSeededId.current = activeId
     if (changed) {
@@ -815,10 +815,10 @@ function Flow({
       setEdges((es) =>
         es.map((e) => {
           if (e.id !== selEdge) return e
-          const cur = (e.data ?? {}) as any
-          const type = patch.type ?? (cur.rel as RelType) ?? 'talks-to'
+          const cur: EdgeData = e.data ?? {}
+          const type = patch.type ?? cur.rel ?? 'talks-to'
           const inferred = patch.inferred ?? !!cur.inferred
-          const dir = patch.dir ?? (cur.dir as EdgeDir) ?? 'forward'
+          const dir = patch.dir ?? cur.dir ?? 'forward'
           const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
           // stash dir (and, if the patch sets one, the color override) in data so
           // restyleEdge recomputes stroke/arrowheads/label from them.
@@ -1524,9 +1524,7 @@ function Flow({
     const colors = new Set<string>()
     const schemes = new Set<string>()
     for (const e of edges) {
-      const c =
-        ((e.data as any)?.color as string) ??
-        REL[((e.data as any)?.rel as RelType) ?? 'talks-to']?.color
+      const c = e.data?.color ?? REL[e.data?.rel ?? 'talks-to']?.color
       if (c) colors.add(c.toLowerCase())
     }
     for (const n of nodes) {

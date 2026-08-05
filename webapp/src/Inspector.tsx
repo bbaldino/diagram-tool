@@ -2,7 +2,7 @@ import { type Node, type Edge } from '@xyflow/react'
 import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { SchemePicker } from './SchemePicker'
-import { isGroupNode, isNoteNode, isServiceNode } from './nodeData'
+import { isGroupNode, isNoteNode, isServiceNode, type EdgeData } from './canvasData'
 import { IconInput } from './IconInput'
 import { Switch } from './Switch'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
@@ -60,11 +60,11 @@ export function Inspector({
 }: Props) {
   // ----- edge selected -----
   if (edge && !node) {
-    const d = (edge.data ?? {}) as any
-    const type = (d.rel as RelType) ?? 'talks-to'
-    const dir = (d.dir as EdgeDir) ?? 'forward'
+    const d: EdgeData = edge.data ?? {}
+    const type = d.rel ?? 'talks-to'
+    const dir = d.dir ?? 'forward'
     const colorOverridden = typeof d.color === 'string'
-    const color = colorOverridden ? (d.color as string) : REL[type].color
+    const color = colorOverridden ? d.color! : REL[type].color
     const DIRS: { v: EdgeDir; glyph: string; title: string }[] = [
       { v: 'forward', glyph: '→', title: 'one-way (arrow at target)' },
       { v: 'backward', glyph: '←', title: 'reversed (arrow at source)' },

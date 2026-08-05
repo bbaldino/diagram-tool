@@ -1,4 +1,5 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
+import type { AppEdge } from './canvasData'
 import {
   GROUP_PAD,
   GROUP_MIN,
@@ -313,7 +314,7 @@ export function makeEdge(
   inferred?: boolean,
   i = Math.floor(performance.now()),
   extra?: { sourceHandle?: string; targetHandle?: string; dir?: EdgeDir; color?: string },
-): Edge {
+): AppEdge {
   const r = REL[type]
   const dir = extra?.dir ?? 'forward'
   // Per-edge color override; falls back to the relationship type's color.
@@ -345,10 +346,10 @@ export function makeEdge(
 export const REL_TYPES = Object.keys(REL) as RelType[]
 
 // Re-apply relationship styling to an existing edge (used when its type changes).
-export function restyleEdge(e: Edge, type: RelType, inferred: boolean): Edge {
+export function restyleEdge(e: AppEdge, type: RelType, inferred: boolean): AppEdge {
   const r = REL[type]
-  const dir = (e.data?.dir as EdgeDir) ?? 'forward'
-  const colorOverride = e.data?.color as string | undefined
+  const dir = e.data?.dir ?? 'forward'
+  const colorOverride = e.data?.color
   const color = colorOverride ?? r.color
   return {
     ...e,
