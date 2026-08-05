@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.8.1](https://github.com/bbaldino/diagram-tool/compare/v0.8.0...v0.8.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* **canvas:** give group panes room to nest below the edge layer ([6824699](https://github.com/bbaldino/diagram-tool/commit/6824699365eed544036b92ccc809a025bd395452))
+* **canvas:** stop disabling every edge while a group is selected ([8527389](https://github.com/bbaldino/diagram-tool/commit/8527389317015c6509180e9045d9e512b9a2a784))
+
 ## [0.8.0](https://github.com/bbaldino/diagram-tool/compare/v0.7.0...v0.8.0) (2026-08-05)
 
 
