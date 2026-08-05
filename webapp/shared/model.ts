@@ -1,6 +1,5 @@
-import { DEFAULT_EDGE_COLOR, type RelType, type EdgeDir } from './relationships'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from './edgeDefaults'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
-export type { RelType }
 
 export type Status = 'up' | 'down' | 'idle'
 export type DiagramType = 'canvas' | 'topology' | 'call-flow'
@@ -58,7 +57,6 @@ export interface Note extends Entity {
 export interface Edge extends Entity {
   from: string // node id
   to: string // node id
-  type: RelType
   label?: string
   inferred?: boolean
   shape?: 'default' | 'smoothstep' | 'straight'

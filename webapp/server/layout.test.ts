@@ -27,7 +27,7 @@ describe('layoutDiagram dispatcher', () => {
         size: { width: 0, height: 0 },
       },
     ],
-    edges: [{ id: 'e1', from: 'out', to: 'in', type: 'talks-to' as const }],
+    edges: [{ id: 'e1', from: 'out', to: 'in' }],
     notes: [],
     flows: [],
   }
@@ -123,7 +123,7 @@ describe('layoutDiagram edge handles', () => {
         { id: 'b', label: 'B', fields: [], position: { x: 0, y: 0 } },
       ],
       groups: [],
-      edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }],
+      edges: [{ id: 'e1', from: 'a', to: 'b' }],
       notes: [],
       flows: [],
     }
@@ -147,7 +147,6 @@ describe('layoutDiagram edge handles', () => {
           id: 'e1',
           from: 'a',
           to: 'ghost',
-          type: 'talks-to' as const,
           sourceHandle: 'top' as const,
         },
       ],
@@ -221,7 +220,7 @@ describe('assignEdgeHandles', () => {
       { id: 'a', label: 'A', fields: [], position: { x: 0, y: 0 } },
       { id: 'b', label: 'B', fields: [], position: { x: 400, y: 0 } },
     ]
-    const edges = [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }]
+    const edges = [{ id: 'e1', from: 'a', to: 'b' }]
     const out = assignEdgeHandles(nodes, [], edges, { a: 64, b: 64 })
     expect(out[0].sourceHandle).toBe('right')
     expect(out[0].targetHandle).toBe('left')
@@ -241,16 +240,14 @@ describe('assignEdgeHandles', () => {
         size: { width: 260, height: 160 },
       },
     ]
-    const edges = [{ id: 'e1', from: 'inner', to: 'outer', type: 'talks-to' as const }]
+    const edges = [{ id: 'e1', from: 'inner', to: 'outer' }]
     const out = assignEdgeHandles(nodes, groups, edges, { inner: 64, outer: 64 })
     expect(out[0].sourceHandle).toBe('right')
     expect(out[0].targetHandle).toBe('left')
   })
 
   it('leaves handles unchanged for a missing endpoint', () => {
-    const edges = [
-      { id: 'e1', from: 'a', to: 'ghost', type: 'talks-to' as const, sourceHandle: 'top' as const },
-    ]
+    const edges = [{ id: 'e1', from: 'a', to: 'ghost', sourceHandle: 'top' as const }]
     const out = assignEdgeHandles(
       [{ id: 'a', label: 'A', fields: [], position: { x: 0, y: 0 } }],
       [],
@@ -298,7 +295,7 @@ describe('layoutDiagram (nested + notes)', () => {
         parentId: 'C',
       },
     ],
-    edges: [{ id: 'e', from: 'b1', to: 'c1', type: 'talks-to' as const }],
+    edges: [{ id: 'e', from: 'b1', to: 'c1' }],
     flows: [],
   })
 

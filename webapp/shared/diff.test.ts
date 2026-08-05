@@ -157,7 +157,7 @@ describe('diffToOps', () => {
       size: { width: 10, height: 10 },
       text: 'hi',
     })
-    prev = addEdge(prev, did, { id: 'ed1', from: 'e1', to: 'e2', type: 'talks-to' })
+    prev = addEdge(prev, did, { id: 'ed1', from: 'e1', to: 'e2' })
     const next = {
       ...prev,
       diagrams: prev.diagrams.map((d) =>
@@ -167,7 +167,7 @@ describe('diffToOps', () => {
               ...d,
               groups: d.groups.map((g) => (g.id === 'g1' ? { ...g, label: 'G1-changed' } : g)),
               notes: d.notes.filter((n) => n.id !== 'n1'),
-              edges: [...d.edges, { id: 'ed2', from: 'e2', to: 'e3', type: 'talks-to' as const }],
+              edges: [...d.edges, { id: 'ed2', from: 'e2', to: 'e3' }],
             },
       ),
     }
@@ -208,7 +208,7 @@ describe('edge labelPos round-trip', () => {
         type: 'canvas' as const,
         nodes: [],
         groups: [],
-        edges: [{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' as const }],
+        edges: [{ id: 'e1', from: 'a', to: 'b' }],
         notes: [],
         flows: [],
       },

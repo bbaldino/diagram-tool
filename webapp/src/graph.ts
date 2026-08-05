@@ -1,17 +1,11 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
-import {
-  DEFAULT_EDGE_COLOR,
-  REL,
-  REL_TYPES,
-  type EdgeDir,
-  type RelType,
-} from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from '../shared/edgeDefaults'
 
 // Re-exported: the vocabulary lives in shared/ (the server needs it), but the
 // canvas modules have always reached for it here and there is no value in
 // making every one of them learn the new path.
-export { DEFAULT_EDGE_COLOR, REL, REL_TYPES, type EdgeDir, type RelType }
+export { DEFAULT_EDGE_COLOR, type EdgeDir }
 import { GROUP_SLACK, NODE_EST_SIZE, requiredGroupSize, paddedExtent } from '../shared/containment'
 
 export {
@@ -298,7 +292,6 @@ function markersFor(dir: EdgeDir, color: string) {
 export function makeEdge(
   from: string,
   to: string,
-  type: RelType,
   label?: string,
   inferred?: boolean,
   i = Math.floor(performance.now()),
@@ -330,7 +323,6 @@ export function makeEdge(
     // absent one that resolves at draw time. The ?? fallbacks downstream remain
     // for edges written before this.
     data: {
-      rel: type,
       inferred: !!inferred,
       shape: 'default',
       dir,
@@ -340,7 +332,7 @@ export function makeEdge(
 }
 
 // Re-apply edge styling from its own data (colour, direction, inferred).
-export function restyleEdge(e: AppEdge, type: RelType, inferred: boolean): AppEdge {
+export function restyleEdge(e: AppEdge, inferred: boolean): AppEdge {
   const dir = e.data?.dir ?? 'forward'
   // Kept separate: `colorOverride` is what the edge stores (absent means "no
   // colour of its own"), `color` is what actually gets drawn. Writing the
@@ -361,7 +353,7 @@ export function restyleEdge(e: AppEdge, type: RelType, inferred: boolean): AppEd
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     labelBgPadding: [3, 2],
     labelBgBorderRadius: 3,
-    data: { ...(e.data ?? {}), rel: type, inferred, color: colorOverride },
+    data: { ...(e.data ?? {}), inferred, color: colorOverride },
   }
 }
 

@@ -13,7 +13,7 @@ import type { Node } from '@xyflow/react'
 import { descendantsOf, groupsFirst } from './canvasNodes'
 import { liveFootprint, reflowGroups, restyleEdge } from './graph'
 import type { AppEdge, EdgeData } from './canvasData'
-import type { EdgeDir, RelType } from '../shared/relationships'
+import type { EdgeDir } from '../shared/edgeDefaults'
 import { placeInGroup } from '../shared/containment'
 
 /**
@@ -140,7 +140,6 @@ export function resizeGroup(
 }
 
 export interface EdgePatch {
-  type?: RelType
   label?: string
   inferred?: boolean
   dir?: EdgeDir
@@ -165,7 +164,6 @@ export function applyEdgePatch(es: AppEdge[], id: string, patch: EdgePatch): App
   return es.map((e) => {
     if (e.id !== id) return e
     const cur: EdgeData = e.data ?? {}
-    const type = patch.type ?? cur.rel ?? 'talks-to'
     const inferred = patch.inferred ?? !!cur.inferred
     const dir = patch.dir ?? cur.dir ?? 'forward'
     const color = patch.color ?? cur.color
@@ -173,6 +171,6 @@ export function applyEdgePatch(es: AppEdge[], id: string, patch: EdgePatch): App
     // Stash dir and colour in data so restyleEdge recomputes
     // stroke/arrowheads/label from them.
     const next: AppEdge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir, color } }
-    return restyleEdge(next, type, inferred)
+    return restyleEdge(next, inferred)
   })
 }

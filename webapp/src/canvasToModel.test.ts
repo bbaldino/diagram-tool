@@ -126,7 +126,6 @@ describe('edgesToDiagramEdges', () => {
     const [e] = edgesToDiagramEdges(
       [
         edge({
-          rel: 'via',
           inferred: true,
           shape: 'straight',
           dir: 'both',
@@ -140,7 +139,6 @@ describe('edgesToDiagramEdges', () => {
       id: 'e1',
       from: 'a',
       to: 'b',
-      type: 'via',
       inferred: true,
       shape: 'straight',
       dir: 'both',
@@ -151,7 +149,6 @@ describe('edgesToDiagramEdges', () => {
 
   it('falls back to sensible defaults when data is absent', () => {
     const [e] = edgesToDiagramEdges([{ id: 'e1', source: 'a', target: 'b' } as AppEdge], new Map())
-    expect(e.type).toBe('talks-to')
     expect(e.shape).toBe('default')
     expect(e.dir).toBe('forward')
     expect(e.inferred).toBe(false)

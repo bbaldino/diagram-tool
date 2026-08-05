@@ -158,7 +158,7 @@ describe('edge ops', () => {
   it('edge.add/update/remove via applyOps', () => {
     const d = addDiagram(empty, 'D', 'canvas')
     let m = applyOps(d.model, [
-      { t: 'edge.add', diagramId: d.id, edge: { id: 'x', from: 'a', to: 'b', type: 'talks-to' } },
+      { t: 'edge.add', diagramId: d.id, edge: { id: 'x', from: 'a', to: 'b' } },
       { t: 'edge.update', diagramId: d.id, id: 'x', patch: { dir: 'both' } },
     ])
     expect(getDiagram(m, d.id)!.edges[0].dir).toBe('both')

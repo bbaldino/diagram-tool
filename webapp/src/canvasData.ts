@@ -11,7 +11,7 @@
 // data parameter to Record<string, unknown>, and an interface has no implicit
 // index signature, so an interface will not satisfy it.
 import type { Edge, Node } from '@xyflow/react'
-import type { EdgeDir, RelType } from './graph'
+import type { EdgeDir } from './graph'
 import type { Status } from '../shared/model'
 
 // Both required, mirroring Group in model.ts. Typing them optional made the
@@ -47,7 +47,7 @@ export type NoteNodeData = {
 // `T | undefined`, and the codebase builds edge data by spreading
 // (`{ ...e.data, shape }`), so requiring a field would make each of those
 // spreads fail to compile without making any read safer — every consumer
-// already defaults (`?? 'talks-to'`, `?? 'default'`, `?? 'forward'`). What the
+// already defaults (`?? 'default'`, `?? 'forward'`). What the
 // type buys here is that field NAMES are checked, which is the bug this exists
 // to catch.
 //
@@ -55,7 +55,6 @@ export type NoteNodeData = {
 // relationship type's colour", which is why edges stayed out of the scheme
 // change.
 export type EdgeData = {
-  rel?: RelType
   inferred?: boolean
   shape?: 'default' | 'smoothstep' | 'straight'
   dir?: EdgeDir

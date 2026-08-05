@@ -1,5 +1,5 @@
 import { type Node, type Edge } from '@xyflow/react'
-import { DEFAULT_EDGE_COLOR, type RelType, type EdgeDir } from './graph'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { SchemePicker } from './SchemePicker'
 import { isGroupNode, isNoteNode, isServiceNode, type EdgeData } from './canvasData'
@@ -13,13 +13,7 @@ interface Props {
   groups: { id: string; label: string }[]
   onNodeData: (patch: Record<string, unknown>) => void
   onNodeParent: (parentId: string) => void
-  onEdge: (patch: {
-    type?: RelType
-    label?: string
-    inferred?: boolean
-    dir?: EdgeDir
-    color?: string
-  }) => void
+  onEdge: (patch: { label?: string; inferred?: boolean; dir?: EdgeDir; color?: string }) => void
   // Plain hexes only — from edges and groups. For the edge/group pickers.
   diagramColors: string[]
   // Scheme names or custom hexes — from notes and service nodes. For the

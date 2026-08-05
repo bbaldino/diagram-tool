@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { backfillDefaults } from './model'
-import { DEFAULT_EDGE_COLOR } from './relationships'
+import { DEFAULT_EDGE_COLOR } from './edgeDefaults'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 
 const model = (nodeScheme?: string, noteScheme?: string) =>
@@ -105,23 +105,19 @@ describe('backfillDefaults — edge colours', () => {
     (m as { diagrams: { edges: { color?: string }[] }[] }).diagrams[0]!.edges
 
   it('gives an edge with no colour the starting colour', () => {
-    const out = edgesOf(
-      backfillDefaults(withEdges([{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }])),
-    )
+    const out = edgesOf(backfillDefaults(withEdges([{ id: 'e1', from: 'a', to: 'b' }])))
     expect(out[0]!.color).toBe(DEFAULT_EDGE_COLOR)
   })
 
   it('leaves an edge that already has a colour alone', () => {
     const out = edgesOf(
-      backfillDefaults(
-        withEdges([{ id: 'e1', from: 'a', to: 'b', type: 'talks-to', color: '#ff0000' }]),
-      ),
+      backfillDefaults(withEdges([{ id: 'e1', from: 'a', to: 'b', color: '#ff0000' }])),
     )
     expect(out[0]!.color).toBe('#ff0000')
   })
 
   it('is idempotent', () => {
-    const once = backfillDefaults(withEdges([{ id: 'e1', from: 'a', to: 'b', type: 'talks-to' }]))
+    const once = backfillDefaults(withEdges([{ id: 'e1', from: 'a', to: 'b' }]))
     expect(backfillDefaults(once)).toEqual(once)
   })
 
@@ -130,7 +126,6 @@ describe('backfillDefaults — edge colours', () => {
       id: 'e1',
       from: 'a',
       to: 'b',
-      type: 'talks-to',
       label: 'x',
       dir: 'both',
       inferred: true,

@@ -49,7 +49,7 @@ const diagram: Diagram = {
   ],
   groups: [],
   notes: [],
-  edges: [{ id: 'e1', from: 'users', to: 'plex', type: 'talks-to' }],
+  edges: [{ id: 'e1', from: 'users', to: 'plex' }],
   flows: [],
 }
 
@@ -198,7 +198,7 @@ describe('group/note/edge/flow mutators', () => {
   })
 
   it('addEdge/updateEdge/removeEdge round-trip', () => {
-    let m = addEdge(baseModel, 'logical', { id: 'x1', from: 'a', to: 'b', type: 'talks-to' })
+    let m = addEdge(baseModel, 'logical', { id: 'x1', from: 'a', to: 'b' })
     expect(getDiagram(m, 'logical')!.edges.map((e) => e.id)).toContain('x1')
     m = updateEdge(m, 'logical', 'x1', { label: 'L', color: '#ff0000' })
     expect(getDiagram(m, 'logical')!.edges.find((e) => e.id === 'x1')!.label).toBe('L')

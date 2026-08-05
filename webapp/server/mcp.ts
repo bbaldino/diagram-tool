@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { DEFAULT_EDGE_COLOR, type EdgeDir } from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from '../shared/edgeDefaults'
 import type {
   Diagram,
   DiagramType,
@@ -334,7 +334,6 @@ export const handlers = {
       id: newId(),
       from: a.from,
       to: a.to,
-      type: 'talks-to',
       color: DEFAULT_EDGE_COLOR,
     }
     if (a.label !== undefined) edge.label = a.label
@@ -686,11 +685,9 @@ export const wrap = (result: unknown) => {
 const positionShape = z.object({ x: z.number(), y: z.number() })
 
 // Shared shape for the fields an agent may set on an edge. Relationship
-// `type` is intentionally excluded because it is vestigial — nothing reads it
-// any more. Edges are distinguished by colour and label; new ones are written
-// as 'talks-to' because the model field is still required. Removing the field
-// outright is a separate, data-touching change.
-// Exported so it's independently testable.
+// There is no relationship `type` any more — it was removed once it turned out
+// nothing could set it and nothing read it. Edges are distinguished by colour
+// and label. Exported so it's independently testable.
 export const edgeAttrsShape = {
   label: z.string().optional(),
   dir: z.enum(['forward', 'backward', 'both']).optional(),

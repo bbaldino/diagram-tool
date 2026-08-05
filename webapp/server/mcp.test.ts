@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { DEFAULT_EDGE_COLOR } from '../shared/edgeDefaults'
 import { z } from 'zod'
 import { handlers, createMcpServer, edgeAttrsShape, schemeShape, wrap } from './mcp'
 import { createStore, type Store } from './store'
@@ -176,7 +177,7 @@ describe('handlers', () => {
       expect(e.to).toBe(sonarrId)
     })
 
-    it('connect with only {from,to} succeeds and defaults edge type to talks-to', async () => {
+    it('connect with only {from,to} succeeds and gives the edge a colour', async () => {
       const store = await mkStore()
       const { diagramId, nodeIds } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -187,7 +188,9 @@ describe('handlers', () => {
       expect('id' in r).toBe(true)
       const d = store.getState().model.diagrams.find((x) => x.id === diagramId)!
       const e = d.edges.find((x) => x.id === (r as { id: string }).id)!
-      expect(e.type).toBe('talks-to')
+      // Every edge gets an explicit colour at creation — the relationship
+      // type this used to assert no longer exists.
+      expect(e.color).toBe(DEFAULT_EDGE_COLOR)
     })
 
     it('connect on a missing diagram errors, store unchanged', async () => {
@@ -285,7 +288,7 @@ describe('handlers', () => {
       void nodeIds
     })
 
-    it('editEdge with {color,label} updates only those fields, leaving type unchanged and no stray keys', async () => {
+    it('editEdge with {color,label} updates only those fields and adds no stray keys', async () => {
       const store = await mkStore()
       const { diagramId } = (await handlers.authorDiagram(store, {
         name: 'Flow',
@@ -294,7 +297,6 @@ describe('handlers', () => {
       })) as { diagramId: string }
       const diagram = store.getState().model.diagrams.find((x) => x.id === diagramId)!
       const edgeId = diagram.edges[0].id
-      const originalType = diagram.edges[0].type
       const r = handlers.editEdge(store, {
         diagramId,
         edgeId,
@@ -304,7 +306,6 @@ describe('handlers', () => {
       const updated = store.getState().model.diagrams.find((x) => x.id === diagramId)!.edges[0]
       expect(updated.color).toBe('#fff')
       expect(updated.label).toBe('renamed')
-      expect(updated.type).toBe(originalType)
       expect(Object.keys(updated).sort()).toEqual([
         'color',
         'from',
@@ -313,7 +314,6 @@ describe('handlers', () => {
         'sourceHandle',
         'targetHandle',
         'to',
-        'type',
       ])
     })
 

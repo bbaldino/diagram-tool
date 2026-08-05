@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { applyEdgePatch, reparentNodes, resizeGroup } from './canvasEdits'
 import type { AppEdge } from './canvasData'
-import { DEFAULT_EDGE_COLOR, REL } from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR } from '../shared/edgeDefaults'
 
 const svc = (id: string, over: Partial<Node> = {}): Node =>
   ({
@@ -247,7 +247,7 @@ describe('applyEdgePatch', () => {
       source: 'a',
       target: 'b',
       type: 'waypoint',
-      data: { rel: 'talks-to', dir: 'forward', inferred: false, shape: 'default' },
+      data: { dir: 'forward', inferred: false, shape: 'default' },
       ...over,
     }) as AppEdge
 
@@ -255,23 +255,12 @@ describe('applyEdgePatch', () => {
 
   it('leaves other edges untouched by identity', () => {
     const other = edge({ id: 'e2' })
-    const out = applyEdgePatch([edge(), other], 'e1', { type: 'via' })
+    const out = applyEdgePatch([edge(), other], 'e1', { label: 'changed' })
     expect(out.find((e) => e.id === 'e2')).toBe(other)
   })
 
-  // The stroke comes from the edge's own colour, NOT from its relationship
-  // type. This test previously asserted the opposite, which held only because
-  // no edge could ever have a type other than 'talks-to' — so the lookup and
-  // the constant were the same value and nothing distinguished them.
-  it('stores the relationship type without letting it drive the stroke', () => {
-    const out = only(applyEdgePatch([edge()], 'e1', { type: 'via' }))
-    expect(out.data!.rel).toBe('via')
-    expect((out.style as { stroke?: string }).stroke).toBe(DEFAULT_EDGE_COLOR)
-    expect((out.style as { stroke?: string }).stroke).not.toBe(REL.via.color)
-  })
-
   it('sets the label only when the patch carries one', () => {
-    expect(only(applyEdgePatch([edge({ label: 'keep' })], 'e1', { type: 'via' })).label).toBe(
+    expect(only(applyEdgePatch([edge({ label: 'keep' })], 'e1', { dir: 'both' })).label).toBe(
       'keep',
     )
     expect(only(applyEdgePatch([edge({ label: 'keep' })], 'e1', { label: 'new' })).label).toBe(
@@ -288,9 +277,8 @@ describe('applyEdgePatch', () => {
   })
 
   it('keeps the current value for anything the patch omits', () => {
-    const start = edge({ data: { rel: 'via', dir: 'both', inferred: true, shape: 'default' } })
+    const start = edge({ data: { dir: 'both', inferred: true, shape: 'default' } })
     const out = only(applyEdgePatch([start], 'e1', {}))
-    expect(out.data!.rel).toBe('via')
     expect(out.data!.dir).toBe('both')
     expect((out.style as { strokeDasharray?: string }).strokeDasharray).toBeTruthy()
   })
@@ -309,7 +297,7 @@ describe('applyEdgePatch', () => {
   // the UI or over MCP, and it cost a shipped bug when it was once narrowed.
   it('leaves the colour alone when color is explicitly undefined', () => {
     const coloured = edge({
-      data: { rel: 'via', dir: 'forward', inferred: false, shape: 'default', color: '#ff0000' },
+      data: { dir: 'forward', inferred: false, shape: 'default', color: '#ff0000' },
     })
     const out = only(applyEdgePatch([coloured], 'e1', { color: undefined }))
     expect(out.data!.color).toBe('#ff0000')
@@ -319,7 +307,6 @@ describe('applyEdgePatch', () => {
   it('resets by setting the starting colour explicitly', () => {
     const coloured = edge({
       data: {
-        rel: 'talks-to',
         dir: 'forward',
         inferred: false,
         shape: 'default',
@@ -335,20 +322,19 @@ describe('applyEdgePatch', () => {
   it('keeps the current colour when the patch omits it entirely', () => {
     const coloured = edge({
       data: {
-        rel: 'talks-to',
         dir: 'forward',
         inferred: false,
         shape: 'default',
         color: '#ff0000',
       },
     })
-    const out = only(applyEdgePatch([coloured], 'e1', { type: 'via' }))
+    const out = only(applyEdgePatch([coloured], 'e1', { label: 'x' }))
     expect(out.data!.color).toBe('#ff0000')
     expect((out.style as { stroke?: string }).stroke).toBe('#ff0000')
   })
 
   it('is a no-op when the id is not present', () => {
     const es = [edge()]
-    expect(applyEdgePatch(es, 'nope', { type: 'via' })).toEqual(es)
+    expect(applyEdgePatch(es, 'nope', { label: 'x' })).toEqual(es)
   })
 })

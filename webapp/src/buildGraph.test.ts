@@ -37,7 +37,7 @@ describe('buildDiagramGraph', () => {
       notes: [
         { id: 'note1', text: 'hello', position: { x: 5, y: 5 }, size: { width: 100, height: 50 } },
       ],
-      edges: [{ id: 'e1', from: 'n1', to: 'n2', type: 'talks-to' }],
+      edges: [{ id: 'e1', from: 'n1', to: 'n2' }],
     })
 
     const { nodes, edges } = buildDiagramGraph(diagram)

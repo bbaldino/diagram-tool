@@ -83,7 +83,7 @@ export function buildDiagramGraph(
 
   const edges: AppEdge[] = diagram.edges.map((de, i) => {
     // Existing edges predate multi-side handles → default to right→left forward.
-    let edge = makeEdge(de.from, de.to, de.type, de.label, de.inferred, i, {
+    let edge = makeEdge(de.from, de.to, de.label, de.inferred, i, {
       sourceHandle: de.sourceHandle ?? 'right',
       targetHandle: de.targetHandle ?? 'left',
       dir: de.dir ?? 'forward',
@@ -96,7 +96,7 @@ export function buildDiagramGraph(
       points: de.points,
       labelPos: de.labelPos,
     }
-    edge = restyleEdge(edge, de.type, !!de.inferred) // keeps id/source/target/data via spread
+    edge = restyleEdge(edge, !!de.inferred) // keeps id/source/target/data via spread
     return edge
   })
 

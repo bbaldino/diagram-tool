@@ -77,10 +77,10 @@ describe('layout-tree', () => {
   it('contractEdges files each edge under its LCA as a box pair, dropping self-loops', () => {
     const d = mk()
     d.edges = [
-      { id: 'e_dd', from: 'd1', to: 'd2', type: 'talks-to' }, // LCA D → d1↔d2
-      { id: 'e_cd', from: 'c1', to: 'd1', type: 'talks-to' }, // LCA C → c1↔D
-      { id: 'e_bd', from: 'b1', to: 'd1', type: 'talks-to' }, // LCA B → b1↔C
-      { id: 'e_td', from: 'top', to: 'd1', type: 'talks-to' }, // LCA root → top↔B
+      { id: 'e_dd', from: 'd1', to: 'd2' }, // LCA D → d1↔d2
+      { id: 'e_cd', from: 'c1', to: 'd1' }, // LCA C → c1↔D
+      { id: 'e_bd', from: 'b1', to: 'd1' }, // LCA B → b1↔C
+      { id: 'e_td', from: 'top', to: 'd1' }, // LCA root → top↔B
     ]
     const m = contractEdges(d)
     expect(m.get('D')).toEqual([{ from: 'd1', to: 'd2' }])

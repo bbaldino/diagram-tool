@@ -14,7 +14,6 @@ const edge = (id: string, from: string, to: string, extra: Partial<Edge> = {}): 
   id,
   from,
   to,
-  type: 'talks-to',
   ...extra,
 })
 

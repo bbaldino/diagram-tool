@@ -28,7 +28,7 @@ const serviceNode = (scheme?: string) =>
 const groupNode = (color?: string) =>
   ({ id: 'g1', type: 'group', data: { label: 'Media', color } }) as never
 const edgeWith = (color?: string) =>
-  ({ id: 'e1', source: 'a', target: 'b', data: { rel: 'talks-to', color } }) as never
+  ({ id: 'e1', source: 'a', target: 'b', data: { color } }) as never
 
 describe('Inspector colour', () => {
   it('offers a colour picker for a note and writes the chosen scheme', async () => {

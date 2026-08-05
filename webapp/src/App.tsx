@@ -461,7 +461,7 @@ function Flow({
   const onConnect = useCallback(
     (c: Connection) => {
       if (!c.source || !c.target) return
-      const e = makeEdge(c.source, c.target, 'talks-to', undefined, false, undefined, {
+      const e = makeEdge(c.source, c.target, undefined, false, undefined, {
         sourceHandle: c.sourceHandle ?? undefined,
         targetHandle: c.targetHandle ?? undefined,
       })
