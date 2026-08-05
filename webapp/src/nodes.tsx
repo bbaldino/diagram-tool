@@ -1,6 +1,11 @@
 import { createContext, type CSSProperties, useContext, useEffect, useRef, useState } from 'react'
 import { Handle, Position, NodeResizer, useReactFlow, type NodeProps } from '@xyflow/react'
 import { ICON_BASE } from './graph'
+import type {
+  GroupNode as GroupNodeType,
+  NoteNode as NoteNodeType,
+  ServiceNode as ServiceNodeType,
+} from './nodeData'
 import { NoteMarkdown } from './NoteMarkdown'
 import {
   resolveScheme,
@@ -38,8 +43,8 @@ function initials(label: string): string {
     .join('')
 }
 
-export function ServiceNode({ data, selected }: NodeProps) {
-  const d = data as any
+export function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
+  const d = data
   // An icon slug that isn't in the dashboard-icons set 404s; fall back to the
   // label's initials instead of showing a broken-image glyph. Reset the failure
   // flag whenever the slug changes so a corrected icon can load.
@@ -87,9 +92,9 @@ export function ServiceNode({ data, selected }: NodeProps) {
   )
 }
 
-export function NoteNode({ id, data, selected }: NodeProps) {
+export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   const { setNodes } = useReactFlow()
-  const d = data as any
+  const d = data
   const noteSpellcheck = useContext(NoteSpellcheckContext)
   const incoming = (d.text ?? '') as string
 
@@ -163,8 +168,8 @@ export function NoteNode({ id, data, selected }: NodeProps) {
   )
 }
 
-export function GroupNode({ data, selected }: NodeProps) {
-  const d = data as any
+export function GroupNode({ data, selected }: NodeProps<GroupNodeType>) {
+  const d = data
   return (
     <div className="group" style={{ ['--group-color' as any]: d.color }}>
       <NodeResizer

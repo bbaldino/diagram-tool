@@ -2,6 +2,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
+import type { ServiceNode as ServiceNodeType } from './nodeData'
 import { ServiceNode } from './nodes'
 import { SCHEMES, secondaryText, accentFill } from './schemes'
 
@@ -16,7 +17,7 @@ describe('ServiceNode colour', () => {
             id: 's1',
             data: { label: 'Plex', scheme: 'paper' },
             selected: false,
-          } as unknown as NodeProps)}
+          } as unknown as NodeProps<ServiceNodeType>)}
         />
       </ReactFlowProvider>,
     )
@@ -36,7 +37,7 @@ describe('ServiceNode colour', () => {
             id: 's1',
             data: { label: 'Plex', scheme: 'blue' },
             selected: false,
-          } as unknown as NodeProps)}
+          } as unknown as NodeProps<ServiceNodeType>)}
         />
       </ReactFlowProvider>,
     )
@@ -53,7 +54,7 @@ describe('ServiceNode colour', () => {
             id: 's1',
             data: { label: 'Plex', scheme: 'blue' },
             selected: false,
-          } as unknown as NodeProps)}
+          } as unknown as NodeProps<ServiceNodeType>)}
         />
       </ReactFlowProvider>,
     )
@@ -70,7 +71,7 @@ describe('ServiceNode colour', () => {
             id: 's1',
             data: { label: 'Plex', scheme: 'nonsense' },
             selected: false,
-          } as unknown as NodeProps)}
+          } as unknown as NodeProps<ServiceNodeType>)}
         />
       </ReactFlowProvider>,
     )
@@ -87,7 +88,7 @@ describe('ServiceNode colour', () => {
             id: 's1',
             data: { label: 'Plex', scheme: 'blue' },
             selected: false,
-          } as unknown as NodeProps)}
+          } as unknown as NodeProps<ServiceNodeType>)}
         />
       </ReactFlowProvider>,
     )

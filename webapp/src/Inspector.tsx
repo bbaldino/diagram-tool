@@ -2,6 +2,7 @@ import { type Node, type Edge } from '@xyflow/react'
 import { REL, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { SchemePicker } from './SchemePicker'
+import { isGroupNode, isNoteNode, isServiceNode } from './nodeData'
 import { IconInput } from './IconInput'
 import { Switch } from './Switch'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
@@ -123,8 +124,8 @@ export function Inspector({
   }
 
   // ----- group selected -----
-  if (node && node.type === 'group') {
-    const d = node.data as any
+  if (node && isGroupNode(node)) {
+    const d = node.data
     const g = node as any
     const curW = Math.round(
       Number(g.measured?.width) || Number(g.style?.width) || Number(g.width) || 0,
@@ -198,8 +199,8 @@ export function Inspector({
   }
 
   // ----- note selected -----
-  if (node && node.type === 'note') {
-    const d = node.data as any
+  if (node && isNoteNode(node)) {
+    const d = node.data
     return (
       <div className="panel insp">
         <div className="insp__header">
@@ -232,8 +233,8 @@ export function Inspector({
   }
 
   // ----- service node selected -----
-  if (node) {
-    const d = node.data as any
+  if (node && isServiceNode(node)) {
+    const d = node.data
     return (
       <div className="panel insp">
         <div className="insp__header">

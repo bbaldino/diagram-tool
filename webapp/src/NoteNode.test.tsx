@@ -3,6 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
+import type { NoteNode as NoteNodeType } from './nodeData'
 import { useState } from 'react'
 import { NoteNode } from './nodes'
 import { SCHEMES, secondaryText, accentFill } from './schemes'
@@ -10,8 +11,8 @@ import { SCHEMES, secondaryText, accentFill } from './schemes'
 afterEach(cleanup)
 
 // NoteNode only reads id/data/selected; the rest of NodeProps is irrelevant here.
-const noteProps = (text: string): NodeProps =>
-  ({ id: 'n1', data: { text }, selected: false }) as unknown as NodeProps
+const noteProps = (text: string): NodeProps<NoteNodeType> =>
+  ({ id: 'n1', data: { text }, selected: false }) as unknown as NodeProps<NoteNodeType>
 
 // NoteNode's textarea is controlled by `data.text`, which is owned by React
 // Flow's store and updated asynchronously — the canvas commits at least one
@@ -91,8 +92,8 @@ describe('NoteNode textarea', () => {
   })
 })
 
-const notePropsSelected = (text: string): NodeProps =>
-  ({ id: 'n1', data: { text }, selected: true }) as unknown as NodeProps
+const notePropsSelected = (text: string): NodeProps<NoteNodeType> =>
+  ({ id: 'n1', data: { text }, selected: true }) as unknown as NodeProps<NoteNodeType>
 
 describe('NoteNode selected vs rendered', () => {
   it('focuses the textarea as soon as the note becomes selected', () => {
@@ -197,8 +198,8 @@ describe('NoteNode selected vs rendered', () => {
 })
 
 describe('NoteNode colour', () => {
-  const coloured = (text: string, scheme?: string): NodeProps =>
-    ({ id: 'n1', data: { text, scheme }, selected: false }) as unknown as NodeProps
+  const coloured = (text: string, scheme?: string): NodeProps<NoteNodeType> =>
+    ({ id: 'n1', data: { text, scheme }, selected: false }) as unknown as NodeProps<NoteNodeType>
 
   it('renders the starting scheme when the entity has that scheme', () => {
     const { container } = render(

@@ -35,6 +35,7 @@ import {
   type EdgeDir,
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
+import { isGroupNode, isNoteNode, isServiceNode } from './nodeData'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
 import { FlowsTab } from './FlowsTab'
@@ -95,8 +96,8 @@ function nodesToDiagramParts(
   const groups: MGroup[] = []
   const notes: MNote[] = []
   for (const n of nodes) {
-    if (n.type === 'group') {
-      const d = n.data as any
+    if (isGroupNode(n)) {
+      const d = n.data
       groups.push({
         id: n.id,
         label: d.label,
@@ -111,8 +112,8 @@ function nodesToDiagramParts(
           height: liveFootprint(n).height || 200,
         },
       })
-    } else if (n.type === 'note') {
-      const d = n.data as any
+    } else if (isNoteNode(n)) {
+      const d = n.data
       notes.push({
         id: n.id,
         text: d.text ?? '',
@@ -126,8 +127,8 @@ function nodesToDiagramParts(
           height: liveFootprint(n).height || 110,
         },
       })
-    } else if (n.type === 'service') {
-      const d = n.data as any
+    } else if (isServiceNode(n)) {
+      const d = n.data
       const prev = prevNodesById.get(n.id)
       dNodes.push({
         id: n.id,
@@ -656,7 +657,11 @@ function Flow({
   const chipLabel = useCallback(
     (elementId: string) => {
       const n = nodes.find((x) => x.id === elementId)
-      if (n) return (n.data as any).label
+      // Only groups and service nodes carry a label. This used to read
+      // `data.label` off any node, which for a note yielded undefined and
+      // rendered an empty chip — typing the data made that visible. A note
+      // falls through to the id fallback below rather than returning nothing.
+      if (n && (isGroupNode(n) || isServiceNode(n))) return n.data.label
       const e = edges.find((x) => x.id === elementId)
       if (e) return `${e.label ?? 'edge'} →`
       return elementId
@@ -1367,7 +1372,7 @@ function Flow({
   }, [promptNewDiagram, exportJson])
 
   const miniColor = useCallback((n: Node) => {
-    if (n.type === 'group') return (n.data as any).color as string
+    if (isGroupNode(n)) return n.data.color
     if (n.type === 'note') return '#fde047'
     const g = parentGroup(n.id)
     return g ? GROUP_COLOR[g] : '#4f46e5'
@@ -1496,10 +1501,7 @@ function Flow({
   const selectedNode = useMemo(() => nodes.find((n) => n.id === selNode) ?? null, [nodes, selNode])
   const selectedEdge = useMemo(() => edges.find((e) => e.id === selEdge) ?? null, [edges, selEdge])
   const groupList = useMemo(
-    () =>
-      nodes
-        .filter((n) => n.type === 'group')
-        .map((n) => ({ id: n.id, label: (n.data as any).label as string })),
+    () => nodes.filter(isGroupNode).map((n) => ({ id: n.id, label: n.data.label })),
     [nodes],
   )
   // Valid reparent targets for whatever's selected: every group, minus (when
@@ -1528,11 +1530,11 @@ function Flow({
       if (c) colors.add(c.toLowerCase())
     }
     for (const n of nodes) {
-      if (n.type === 'group') {
-        const c = (n.data as any)?.color as string | undefined
+      if (isGroupNode(n)) {
+        const c = n.data.color
         if (c) colors.add(c.toLowerCase())
-      } else if (n.type === 'note' || n.type === 'service') {
-        const s = (n.data as any)?.scheme as string | undefined
+      } else if (isNoteNode(n) || isServiceNode(n)) {
+        const s = n.data.scheme
         if (s) schemes.add(s.toLowerCase())
       }
     }
