@@ -1,4 +1,4 @@
-import { type Node, type Edge } from '@xyflow/react'
+import { type Node } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
 import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
 import type { Diagram, Field, Node as DNode, Template } from '../shared/model'

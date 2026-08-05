@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reflowContainment, GROUP_MIN } from './containment'
+import { reflowContainment } from './containment'
 import type { Diagram } from './model'
 
 const diagram = (over: Partial<Diagram> = {}): Diagram => ({

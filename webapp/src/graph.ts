@@ -6,16 +6,7 @@ import { REL, REL_TYPES, type EdgeDir, type RelType } from '../shared/relationsh
 // canvas modules have always reached for it here and there is no value in
 // making every one of them learn the new path.
 export { REL, REL_TYPES, type EdgeDir, type RelType }
-import {
-  GROUP_PAD,
-  GROUP_MIN,
-  GROUP_NEST_TOP_PAD,
-  GROUP_SLACK,
-  NODE_EST_SIZE,
-  requiredGroupSize,
-  paddedExtent,
-  placeInGroup,
-} from '../shared/containment'
+import { GROUP_SLACK, NODE_EST_SIZE, requiredGroupSize, paddedExtent } from '../shared/containment'
 
 export {
   GROUP_PAD,

@@ -23,7 +23,6 @@ import {
   restyleEdge,
   applyReconnect,
   shrinkGroupToChildren,
-  topoOrderByParent,
   reflowGroups,
   recomputeChildExtents,
   placeInGroup,
@@ -35,6 +34,8 @@ import {
   type EdgeDir,
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
+import { descendantsOf, groupsFirst } from './canvasNodes'
+import { flushCanvasInto } from './canvasToModel'
 import { isGroupNode, isNoteNode, isServiceNode, type AppEdge, type EdgeData } from './canvasData'
 import { Inspector } from './Inspector'
 import { RightRail } from './RightRail'
@@ -64,13 +65,7 @@ import { flowStates } from './flowState'
 import { newId } from '../shared/ids'
 import { groupNodes, ungroupNodes } from './grouping'
 import * as M from '../shared/model'
-import type {
-  Model,
-  Node as MNode,
-  Group as MGroup,
-  Note as MNote,
-  Edge as MEdge,
-} from '../shared/model'
+import type { Model } from '../shared/model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 const OPEN_TABS_KEY = 'homelab-open-tabs'
@@ -84,139 +79,6 @@ type BarSaveState = { label: string; kind: 'saved' | 'saving' | 'error' }
 // the groups themselves must be topologically ordered outer-to-inner (see
 // topoOrderByParent), or a group reparented under a later-in-array group
 // renders mispositioned/clipped wrong and RF warns "Parent node not found."
-const groupsFirst = (ns: Node[]): Node[] => [
-  ...topoOrderByParent(ns.filter((n) => n.type === 'group')),
-  ...ns.filter((n) => n.type !== 'group'),
-]
-
-// Map the live React Flow nodes back into the model's per-diagram arrays.
-// Nodes are diagram-local now, so every field lives directly on the Node —
-// EXCEPT `fields` and `template`, which the canvas never carries (there's no
-// on-canvas UI for them); those are merged back in from the diagram's
-// previous nodes (keyed by id) so a geometry-only write-back can't wipe them.
-function nodesToDiagramParts(
-  nodes: Node[],
-  prevNodesById: Map<string, MNode>,
-): { nodes: MNode[]; groups: MGroup[]; notes: MNote[] } {
-  const dNodes: MNode[] = []
-  const groups: MGroup[] = []
-  const notes: MNote[] = []
-  for (const n of nodes) {
-    if (isGroupNode(n)) {
-      const d = n.data
-      groups.push({
-        id: n.id,
-        label: d.label,
-        color: d.color,
-        position: n.position,
-        parentId: n.parentId ?? undefined,
-        size: {
-          // Read the LIVE size (width → measured → style). A NodeResizer resize
-          // updates top-level width/height + measured but NOT style, so reading
-          // style alone here dropped every resize (see liveFootprint's note).
-          width: liveFootprint(n).width || 320,
-          height: liveFootprint(n).height || 200,
-        },
-      })
-    } else if (isNoteNode(n)) {
-      const d = n.data
-      notes.push({
-        id: n.id,
-        text: d.text ?? '',
-        scheme: d.scheme,
-        position: n.position,
-        parentId: n.parentId ?? undefined,
-        size: {
-          // Live size (width → measured → style) so note resizes persist —
-          // NodeResizer writes width/measured, never style. Same fix as groups.
-          width: liveFootprint(n).width || 190,
-          height: liveFootprint(n).height || 110,
-        },
-      })
-    } else if (isServiceNode(n)) {
-      const d = n.data
-      const prev = prevNodesById.get(n.id)
-      dNodes.push({
-        id: n.id,
-        label: d.label,
-        sub: d.sub || undefined,
-        icon: d.icon || undefined,
-        status: d.status || undefined,
-        actor: d.kind === 'actor' ? true : undefined,
-        note: (d.note as string) || undefined,
-        scheme: d.scheme || undefined,
-        template: prev?.template,
-        fields: prev?.fields ?? [],
-        position: n.position,
-        parentId: n.parentId ?? undefined,
-      })
-    }
-  }
-  return { nodes: dNodes, groups, notes }
-}
-
-// `orientation` has no on-canvas UI either (server-side layout hint only) —
-// preserve it from the diagram's previous edge, same reasoning as fields/template above.
-function edgesToDiagramEdges(edges: AppEdge[], prevEdgesById: Map<string, MEdge>): MEdge[] {
-  return edges.map((e) => ({
-    id: e.id,
-    from: e.source,
-    to: e.target,
-    type: e.data?.rel ?? 'talks-to',
-    label: typeof e.label === 'string' ? e.label : undefined,
-    inferred: !!e.data?.inferred,
-    shape: e.data?.shape ?? 'default',
-    points: e.data?.points,
-    sourceHandle: e.sourceHandle ?? undefined,
-    targetHandle: e.targetHandle ?? undefined,
-    dir: e.data?.dir ?? 'forward',
-    color: e.data?.color ?? undefined,
-    labelPos: e.data?.labelPos,
-    orientation: prevEdgesById.get(e.id)?.orientation,
-  }))
-}
-
-// Flush the live canvas (nodes/edges) into the model for the given diagram:
-// map node/group/note/edge geometry (and inline node fields) into the
-// diagram's arrays. This is the pure form of the debounced write-back; call
-// it before any model mutation so pending canvas edits aren't lost when the
-// canvas is rebuilt from `model`.
-function flushCanvasInto(m: Model, diagramId: string, nodes: Node[], edges: Edge[]): Model {
-  const d = M.getDiagram(m, diagramId)
-  const prevNodesById = new Map((d?.nodes ?? []).map((n) => [n.id, n]))
-  const prevEdgesById = new Map((d?.edges ?? []).map((e) => [e.id, e]))
-  const parts = nodesToDiagramParts(nodes, prevNodesById)
-  return M.patchDiagram(m, diagramId, {
-    nodes: parts.nodes,
-    groups: parts.groups,
-    notes: parts.notes,
-    edges: edgesToDiagramEdges(edges, prevEdgesById),
-  })
-}
-
-// All ids reachable by following parentId edges out of `id` (its children,
-// grandchildren, ...) among the live canvas nodes. Used both to guard against
-// reparenting cycles and to cascade-delete a group's contents.
-function descendantsOf(id: string, nodes: Node[]): Set<string> {
-  const children = new Map<string, string[]>()
-  for (const n of nodes) {
-    if (n.parentId) {
-      const arr = children.get(n.parentId) ?? []
-      arr.push(n.id)
-      children.set(n.parentId, arr)
-    }
-  }
-  const out = new Set<string>()
-  const stack = [...(children.get(id) ?? [])]
-  while (stack.length) {
-    const cur = stack.pop()!
-    if (out.has(cur)) continue
-    out.add(cur)
-    stack.push(...(children.get(cur) ?? []))
-  }
-  return out
-}
-
 function Flow({
   model,
   setModel,

@@ -5,7 +5,6 @@ import {
   addDiagram,
   addNode,
   normalizeModel,
-  getDiagram,
   updateNode,
   addTemplate,
   addGroup,

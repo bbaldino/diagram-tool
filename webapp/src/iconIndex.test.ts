@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { buildIndex, searchIcons, moveHighlight, loadIconIndex, type IconEntry } from './iconIndex'
+import { buildIndex, searchIcons, moveHighlight, type IconEntry } from './iconIndex'
 
 const fixture: IconEntry[] = [
   { slug: 'plex', aliases: ['plexmediaserver'], categories: ['media'] },
