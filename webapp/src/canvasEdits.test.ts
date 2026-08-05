@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import type { Node } from '@xyflow/react'
 import { applyEdgePatch, reparentNodes, resizeGroup } from './canvasEdits'
 import type { AppEdge } from './canvasData'
-import { REL } from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR, REL } from '../shared/relationships'
 
 const svc = (id: string, over: Partial<Node> = {}): Node =>
   ({
@@ -259,10 +259,15 @@ describe('applyEdgePatch', () => {
     expect(out.find((e) => e.id === 'e2')).toBe(other)
   })
 
-  it('changes the relationship type and restyles the stroke from it', () => {
+  // The stroke comes from the edge's own colour, NOT from its relationship
+  // type. This test previously asserted the opposite, which held only because
+  // no edge could ever have a type other than 'talks-to' — so the lookup and
+  // the constant were the same value and nothing distinguished them.
+  it('stores the relationship type without letting it drive the stroke', () => {
     const out = only(applyEdgePatch([edge()], 'e1', { type: 'via' }))
     expect(out.data!.rel).toBe('via')
-    expect((out.style as { stroke?: string }).stroke).toBe(REL.via.color)
+    expect((out.style as { stroke?: string }).stroke).toBe(DEFAULT_EDGE_COLOR)
+    expect((out.style as { stroke?: string }).stroke).not.toBe(REL.via.color)
   })
 
   it('sets the label only when the patch carries one', () => {
@@ -321,7 +326,7 @@ describe('applyEdgePatch', () => {
         color: '#ff0000',
       },
     })
-    const out = only(applyEdgePatch([coloured], 'e1', { color: REL['talks-to'].color }))
+    const out = only(applyEdgePatch([coloured], 'e1', { color: DEFAULT_EDGE_COLOR }))
     expect(out.data!.color).toBe('#64748b')
     expect((out.style as { stroke?: string }).stroke).toBe('#64748b')
   })

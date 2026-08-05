@@ -680,10 +680,11 @@ export const wrap = (result: unknown) => {
 const positionShape = z.object({ x: z.number(), y: z.number() })
 
 // Shared shape for the fields an agent may set on an edge. Relationship
-// `type` is intentionally excluded: it's vestigial (edges are distinguished
-// by color/label; new edges default to 'talks-to') and an unconstrained
-// string here would let a bad value flow into Edge.type and throw in the
-// renderer (REL[type].color). Exported so it's independently testable.
+// `type` is intentionally excluded because it is vestigial — nothing reads it
+// any more. Edges are distinguished by colour and label; new ones are written
+// as 'talks-to' because the model field is still required. Removing the field
+// outright is a separate, data-touching change.
+// Exported so it's independently testable.
 export const edgeAttrsShape = {
   label: z.string().optional(),
   dir: z.enum(['forward', 'backward', 'both']).optional(),

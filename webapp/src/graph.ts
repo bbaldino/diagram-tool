@@ -1,11 +1,17 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
-import { REL, REL_TYPES, type EdgeDir, type RelType } from '../shared/relationships'
+import {
+  DEFAULT_EDGE_COLOR,
+  REL,
+  REL_TYPES,
+  type EdgeDir,
+  type RelType,
+} from '../shared/relationships'
 
 // Re-exported: the vocabulary lives in shared/ (the server needs it), but the
 // canvas modules have always reached for it here and there is no value in
 // making every one of them learn the new path.
-export { REL, REL_TYPES, type EdgeDir, type RelType }
+export { DEFAULT_EDGE_COLOR, REL, REL_TYPES, type EdgeDir, type RelType }
 import { GROUP_SLACK, NODE_EST_SIZE, requiredGroupSize, paddedExtent } from '../shared/containment'
 
 export {
@@ -298,10 +304,8 @@ export function makeEdge(
   i = Math.floor(performance.now()),
   extra?: { sourceHandle?: string; targetHandle?: string; dir?: EdgeDir; color?: string },
 ): AppEdge {
-  const r = REL[type]
   const dir = extra?.dir ?? 'forward'
-  // Per-edge color override; falls back to the relationship type's color.
-  const color = extra?.color ?? r.color
+  const color = extra?.color ?? DEFAULT_EDGE_COLOR
   return {
     id: `e${i}-${from}-${to}`,
     source: from,
@@ -326,12 +330,15 @@ export function makeEdge(
   }
 }
 
-// Re-apply relationship styling to an existing edge (used when its type changes).
+// Re-apply edge styling from its own data (colour, direction, inferred).
 export function restyleEdge(e: AppEdge, type: RelType, inferred: boolean): AppEdge {
-  const r = REL[type]
   const dir = e.data?.dir ?? 'forward'
+  // Kept separate: `colorOverride` is what the edge stores (absent means "no
+  // colour of its own"), `color` is what actually gets drawn. Writing the
+  // resolved value back into data would give every restyled edge an explicit
+  // colour, which is a data migration, not a rename.
   const colorOverride = e.data?.color
-  const color = colorOverride ?? r.color
+  const color = colorOverride ?? DEFAULT_EDGE_COLOR
   return {
     ...e,
     ...markersFor(dir, color),

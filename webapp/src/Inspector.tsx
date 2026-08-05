@@ -1,5 +1,5 @@
 import { type Node, type Edge } from '@xyflow/react'
-import { REL, type RelType, type EdgeDir } from './graph'
+import { DEFAULT_EDGE_COLOR, type RelType, type EdgeDir } from './graph'
 import { ColorPicker } from './ColorPicker'
 import { SchemePicker } from './SchemePicker'
 import { isGroupNode, isNoteNode, isServiceNode, type EdgeData } from './canvasData'
@@ -61,10 +61,9 @@ export function Inspector({
   // ----- edge selected -----
   if (edge && !node) {
     const d: EdgeData = edge.data ?? {}
-    const type = d.rel ?? 'talks-to'
     const dir = d.dir ?? 'forward'
     const colorOverridden = typeof d.color === 'string'
-    const color = colorOverridden ? d.color! : REL[type].color
+    const color = colorOverridden ? d.color! : DEFAULT_EDGE_COLOR
     const DIRS: { v: EdgeDir; glyph: string; title: string }[] = [
       { v: 'forward', glyph: '→', title: 'one-way (arrow at target)' },
       { v: 'backward', glyph: '←', title: 'reversed (arrow at source)' },
@@ -99,9 +98,9 @@ export function Inspector({
             value={color}
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
-            defaultSwatch={{ background: REL[type].color, border: REL[type].color }}
-            isDefault={color === REL[type].color}
-            onSelectDefault={() => onEdge({ color: REL[type].color })}
+            defaultSwatch={{ background: DEFAULT_EDGE_COLOR, border: DEFAULT_EDGE_COLOR }}
+            isDefault={color === DEFAULT_EDGE_COLOR}
+            onSelectDefault={() => onEdge({ color: DEFAULT_EDGE_COLOR })}
           />
         </Field>
         <Field label="Label">

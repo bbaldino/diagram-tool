@@ -23,7 +23,7 @@ import {
   applyReconnect,
   shrinkGroupToChildren,
   recomputeChildExtents,
-  REL,
+  DEFAULT_EDGE_COLOR,
   GROUP_COLOR,
   parentGroup,
 } from './graph'
@@ -1061,7 +1061,7 @@ function Flow({
     const colors = new Set<string>()
     const schemes = new Set<string>()
     for (const e of edges) {
-      const c = e.data?.color ?? REL[e.data?.rel ?? 'talks-to']?.color
+      const c = e.data?.color ?? DEFAULT_EDGE_COLOR
       if (c) colors.add(c.toLowerCase())
     }
     for (const n of nodes) {

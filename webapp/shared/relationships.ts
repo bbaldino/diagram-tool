@@ -23,3 +23,12 @@ export const REL: Record<RelType, { color: string; label: string }> = {
 }
 
 export const REL_TYPES = Object.keys(REL) as RelType[]
+
+// The colour an edge starts with.
+//
+// Edge colour used to be looked up as REL[type].color, which read as though it
+// tracked the relationship type. It never could: nothing sets an edge's type —
+// not the inspector, not MCP — so every edge is 'talks-to' and the lookup only
+// ever returned this one value. Naming it directly removes a dependency that
+// implied behaviour the product does not have.
+export const DEFAULT_EDGE_COLOR = '#64748b'
