@@ -1,4 +1,4 @@
-import type { RelType, EdgeDir } from './relationships'
+import { DEFAULT_EDGE_COLOR, type RelType, type EdgeDir } from './relationships'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 export type { RelType }
 
@@ -131,21 +131,27 @@ export function getDiagram(model: Model, id: string): Diagram | undefined {
   return model.diagrams.find((d) => d.id === id)
 }
 
-// Give every node and note a scheme. The field is optional in the type so data
-// written before schemes existed still loads. This back-fill covers everything
-// loaded from disk; entities created during a session (new nodes/notes added
-// via the UI or MCP, or an imported file) may still lack a scheme until the
-// next load, so the render path still needs its own fallback. Idempotent, and
-// total over malformed input — a diagram missing `nodes`/`notes` (or a model
-// missing `diagrams`) is treated as empty rather than throwing, so a single
-// corrupt diagram can't blow away the whole store on load.
-export function backfillSchemes(model: Model): Model {
+// Give every node, note and edge its starting appearance: a scheme for nodes
+// and notes, an explicit colour for edges. After this nothing renders from an
+// absent value, which is the rule the app follows everywhere — an entity has a
+// colour from creation and it can be changed, never cleared.
+//
+// The fields stay optional in the types so data written before either change
+// still loads. This covers everything loaded from disk; entities created during
+// a session (via the UI, MCP, or an import) may still lack one until the next
+// load, so the render paths keep their own fallbacks.
+//
+// Idempotent, and total over malformed input — a diagram missing a collection
+// (or a model missing `diagrams`) is treated as empty rather than throwing, so
+// one corrupt diagram cannot blow away the whole store on load.
+export function backfillDefaults(model: Model): Model {
   return {
     ...model,
     diagrams: (model.diagrams ?? []).map((d) => ({
       ...d,
       nodes: (d.nodes ?? []).map((n) => (n.scheme ? n : { ...n, scheme: NEW_NODE_SCHEME })),
       notes: (d.notes ?? []).map((t) => (t.scheme ? t : { ...t, scheme: NEW_NOTE_SCHEME })),
+      edges: (d.edges ?? []).map((e) => (e.color ? e : { ...e, color: DEFAULT_EDGE_COLOR })),
     })),
   }
 }

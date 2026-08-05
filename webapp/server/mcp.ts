@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import type { EdgeDir } from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from '../shared/relationships'
 import type {
   Diagram,
   DiagramType,
@@ -330,7 +330,13 @@ export const handlers = {
     if (!isEndpoint(a.to)) {
       return err(`unknown element "${a.to}" in diagram "${a.diagramId}"`)
     }
-    const edge: Edge = { id: newId(), from: a.from, to: a.to, type: 'talks-to' }
+    const edge: Edge = {
+      id: newId(),
+      from: a.from,
+      to: a.to,
+      type: 'talks-to',
+      color: DEFAULT_EDGE_COLOR,
+    }
     if (a.label !== undefined) edge.label = a.label
     if (a.dir !== undefined) edge.dir = a.dir
     if (a.color !== undefined) edge.color = a.color

@@ -326,7 +326,16 @@ export function makeEdge(
     labelBgStyle: { fill: '#ffffff', fillOpacity: 0.9 },
     labelBgPadding: [3, 2],
     labelBgBorderRadius: 3,
-    data: { rel: type, inferred: !!inferred, shape: 'default', dir, color: extra?.color },
+    // Explicit from creation: an edge has a colour it can change, never an
+    // absent one that resolves at draw time. The ?? fallbacks downstream remain
+    // for edges written before this.
+    data: {
+      rel: type,
+      inferred: !!inferred,
+      shape: 'default',
+      dir,
+      color: extra?.color ?? DEFAULT_EDGE_COLOR,
+    },
   }
 }
 

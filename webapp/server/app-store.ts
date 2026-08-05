@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createStore, type Store } from './store'
 import { atomicWriteFile } from './persist'
-import { backfillSchemes } from '../shared/model'
+import { backfillDefaults } from '../shared/model'
 
 // Read a file, distinguishing "not there yet" from "there but unreadable".
 //
@@ -32,7 +32,7 @@ export function createAppStore(dataDir: string): Promise<Store> {
     file,
     load: async () => {
       const raw = await readOrNull(file)
-      return raw === null ? null : backfillSchemes(JSON.parse(raw))
+      return raw === null ? null : backfillDefaults(JSON.parse(raw))
     },
     save: (model) => atomicWriteFile(file, JSON.stringify(model, null, 2)),
     loadHistory: async () => {

@@ -1,4 +1,4 @@
-import type { EdgeDir } from '../shared/relationships'
+import { DEFAULT_EDGE_COLOR, type EdgeDir } from '../shared/relationships'
 import type {
   Diagram,
   DiagramType,
@@ -103,6 +103,7 @@ export async function authorDiagramOps(
     from: resolveRef(fromRef, 'edge'),
     to: resolveRef(toRef, 'edge'),
     type: 'talks-to' as const,
+    color: DEFAULT_EDGE_COLOR,
     ...attrs,
   }))
 
