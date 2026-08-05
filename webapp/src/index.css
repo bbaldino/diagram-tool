@@ -71,6 +71,17 @@ body {
   transition: opacity 0.12s ease;
 }
 .node:hover .react-flow__handle,
+/* A connection point sits at the midpoint of each edge — exactly where the
+   resize grab strips and the corner hit areas are, so on a selected note or
+   group the resize controls were covering all four of them and a connection
+   could not be started at all. The connection point wins.
+   Deliberately NOT gated on the point being visible: a handle is hit-testable
+   even at opacity 0 (that is how you connect from a node you are merely
+   hovering), and making it pointer-events:none while hidden broke exactly
+   that — the click fell through to .node__row underneath. */
+.react-flow__handle {
+  z-index: 13; /* above .resize-control line (11) and handle (12) */
+}
 .node.selected .react-flow__handle,
 .group:hover .react-flow__handle,
 .note:hover .react-flow__handle {
