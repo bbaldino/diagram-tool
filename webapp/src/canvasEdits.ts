@@ -150,11 +150,16 @@ export interface EdgePatch {
 /**
  * Apply an inspector patch to one edge, restyling it from the result.
  *
- * Colour is read with `'color' in patch`, NOT `patch.color !== undefined`.
- * Clearing the per-edge override means sending `{ color: undefined }` so the
- * edge falls back to its relationship type's colour, and a value check drops
- * that clear silently. That exact narrowing shipped once and turned the edge
- * Default swatch into a no-op; the tests below pin it.
+ * Every field is "set it or leave it" — there is no clearing. An edge, like a
+ * node or a note, has a colour from creation that can be changed; nothing in
+ * the app can put it back to having none.
+ *
+ * This used to distinguish `{ color: undefined }` (clear the override) from an
+ * omitted key, because an edge with no colour fell back to its relationship
+ * type's colour. That distinction paid for nothing: the relationship type
+ * cannot be changed from the UI or over MCP, so the "fallback" was the constant
+ * #64748b. It also cost a shipped bug, when the check was once narrowed to
+ * `patch.color !== undefined` and silently turned the reset into a no-op.
  */
 export function applyEdgePatch(es: AppEdge[], id: string, patch: EdgePatch): AppEdge[] {
   return es.map((e) => {
@@ -163,13 +168,11 @@ export function applyEdgePatch(es: AppEdge[], id: string, patch: EdgePatch): App
     const type = patch.type ?? cur.rel ?? 'talks-to'
     const inferred = patch.inferred ?? !!cur.inferred
     const dir = patch.dir ?? cur.dir ?? 'forward'
+    const color = patch.color ?? cur.color
     const withLabel = patch.label !== undefined ? { ...e, label: patch.label } : e
-    // Stash dir (and, if the patch sets one, the colour override) in data so
-    // restyleEdge recomputes stroke/arrowheads/label from them.
-    let next: AppEdge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir } }
-    if ('color' in patch) {
-      next = { ...next, data: { ...next.data, color: patch.color } }
-    }
+    // Stash dir and colour in data so restyleEdge recomputes
+    // stroke/arrowheads/label from them.
+    const next: AppEdge = { ...withLabel, data: { ...(withLabel.data ?? {}), dir, color } }
     return restyleEdge(next, type, inferred)
   })
 }

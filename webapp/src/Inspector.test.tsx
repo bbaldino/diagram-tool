@@ -148,7 +148,12 @@ describe('Inspector has no default swatch/section/reset for nodes and notes', ()
 // required. Both need a real reset affordance, which is not the same thing
 // as the node/note "default" above.
 describe('Inspector keeps the edge and group reset', () => {
-  it('renders a Default swatch for the edge panel and resets to the relationship colour on click', async () => {
+  // Sets the starting colour rather than clearing. There is no clearing
+  // anywhere in the app: an entity has a colour from creation and it can be
+  // changed. The edge swatch used to send { color: undefined }, which only
+  // meant anything while an edge with no colour fell back to its relationship
+  // type — and that type cannot be changed from the UI or over MCP.
+  it('renders a Default swatch for the edge panel and SETS the starting colour on click', async () => {
     const user = userEvent.setup()
     const onEdge = vi.fn()
     const { container } = render(
@@ -163,7 +168,7 @@ describe('Inspector keeps the edge and group reset', () => {
     const defaultSwatch = container.querySelector('.swatch--default')
     expect(defaultSwatch).not.toBeNull()
     await user.click(defaultSwatch as HTMLElement)
-    expect(onEdge).toHaveBeenCalledWith({ color: undefined })
+    expect(onEdge).toHaveBeenCalledWith({ color: '#64748b' })
   })
 
   it('renders a Default swatch for the group panel and resets to slate on click', async () => {

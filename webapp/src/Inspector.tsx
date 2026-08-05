@@ -100,8 +100,8 @@ export function Inspector({
             diagramColors={diagramColors}
             onChange={(hex) => onEdge({ color: hex })}
             defaultSwatch={{ background: REL[type].color, border: REL[type].color }}
-            isDefault={!colorOverridden}
-            onSelectDefault={() => onEdge({ color: undefined })}
+            isDefault={color === REL[type].color}
+            onSelectDefault={() => onEdge({ color: REL[type].color })}
           />
         </Field>
         <Field label="Label">

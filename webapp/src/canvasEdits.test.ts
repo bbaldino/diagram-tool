@@ -296,22 +296,38 @@ describe('applyEdgePatch', () => {
     expect((out.style as { stroke?: string }).stroke).toBe('#ff0000')
   })
 
-  // THE regression. Clearing the override sends { color: undefined }, which is
-  // a present key with an undefined value. Reading it as
-  // `patch.color !== undefined` drops the clear and the edge keeps its old
-  // colour — the edge Default swatch silently did nothing. This shipped once.
-  it('clears the override when color is explicitly undefined', () => {
+  // There is no clearing anywhere in the app. { color: undefined } is now
+  // indistinguishable from omitting the key — both leave the colour alone.
+  // Resetting an edge means SETTING the starting colour, the same gesture
+  // groups have always used. The old present-vs-absent rule existed only to
+  // support falling back to a relationship type that cannot be changed from
+  // the UI or over MCP, and it cost a shipped bug when it was once narrowed.
+  it('leaves the colour alone when color is explicitly undefined', () => {
     const coloured = edge({
       data: { rel: 'via', dir: 'forward', inferred: false, shape: 'default', color: '#ff0000' },
     })
     const out = only(applyEdgePatch([coloured], 'e1', { color: undefined }))
-    expect(out.data!.color).toBeUndefined()
-    expect((out.style as { stroke?: string }).stroke).toBe(REL.via.color)
+    expect(out.data!.color).toBe('#ff0000')
+    expect((out.style as { stroke?: string }).stroke).toBe('#ff0000')
   })
 
-  // The other half of the same rule: a patch that never mentions colour must
-  // not wipe an existing override.
-  it('keeps an existing override when the patch omits color entirely', () => {
+  it('resets by setting the starting colour explicitly', () => {
+    const coloured = edge({
+      data: {
+        rel: 'talks-to',
+        dir: 'forward',
+        inferred: false,
+        shape: 'default',
+        color: '#ff0000',
+      },
+    })
+    const out = only(applyEdgePatch([coloured], 'e1', { color: REL['talks-to'].color }))
+    expect(out.data!.color).toBe('#64748b')
+    expect((out.style as { stroke?: string }).stroke).toBe('#64748b')
+  })
+
+  // A patch that changes something else must not disturb the colour.
+  it('keeps the current colour when the patch omits it entirely', () => {
     const coloured = edge({
       data: {
         rel: 'talks-to',
