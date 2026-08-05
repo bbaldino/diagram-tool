@@ -26,15 +26,20 @@ export interface Store {
   subscribe(cb: (s: Snapshot) => void): () => void
 }
 
-// Loads the on-disk model, normalizing it into shape. If `load()` rejects
-// (e.g. the model file doesn't exist yet), seed an empty normalized model
-// rather than failing store creation.
+// Loads the stored model, normalizing it into shape.
+//
+// `load()` signals "nothing stored yet" by resolving null — that seeds an empty
+// model, which is what a fresh deploy with an empty DATA_DIR needs. Anything it
+// THROWS propagates and fails store creation.
+//
+// This deliberately does not catch. It used to, so that a missing file could be
+// tolerated, but that also swallowed corrupt JSON, disk errors, and any bug in
+// the load path — turning each into an empty model that autosave then wrote
+// over the user's real data. Distinguishing "absent" from "unreadable" is the
+// caller's job, because only the caller knows what its storage means; see
+// app-store.ts, which maps ENOENT to null and lets everything else through.
 async function loadInitialModel(load: () => Promise<any>): Promise<Model> {
-  try {
-    return normalizeModel(await load())
-  } catch {
-    return normalizeModel({})
-  }
+  return normalizeModel((await load()) ?? {})
 }
 
 export async function createStore(opts: {

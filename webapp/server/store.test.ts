@@ -72,12 +72,12 @@ describe('createStore', () => {
     expect(saved.diagrams[0].nodes).toHaveLength(1)
   })
 
-  it('seeds an empty normalized model when load() rejects (e.g. missing file)', async () => {
+  // `load()` resolving null means "there is nothing stored yet" — a fresh
+  // deploy with an empty DATA_DIR. That is the ONLY case that seeds empty.
+  it('seeds an empty normalized model when load() resolves null (nothing stored yet)', async () => {
     const store = await createStore({
       file: 'missing',
-      load: async () => {
-        throw new Error('ENOENT')
-      },
+      load: async () => null,
       save: async () => {},
     })
     expect(store.getState()).toEqual({
@@ -85,6 +85,23 @@ describe('createStore', () => {
       model: { version: 2, templates: [], diagrams: [] },
       undo: {},
     })
+  })
+
+  // A throw means the data exists but could not be read — corrupt JSON, a disk
+  // error, a bug in migration. Seeding empty there is silent total data loss:
+  // the store comes up with zero diagrams and autosave writes that over the
+  // real file. Refusing to start leaves the file intact for a human to look at.
+  it('propagates a load() failure instead of seeding empty over real data', async () => {
+    const boom = new Error('unexpected token < in JSON at position 0')
+    await expect(
+      createStore({
+        file: 'corrupt',
+        load: async () => {
+          throw boom
+        },
+        save: async () => {},
+      }),
+    ).rejects.toThrow(boom)
   })
 
   it('subscribe returns an unsubscribe function that stops further notifications', async () => {
