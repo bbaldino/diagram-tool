@@ -45,6 +45,19 @@ body {
 .node.selected {
   box-shadow: 0 0 0 2px #6366f1;
 }
+/* Notes and groups get the same ring. It used to be drawn by the resizer's
+   four line controls, which are offset outward to widen the grab strip and so
+   left a notch at every corner — and were not even symmetric, sitting 14px out
+   on the top/left and 7px on the right/bottom. A ring follows the border
+   radius and cannot come apart. */
+.note.selected {
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.08),
+    0 0 0 2px #6366f1;
+}
+.group.selected {
+  box-shadow: 0 0 0 2px #6366f1;
+}
 /* Four-sided connection points: hidden until the node is hovered or selected,
    so nodes don't look like pincushions. Still interactive while hidden. */
 .node .react-flow__handle,
@@ -415,6 +428,15 @@ textarea,
    stack above the parent) can't cover them, and give a fat side grab-strip. */
 .react-flow__resize-control.handle {
   z-index: 12;
+}
+/* The visible corner dot stays small, but the diagonal grab area extends well
+   past it — otherwise the corners are far harder to hit than the side strips,
+   which span a whole edge. Pointer events land on the pseudo-element, so the
+   dot's appearance is unchanged. */
+.react-flow__resize-control.handle::before {
+  content: '';
+  position: absolute;
+  inset: -10px;
 }
 .react-flow__resize-control.handle.top.left {
   margin: -7px 0 0 -7px;

@@ -133,8 +133,17 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
   } as CSSProperties
 
   return (
-    <div className="note" style={schemeVars}>
-      <NodeResizer minWidth={140} minHeight={70} isVisible={!!selected} color="#eab308" />
+    <div className={`note${selected ? ' selected' : ''}`} style={schemeVars}>
+      {/* The resize lines are grab strips only — invisible, because four
+          separate divs offset outward cannot meet at the corners. The visible
+          selection ring is a box-shadow on the note itself. */}
+      <NodeResizer
+        minWidth={140}
+        minHeight={70}
+        isVisible={!!selected}
+        handleStyle={{ width: 14, height: 14, borderRadius: 4, border: '2px solid #fff' }}
+        lineStyle={{ borderWidth: 12, opacity: 0 }}
+      />
       <SideHandles />
       {selected ? (
         <textarea
@@ -171,7 +180,10 @@ export function NoteNode({ id, data, selected }: NodeProps<NoteNodeType>) {
 export function GroupNode({ data, selected }: NodeProps<GroupNodeType>) {
   const d = data
   return (
-    <div className="group" style={{ ['--group-color' as any]: d.color }}>
+    <div
+      className={`group${selected ? ' selected' : ''}`}
+      style={{ ['--group-color' as any]: d.color }}
+    >
       <NodeResizer
         minWidth={220}
         minHeight={130}
