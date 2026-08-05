@@ -35,6 +35,7 @@ import {
 } from './graph'
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
+import { useViewPrefs } from './useViewPrefs'
 import { flushCanvasInto } from './canvasToModel'
 import { isGroupNode, isNoteNode, isServiceNode, type AppEdge, type EdgeData } from './canvasData'
 import { Inspector } from './Inspector'
@@ -106,27 +107,23 @@ function Flow({
   const [selNode, setSelNode] = useState<string | null>(null)
   const [selEdge, setSelEdge] = useState<string | null>(null)
   const [edgeStyle, setEdgeStyle] = useState<'default' | 'smoothstep' | 'straight'>('default')
-  // View menu toggles — gate the Legend/Minimap/Inspector renders and the
-  // ReactFlow snap-to-grid behavior. Client-only and transient, except
-  // noteSpellcheck which persists to localStorage (key: 'homelab-note-spellcheck').
-  const [showLegend, setShowLegend] = useState(true)
-  const [showMinimap, setShowMinimap] = useState(true)
-  const [railVisible, setRailVisible] = useState(true)
-  const [railTab, setRailTab] = useState<'inspector' | 'flows'>('inspector')
-  const [snapToGrid, setSnapToGrid] = useState(false)
-  const [noteSpellcheck, setNoteSpellcheck] = useState<boolean>(
-    () => localStorage.getItem('homelab-note-spellcheck') === 'true',
-  )
-  useEffect(() => {
-    localStorage.setItem('homelab-note-spellcheck', String(noteSpellcheck))
-  }, [noteSpellcheck])
-  const [layoutEngine, setLayoutEngine] = useState<'elk' | 'graphviz'>(
-    () => (localStorage.getItem('homelab-layout-engine') as 'elk' | 'graphviz') || 'elk',
-  )
-  const chooseEngine = useCallback((e: 'elk' | 'graphviz') => {
-    setLayoutEngine(e)
-    localStorage.setItem('homelab-layout-engine', e)
-  }, [])
+  // View chrome + the two prefs that outlive a reload. See useViewPrefs.
+  const {
+    showLegend,
+    setShowLegend,
+    showMinimap,
+    setShowMinimap,
+    railVisible,
+    railTab,
+    setRailTab,
+    toggleRailTab,
+    snapToGrid,
+    setSnapToGrid,
+    noteSpellcheck,
+    setNoteSpellcheck,
+    layoutEngine,
+    chooseEngine,
+  } = useViewPrefs()
   // Flow (walkthrough) UI state — client-only, never persisted in the model.
   const [flowMode, setFlowMode] = useState<'none' | 'edit' | 'play'>('none')
   const [currentFlowId, setCurrentFlowId] = useState<string | null>(null)
@@ -140,16 +137,6 @@ function Flow({
     flow: { x: number; y: number }
   } | null>(null)
   const rf = useReactFlow()
-  // Right rail (Inspector | Flows) visibility + active tab. toggleRailTab
-  // collapses the rail when that tab is already the one showing (⌘I / ⌘⇧F /
-  // View-menu behavior).
-  const toggleRailTab = useCallback(
-    (t: 'inspector' | 'flows') => {
-      setRailVisible((v) => !(v && railTab === t))
-      setRailTab(t)
-    },
-    [railTab],
-  )
   // Re-center the canvas whenever the rail is shown/hidden — its width change
   // shifts the available viewport.
   useEffect(() => {
