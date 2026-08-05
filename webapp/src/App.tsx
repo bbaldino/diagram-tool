@@ -34,6 +34,7 @@ import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
 import { reparentNodes, resizeGroup } from './canvasEdits'
 import { buildMenus } from './menus'
+import { keyContextFrom, resolveShortcut } from './keyboardShortcuts'
 import { useViewPrefs } from './useViewPrefs'
 import { useFlowPlayback } from './useFlowPlayback'
 import { flushCanvasInto } from './canvasToModel'
@@ -946,30 +947,6 @@ function Flow({
     ],
   )
 
-  // Minimal File-menu keyboard shortcuts: ⌘/Ctrl+N (new), ⌘/Ctrl+Shift+E
-  // (export JSON), ⌘/Ctrl+O (open dialog). Ignored while a text
-  // input/textarea/contentEditable is focused.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (!(e.metaKey || e.ctrlKey)) return
-      const key = e.key.toLowerCase()
-      if (key === 'n' && !e.shiftKey) {
-        e.preventDefault()
-        void promptNewDiagram()
-      } else if (key === 'e' && e.shiftKey) {
-        e.preventDefault()
-        exportJson()
-      } else if (key === 'o' && !e.shiftKey) {
-        e.preventDefault()
-        setOpenDialog(true)
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [promptNewDiagram, exportJson])
-
   const miniColor = useCallback((n: Node) => {
     if (isGroupNode(n)) return n.data.color
     if (n.type === 'note') return '#fde047'
@@ -996,99 +973,88 @@ function Flow({
     [rf],
   )
 
-  // Keyboard: +/- zoom to cursor, 0 fits the view. Modifier-free so it doesn't
-  // collide with the browser's own Ctrl/Cmd +/- page zoom.
+  // One keydown listener for every shortcut. resolveShortcut decides WHAT
+  // should happen (and whether to preventDefault); this only performs it.
+  // Replaces four separate window listeners that each re-implemented the
+  // "ignore this while the user is typing" guard, and disagreed on it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null
-      if (
-        t &&
-        (t.tagName === 'INPUT' ||
-          t.tagName === 'TEXTAREA' ||
-          t.tagName === 'SELECT' ||
-          t.isContentEditable)
+      const hit = resolveShortcut(
+        keyContextFrom(e, { flowPlaying: flowMode === 'play', menuOpen: menuOpenRef.current }),
       )
-        return
-      if (e.metaKey || e.ctrlKey || e.altKey) return
-      if (e.key === '=' || e.key === '+') {
-        e.preventDefault()
-        zoomAtPointer(1.2)
-      } else if (e.key === '-' || e.key === '_') {
-        e.preventDefault()
-        zoomAtPointer(1 / 1.2)
-      } else if (e.key === '0') {
-        e.preventDefault()
-        rf.fitView({ padding: 0.2, duration: 200 })
+      if (!hit) return
+      if (hit.preventDefault) e.preventDefault()
+      switch (hit.action) {
+        case 'new-diagram':
+          void promptNewDiagram()
+          break
+        case 'export-json':
+          exportJson()
+          break
+        case 'open-diagram':
+          setOpenDialog(true)
+          break
+        case 'zoom-in':
+          zoomAtPointer(1.2)
+          break
+        case 'zoom-out':
+          zoomAtPointer(1 / 1.2)
+          break
+        case 'zoom-fit':
+          rf.fitView({ padding: 0.2, duration: 200 })
+          break
+        case 'undo':
+          doUndo()
+          break
+        case 'redo':
+          doRedo()
+          break
+        case 'tidy':
+          tidy()
+          break
+        case 'toggle-inspector':
+          toggleRailTab('inspector')
+          break
+        case 'toggle-flows':
+          toggleRailTab('flows')
+          break
+        case 'group':
+          if (canGroup) groupSelection()
+          break
+        case 'ungroup':
+          if (canUngroup) ungroupSelection()
+          break
+        case 'flow-next':
+          setCurrentStep((st) => Math.min(st + 1, (currentFlow?.steps.length ?? 1) - 1))
+          break
+        case 'flow-prev':
+          setCurrentStep((st) => Math.max(0, st - 1))
+          break
+        case 'flow-exit':
+          setFlowMode('edit')
+          break
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [zoomAtPointer, rf])
-
-  // Keyboard: Ctrl/Cmd-Z undo, Ctrl/Cmd-Shift-Z or Ctrl-Y redo, Ctrl/Cmd-Shift-L
-  // re-run layout. Inert while a text input/textarea/contentEditable is
-  // focused so the browser's own undo still works in the Inspector/note
-  // textarea. Separate from the zoom handler above, which early-returns on
-  // ANY modifier.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (!(e.metaKey || e.ctrlKey)) return
-      const key = e.key.toLowerCase()
-      if (key === 'z' && !e.shiftKey) {
-        e.preventDefault()
-        doUndo()
-      } else if ((key === 'z' && e.shiftKey) || key === 'y') {
-        e.preventDefault()
-        doRedo()
-      } else if (key === 'l' && e.shiftKey) {
-        e.preventDefault()
-        tidy()
-      } else if (key === 't' && e.shiftKey) {
-        e.preventDefault()
-        tidy()
-      } else if (key === 'i' && !e.shiftKey && !e.altKey) {
-        e.preventDefault()
-        toggleRailTab('inspector')
-      } else if (key === 'f' && e.shiftKey) {
-        e.preventDefault()
-        toggleRailTab('flows')
-      } else if (key === 'g' && !e.shiftKey) {
-        e.preventDefault()
-        if (canGroup) groupSelection()
-      } else if (key === 'g' && e.shiftKey) {
-        e.preventDefault()
-        if (canUngroup) ungroupSelection()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [doUndo, doRedo, tidy, toggleRailTab, canGroup, groupSelection, canUngroup, ungroupSelection])
-
-  // Keyboard: arrow-key stepping through the active flow in Play mode.
-  // Right/Down advance, Left/Up go back; both preventDefault so React Flow
-  // doesn't nudge a selected node and the page doesn't scroll. Inert while a
-  // text input/textarea/contentEditable is focused (same guard as undo above).
-  useEffect(() => {
-    if (flowMode !== 'play') return
-    const onKey = (e: KeyboardEvent) => {
-      if (menuOpenRef.current) return
-      const t = e.target as HTMLElement | null
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        e.preventDefault()
-        setCurrentStep((s) => Math.min(s + 1, (currentFlow?.steps.length ?? 1) - 1))
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        e.preventDefault()
-        setCurrentStep((s) => Math.max(0, s - 1))
-      } else if (e.key === 'Escape') {
-        setFlowMode('edit')
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [flowMode, currentFlow])
+  }, [
+    promptNewDiagram,
+    exportJson,
+    zoomAtPointer,
+    rf,
+    doUndo,
+    doRedo,
+    tidy,
+    toggleRailTab,
+    canGroup,
+    groupSelection,
+    canUngroup,
+    ungroupSelection,
+    flowMode,
+    currentFlow,
+    setCurrentStep,
+    setFlowMode,
+  ])
 
   // Clamp currentStep into range whenever the active flow (or mode) changes,
   // e.g. switching to a flow with fewer steps than the previous currentStep.
