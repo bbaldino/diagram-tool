@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.8.0](https://github.com/bbaldino/diagram-tool/compare/v0.7.0...v0.8.0) (2026-08-05)
+
+
+### Features
+
+* **edges:** back-fill an explicit colour on every edge ([792b7b1](https://github.com/bbaldino/diagram-tool/commit/792b7b10a566b62ec0ed034bff38a938718109ce))
+
+
+### Bug Fixes
+
+* **canvas:** continuous selection ring, and a corner grab worth aiming at ([c834ad8](https://github.com/bbaldino/diagram-tool/commit/c834ad8ff513383a820bdd39938efda7be43a3b4))
+* **canvas:** keep connection points clickable above the resize controls ([410cb6d](https://github.com/bbaldino/diagram-tool/commit/410cb6dd60c0341d03b45b6508a6350ca6efa861))
+* **edges:** set the starting colour instead of clearing it ([4bf90b8](https://github.com/bbaldino/diagram-tool/commit/4bf90b84294fd285ab3a0c629cb67d752bc2a566))
+* **server:** fail to boot on an unreadable model instead of seeding empty ([4cb1f59](https://github.com/bbaldino/diagram-tool/commit/4cb1f59d2f83f3f968c4d5598e8a696a981efaca))
+
 ## [0.7.0](https://github.com/bbaldino/diagram-tool/compare/v0.6.0...v0.7.0) (2026-08-04)
 
 
