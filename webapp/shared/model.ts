@@ -1,4 +1,4 @@
-import type { RelType, EdgeDir } from './graph'
+import type { RelType, EdgeDir } from './relationships'
 import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
 export type { RelType }
 

@@ -1,5 +1,11 @@
 import { type Node, type Edge, type Connection, reconnectEdge, MarkerType } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
+import { REL, REL_TYPES, type EdgeDir, type RelType } from '../shared/relationships'
+
+// Re-exported: the vocabulary lives in shared/ (the server needs it), but the
+// canvas modules have always reached for it here and there is no value in
+// making every one of them learn the new path.
+export { REL, REL_TYPES, type EdgeDir, type RelType }
 import {
   GROUP_PAD,
   GROUP_MIN,
@@ -9,7 +15,7 @@ import {
   requiredGroupSize,
   paddedExtent,
   placeInGroup,
-} from './containment'
+} from '../shared/containment'
 
 export {
   GROUP_PAD,
@@ -19,7 +25,7 @@ export {
   requiredGroupSize,
   paddedExtent,
   placeInGroup,
-} from './containment'
+} from '../shared/containment'
 
 // dashboard-icons (homarr-labs) — same set used in the D2 diagram
 export const ICON_BASE = 'https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg'
@@ -60,17 +66,6 @@ export function topoOrderByParent<T extends { id: string; parentId?: string | nu
 }
 
 // ---- Relationship vocabulary (this is the "typed edges" bit) ----
-export type RelType = 'talks-to' | 'via' | 'writes-to' | 'reads-from' | 'proxies' | 'monitors'
-
-export const REL: Record<RelType, { color: string; label: string }> = {
-  'talks-to': { color: '#64748b', label: 'talks to' },
-  via: { color: '#6366f1', label: 'via' },
-  'writes-to': { color: '#16a34a', label: 'writes to' },
-  'reads-from': { color: '#2563eb', label: 'reads from' },
-  proxies: { color: '#ea580c', label: 'proxies' },
-  monitors: { color: '#9333ea', label: 'monitors' },
-}
-
 type Status = 'up' | 'down' | 'idle'
 interface N {
   id: string
@@ -294,9 +289,6 @@ export function parentGroup(id: string): string | undefined {
 
 // Edge direction: which ends carry an arrowhead. Decoupled from which handles
 // the edge attaches to, so geometry (layout) and semantics (one/two-way) are
-// independent. forward = arrow at target (default); backward = arrow at source;
-// both = arrows at both ends (two-way / request-response).
-export type EdgeDir = 'forward' | 'backward' | 'both'
 
 function markersFor(dir: EdgeDir, color: string) {
   const arrow = { type: MarkerType.ArrowClosed, color, width: 15, height: 15 }
@@ -342,8 +334,6 @@ export function makeEdge(
     data: { rel: type, inferred: !!inferred, shape: 'default', dir, color: extra?.color },
   }
 }
-
-export const REL_TYPES = Object.keys(REL) as RelType[]
 
 // Re-apply relationship styling to an existing edge (used when its type changes).
 export function restyleEdge(e: AppEdge, type: RelType, inferred: boolean): AppEdge {

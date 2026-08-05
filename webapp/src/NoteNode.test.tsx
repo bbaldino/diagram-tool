@@ -6,7 +6,7 @@ import { ReactFlowProvider, type NodeProps } from '@xyflow/react'
 import type { NoteNode as NoteNodeType } from './canvasData'
 import { useState } from 'react'
 import { NoteNode } from './nodes'
-import { SCHEMES, secondaryText, accentFill } from './schemes'
+import { SCHEMES, secondaryText, accentFill } from '../shared/schemes'
 
 afterEach(cleanup)
 

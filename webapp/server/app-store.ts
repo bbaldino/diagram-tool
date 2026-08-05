@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createStore, type Store } from './store'
 import { atomicWriteFile } from './persist'
-import { backfillSchemes } from '../src/model'
+import { backfillSchemes } from '../shared/model'
 
 // Read a file, distinguishing "not there yet" from "there but unreadable".
 //

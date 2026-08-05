@@ -6,7 +6,7 @@ import {
   boxAtContainer,
   contractEdges,
 } from './layout-tree'
-import type { Diagram } from '../src/model'
+import type { Diagram } from '../shared/model'
 
 // Root → B{ b1, C{ c1, D{ d1, d2 } } }
 const mk = (): Diagram => ({

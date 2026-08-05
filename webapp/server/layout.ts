@@ -1,4 +1,4 @@
-import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../src/model'
+import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../shared/model'
 import { runElk } from './layout-elk'
 import { runGraphviz } from './layout-graphviz'
 import { contractEdges } from './layout-tree'
@@ -7,7 +7,7 @@ import {
   reflowContainment,
   GROUP_PAD,
   GROUP_NEST_TOP_PAD,
-} from '../src/containment'
+} from '../shared/containment'
 
 type HandleId = 'top' | 'right' | 'bottom' | 'left'
 

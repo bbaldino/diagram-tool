@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import type { Flow, FlowStep } from './model'
+import type { Flow, FlowStep } from '../shared/model'
 
 type FlowMenuTarget = { flowId: string; x: number; y: number } | null
 

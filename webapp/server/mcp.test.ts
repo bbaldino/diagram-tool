@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
 import { handlers, createMcpServer, edgeAttrsShape, schemeShape, wrap } from './mcp'
 import { createStore, type Store } from './store'
-import { getDiagram } from '../src/model'
+import { getDiagram } from '../shared/model'
 
 const mkStore = (): Promise<Store> =>
   createStore({

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { normalizeModel, type Model } from './model'
+import { normalizeModel, type Model } from '../shared/model'
 import { DialogShell } from './DialogShell'
 
 type Parsed =

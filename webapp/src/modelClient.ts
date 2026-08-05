@@ -1,5 +1,5 @@
-import type { Op } from './ops'
-import type { Model } from './model'
+import type { Op } from '../shared/ops'
+import type { Model } from '../shared/model'
 
 export interface Snapshot {
   rev: number

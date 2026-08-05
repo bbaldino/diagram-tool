@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { buildDiagramGraph } from './buildGraph'
 import { paddedExtent } from './graph'
-import type { Diagram, Template } from './model'
+import type { Diagram, Template } from '../shared/model'
 
 function makeDiagram(over: Partial<Diagram> = {}): Diagram {
   return {

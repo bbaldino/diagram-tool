@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach, vi } from 'vitest'
 import { render, cleanup } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ColorPicker, PALETTE } from './ColorPicker'
-import { SCHEMES } from './schemes'
+import { SCHEMES } from '../shared/schemes'
 
 afterEach(cleanup)
 

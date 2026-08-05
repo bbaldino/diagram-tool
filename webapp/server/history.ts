@@ -1,4 +1,4 @@
-import type { DiagramContent } from '../src/model'
+import type { DiagramContent } from '../shared/model'
 
 export const HISTORY_LIMIT = 100
 

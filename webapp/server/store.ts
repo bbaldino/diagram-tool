@@ -1,12 +1,12 @@
-import { applyOps, type Op } from '../src/ops'
+import { applyOps, type Op } from '../shared/ops'
 import {
   normalizeModel,
   getDiagram,
   diagramContent,
   type Model,
   type DiagramContent,
-} from '../src/model'
-import { diffDiagramContents } from '../src/diff'
+} from '../shared/model'
+import { diffDiagramContents } from '../shared/diff'
 import * as history from './history'
 
 const SAVE_DEBOUNCE_MS = 250

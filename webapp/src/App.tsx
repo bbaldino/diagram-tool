@@ -59,12 +59,18 @@ import {
   undo as undoReq,
   redo as redoReq,
 } from './modelClient'
-import { diffToOps } from './diff'
+import { diffToOps } from '../shared/diff'
 import { flowStates } from './flowState'
-import { newId } from './ids'
+import { newId } from '../shared/ids'
 import { groupNodes, ungroupNodes } from './grouping'
-import * as M from './model'
-import type { Model, Node as MNode, Group as MGroup, Note as MNote, Edge as MEdge } from './model'
+import * as M from '../shared/model'
+import type {
+  Model,
+  Node as MNode,
+  Group as MGroup,
+  Note as MNote,
+  Edge as MEdge,
+} from '../shared/model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 const OPEN_TABS_KEY = 'homelab-open-tabs'

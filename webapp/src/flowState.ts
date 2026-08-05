@@ -1,4 +1,4 @@
-import type { Flow } from './model'
+import type { Flow } from '../shared/model'
 
 export type FlowElemState = 'active' | 'lit'
 

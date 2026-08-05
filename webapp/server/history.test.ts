@@ -13,7 +13,7 @@ import {
   undoStates,
   type HistoryMap,
 } from './history'
-import type { DiagramContent } from '../src/model'
+import type { DiagramContent } from '../shared/model'
 
 const c = (n: number): DiagramContent => ({
   nodes: [{ id: 'e', label: 'E', fields: [], position: { x: n, y: 0 } }],

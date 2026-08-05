@@ -12,7 +12,7 @@
 // index signature, so an interface will not satisfy it.
 import type { Edge, Node } from '@xyflow/react'
 import type { EdgeDir, RelType } from './graph'
-import type { Status } from './model'
+import type { Status } from '../shared/model'
 
 // Both required, mirroring Group in model.ts. Typing them optional made the
 // write-back in nodesToDiagramParts fail to compile, which is correct: a group

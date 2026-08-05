@@ -3,7 +3,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import type { Snapshot, Store } from './store'
 import { createMcpServer, handlers } from './mcp'
 import { DEFAULT_ENGINE, type LayoutEngine } from './layout'
-import type { Op } from '../src/ops'
+import type { Op } from '../shared/ops'
 
 // Mount the model/ops/layout/history API, the SSE snapshot stream, and the
 // MCP endpoint on an Express app. Ported verbatim from the former Vite

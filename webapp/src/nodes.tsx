@@ -13,7 +13,7 @@ import {
   accentFill,
   NEW_NODE_SCHEME,
   NEW_NOTE_SCHEME,
-} from './schemes'
+} from '../shared/schemes'
 
 // Global toggle for the browser's native spellcheck on note textareas.
 // Provided by App from a persisted view preference; default off = clean viewing.

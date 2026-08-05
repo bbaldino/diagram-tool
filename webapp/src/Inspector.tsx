@@ -5,7 +5,7 @@ import { SchemePicker } from './SchemePicker'
 import { isGroupNode, isNoteNode, isServiceNode, type EdgeData } from './canvasData'
 import { IconInput } from './IconInput'
 import { Switch } from './Switch'
-import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from './schemes'
+import { NEW_NODE_SCHEME, NEW_NOTE_SCHEME } from '../shared/schemes'
 
 interface Props {
   node: Node | null

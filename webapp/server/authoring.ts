@@ -1,9 +1,17 @@
-import type { EdgeDir } from '../src/graph'
-import type { Diagram, DiagramType, Edge, EdgeOrientation, Group, Model, Node } from '../src/model'
-import { addDiagram } from '../src/model'
-import { newId } from '../src/ids'
-import { diffToOps } from '../src/diff'
-import type { Op } from '../src/ops'
+import type { EdgeDir } from '../shared/relationships'
+import type {
+  Diagram,
+  DiagramType,
+  Edge,
+  EdgeOrientation,
+  Group,
+  Model,
+  Node,
+} from '../shared/model'
+import { addDiagram } from '../shared/model'
+import { newId } from '../shared/ids'
+import { diffToOps } from '../shared/diff'
+import type { Op } from '../shared/ops'
 import { layoutDiagram } from './layout'
 
 export interface AuthorSpec {

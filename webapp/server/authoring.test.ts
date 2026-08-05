@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { authorDiagramOps } from './authoring'
-import { applyOps } from '../src/ops'
-import { normalizeModel, getDiagram } from '../src/model'
+import { applyOps } from '../shared/ops'
+import { normalizeModel, getDiagram } from '../shared/model'
 
 const base = () => normalizeModel({ version: 2, diagrams: [], templates: [] })
 

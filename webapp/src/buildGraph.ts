@@ -1,7 +1,7 @@
 import { type Node, type Edge } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
 import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
-import type { Diagram, Field, Node as DNode, Template } from './model'
+import type { Diagram, Field, Node as DNode, Template } from '../shared/model'
 
 // A field shows on the card if it says so itself, or — absent that — if its
 // template default says so and the node's own field didn't opt out.

@@ -12,7 +12,7 @@
 // always has a scheme, so there is no absence to return to. Picking `paper` is
 // how you get the plain white card. (Edges are different — an edge with no
 // colour follows its relationship type — which is why ColorPicker keeps one.)
-import { SCHEMES, isSchemeName, type SchemeName } from './schemes'
+import { SCHEMES, isSchemeName, type SchemeName } from '../shared/schemes'
 
 interface Props {
   value: string // a scheme name, or a custom hex

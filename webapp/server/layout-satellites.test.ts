@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { findSatellites, nodeHeight, SATELLITE_GAP } from './layout'
 import { layoutDiagram } from './layout'
-import type { Diagram, Edge, Node } from '../src/model'
+import type { Diagram, Edge, Node } from '../shared/model'
 
 const node = (id: string, label = id): Node => ({
   id,

@@ -1,4 +1,4 @@
-import type { Diagram } from '../src/model'
+import type { Diagram } from '../shared/model'
 
 // parentId of the node or group with this id (notes aren't edge endpoints), or
 // null if top-level or unknown.

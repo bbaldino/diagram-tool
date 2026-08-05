@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import type { EdgeDir } from '../src/graph'
+import type { EdgeDir } from '../shared/relationships'
 import type {
   Diagram,
   DiagramType,
@@ -11,17 +11,17 @@ import type {
   Node,
   Note,
   Status,
-} from '../src/model'
-import { addDiagram, getDiagram } from '../src/model'
-import { newId } from '../src/ids'
-import { applyOps, type Op } from '../src/ops'
-import { diffToOps } from '../src/diff'
-import { reflowContainment, placeInGroup, NODE_EST_SIZE } from '../src/containment'
+} from '../shared/model'
+import { addDiagram, getDiagram } from '../shared/model'
+import { newId } from '../shared/ids'
+import { applyOps, type Op } from '../shared/ops'
+import { diffToOps } from '../shared/diff'
+import { reflowContainment, placeInGroup, NODE_EST_SIZE } from '../shared/containment'
 import { layoutDiagram, type LayoutEngine, type NodeSizes, DEFAULT_ENGINE } from './layout'
 import { normalizeNoteText } from './noteText'
 import { authorDiagramOps, type AuthorSpec } from './authoring'
 import type { Store } from './store'
-import { isSchemeName, isCustomHex } from '../src/schemes'
+import { isSchemeName, isCustomHex } from '../shared/schemes'
 
 // Guidance for every `icon` field. Icons are slugs from the dashboard-icons set
 // (rendered as `<slug>.svg`); an unknown slug renders nothing, so agents must

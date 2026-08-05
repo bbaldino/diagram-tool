@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { layoutDiagram, handlesFor, absoluteCenter, assignEdgeHandles } from './layout'
-import type { Diagram, Group } from '../src/model'
-import { reflowContainment } from '../src/containment'
+import type { Diagram, Group } from '../shared/model'
+import { reflowContainment } from '../shared/containment'
 
 describe('layoutDiagram dispatcher', () => {
   const diagram = {
