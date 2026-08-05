@@ -36,6 +36,7 @@ import {
 import { buildDiagramGraph } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
 import { useViewPrefs } from './useViewPrefs'
+import { useFlowPlayback } from './useFlowPlayback'
 import { flushCanvasInto } from './canvasToModel'
 import { isGroupNode, isNoteNode, isServiceNode, type AppEdge, type EdgeData } from './canvasData'
 import { Inspector } from './Inspector'
@@ -62,7 +63,6 @@ import {
   redo as redoReq,
 } from './modelClient'
 import { diffToOps } from '../shared/diff'
-import { flowStates } from './flowState'
 import { newId } from '../shared/ids'
 import { groupNodes, ungroupNodes } from './grouping'
 import * as M from '../shared/model'
@@ -124,11 +124,6 @@ function Flow({
     layoutEngine,
     chooseEngine,
   } = useViewPrefs()
-  // Flow (walkthrough) UI state — client-only, never persisted in the model.
-  const [flowMode, setFlowMode] = useState<'none' | 'edit' | 'play'>('none')
-  const [currentFlowId, setCurrentFlowId] = useState<string | null>(null)
-  const [currentStep, setCurrentStep] = useState(0)
-  const [selStep, setSelStep] = useState(0)
   // "Add" menu opened by double-clicking empty canvas: {sx,sy} = screen coords
   // for popup placement, flow = flow coords for the new node.
   const [addMenu, setAddMenu] = useState<{
@@ -194,30 +189,32 @@ function Flow({
         : null,
     [active],
   )
-  const currentFlow = useMemo(
-    () => active?.flows?.find((f) => f.id === currentFlowId) ?? null,
-    [active, currentFlowId],
-  )
-
-  // Maps an element id to its flow-walkthrough class for the current flow/step,
-  // or undefined when no flow is active (normal rendering). Shared by the
-  // re-seed (so freshly built nodes/edges are classed from creation) and the
-  // re-tag effect (so step-only changes re-class without a re-seed).
-  const flowClassOf = useCallback(
-    (id: string): string | undefined => {
-      // The walkthrough (play) owns the canvas, so it always lights up. Editing
-      // a flow only lights up WHILE the Flows tab is the visible rail tab —
-      // otherwise selecting a flow left the diagram stuck dimmed with no way back
-      // to normal. Switching to the Inspector tab (or hiding the rail) now clears
-      // the highlight and returns the canvas to normal.
-      const lit = flowMode === 'play' || (flowMode === 'edit' && railVisible && railTab === 'flows')
-      if (!lit || !currentFlow) return undefined
-      const activeStep = flowMode === 'edit' ? selStep : currentStep
-      const s = flowStates(currentFlow, activeStep)[id]
-      return s === 'active' ? 'flow-active' : s === 'lit' ? 'flow-lit' : 'flow-ghost'
-    },
-    [flowMode, currentFlow, currentStep, selStep, railVisible, railTab],
-  )
+  // Flows (walkthroughs) — see useFlowPlayback. The effect below paints
+  // flowClassOf's result onto the live canvas; that half stays here.
+  const {
+    flowMode,
+    setFlowMode,
+    currentFlowId,
+    currentFlow,
+    currentStep,
+    setCurrentStep,
+    selStep,
+    setSelStep,
+    flowClassOf,
+    selectFlow,
+    createFlow,
+    renameFlowById,
+    deleteFlowById,
+    duplicateFlow,
+    toggleInStep,
+  } = useFlowPlayback({
+    model,
+    setModel,
+    activeId,
+    active,
+    showPrompt,
+    flowsTabVisible: railVisible && railTab === 'flows',
+  })
 
   // Tag every live node/edge with a flow-walkthrough class (flow-active /
   // flow-lit / flow-ghost) when a flow is selected and mode isn't 'none';
@@ -279,9 +276,10 @@ function Flow({
     lastSeededId.current = activeId
     if (changed) {
       setTimeout(() => rf.fitView({ padding: 0.2 }), 60)
-      setFlowMode('none')
-      setCurrentFlowId(null)
-      setCurrentStep(0)
+      // Switching diagrams drops any active walkthrough. selectFlow(null) is
+      // the same reset, and additionally clears selStep — which the inline
+      // version left stale, pointing at a step index from the old diagram.
+      selectFlow(null)
     }
     // Newly placed/created entity: select it + center so it's obvious it landed.
     if (sel) {
@@ -432,83 +430,6 @@ function Flow({
   )
 
   // ---- flow handlers ----
-  const selectFlow = useCallback((id: string | null) => {
-    setCurrentFlowId(id)
-    setFlowMode(id ? 'edit' : 'none')
-    setCurrentStep(0)
-    setSelStep(0)
-  }, [])
-
-  const createFlow = useCallback(async () => {
-    if (!model || !activeId) return
-    const name = await showPrompt({ title: 'New flow', label: 'Name', defaultValue: 'Flow' })
-    if (!name) return
-    const id = newId()
-    setModel((m) => M.addFlow(m, activeId, { id, name, steps: [] }))
-    setCurrentFlowId(id)
-    setFlowMode('edit')
-    setSelStep(0)
-    setCurrentStep(0)
-  }, [model, activeId, setModel, showPrompt])
-
-  const renameFlowById = useCallback(
-    async (id: string) => {
-      const f = active?.flows?.find((x) => x.id === id)
-      if (!f || !activeId) return
-      const name = await showPrompt({ title: 'Rename flow', label: 'Name', defaultValue: f.name })
-      if (name) setModel((m) => M.updateFlow(m, activeId, id, { name }))
-    },
-    [active, activeId, setModel, showPrompt],
-  )
-
-  const deleteFlowById = useCallback(
-    (id: string) => {
-      if (!activeId) return
-      setModel((m) => M.removeFlow(m, activeId, id))
-      if (currentFlowId === id) {
-        setCurrentFlowId(null)
-        setFlowMode('none')
-      }
-    },
-    [activeId, currentFlowId, setModel],
-  )
-
-  const duplicateFlow = useCallback(
-    (id: string) => {
-      if (!activeId) return
-      const f = active?.flows?.find((x) => x.id === id)
-      if (!f) return
-      const copyId = newId()
-      const steps = f.steps.map((s) => ({ ...s, id: newId() }))
-      setModel((m) => M.addFlow(m, activeId, { id: copyId, name: `${f.name} copy`, steps }))
-      selectFlow(copyId)
-    },
-    [activeId, active, setModel, selectFlow],
-  )
-
-  const toggleInStep = useCallback(
-    (elementId: string) => {
-      // Canvas clicks only toggle step membership while actively editing a flow
-      // in the visible Flows tab; on the Inspector tab (or with the rail hidden)
-      // a node/edge click selects normally.
-      if (flowMode !== 'edit' || !currentFlow || !activeId || !railVisible || railTab !== 'flows')
-        return
-      if (!currentFlow.steps[selStep]) return
-      const steps = currentFlow.steps.map((s, i) =>
-        i !== selStep
-          ? s
-          : {
-              ...s,
-              elementIds: s.elementIds.includes(elementId)
-                ? s.elementIds.filter((x) => x !== elementId)
-                : [...s.elementIds, elementId],
-            },
-      )
-      setModel((m) => M.updateFlow(m, activeId, currentFlow.id, { steps }))
-    },
-    [flowMode, currentFlow, activeId, selStep, setModel, railVisible, railTab],
-  )
-
   const chipLabel = useCallback(
     (elementId: string) => {
       const n = nodes.find((x) => x.id === elementId)
