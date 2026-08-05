@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.2](https://github.com/bbaldino/diagram-tool/compare/v0.8.1...v0.8.2) (2026-08-05)
+
+
+### Bug Fixes
+
+* **canvas:** drop the leftover +Group / +Note toolbar ([064d87f](https://github.com/bbaldino/diagram-tool/commit/064d87fff8a8a7e68d26801b7dda63500cc7f681))
+
 ## [0.8.1](https://github.com/bbaldino/diagram-tool/compare/v0.8.0...v0.8.1) (2026-08-05)
 
 
