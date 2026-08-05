@@ -1224,13 +1224,6 @@ function Flow({
                   />
                 </Panel>
 
-                <Panel position="top-right" className="stack-tr">
-                  <div className="panel toolbar">
-                    <button onClick={() => addGroup()}>+ Group</button>
-                    <button onClick={() => addNote()}>+ Note</button>
-                  </div>
-                </Panel>
-
                 <Panel position="top-left" className="stack-tl">
                   {showLegend && (
                     <div className="panel">

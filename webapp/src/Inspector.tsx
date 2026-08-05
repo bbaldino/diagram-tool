@@ -326,8 +326,8 @@ export function Inspector({
       <div className="insp__empty-tile">◇</div>
       <div className="insp__empty-title">Nothing selected</div>
       <div className="insp__empty-body">
-        Select a node, group, or edge to edit its fields. Double-click the canvas and choose{' '}
-        <b>Add → Entity</b> to create one; use <b>+ Group</b> / <b>+ Note</b> for diagram structure.
+        Select a node, group, or edge to edit its fields. Double-click the canvas to add an{' '}
+        <b>Entity</b>, a <b>Group</b> or a <b>Note</b>.
       </div>
     </div>
   )
