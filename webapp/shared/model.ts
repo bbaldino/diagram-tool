@@ -103,6 +103,8 @@ export interface Edge extends Entity {
   dir?: EdgeDir // arrowhead direction — forward (default) | backward | both
   color?: string // per-edge color override; falls back to the relationship type color
   labelPos?: number // fraction along the path in [0,1] where the label sits; absent = 0.5 (midpoint)
+  labelOffset?: { x: number; y: number } // offset from the on-path anchor, in canvas/flow units; absent = {0,0}
+  labelPinned?: boolean // true = user-placed label; the auto de-collision pass skips it
   orientation?: EdgeOrientation // routing axis hint; absent = 'auto' (geometry decides)
 }
 export interface FlowStep {

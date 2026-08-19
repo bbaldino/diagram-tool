@@ -99,6 +99,8 @@ export function edgesToDiagramEdges(edges: AppEdge[], prevEdgesById: Map<string,
     dir: e.data?.dir ?? 'forward',
     color: e.data?.color ?? undefined,
     labelPos: e.data?.labelPos,
+    labelOffset: e.data?.labelOffset,
+    labelPinned: e.data?.labelPinned,
     orientation: prevEdgesById.get(e.id)?.orientation,
   }))
 }

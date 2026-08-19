@@ -107,6 +107,8 @@ export function buildDiagramGraph(
       shape: de.shape ?? 'default',
       points: de.points,
       labelPos: de.labelPos,
+      labelOffset: de.labelOffset,
+      labelPinned: de.labelPinned,
     }
     edge = restyleEdge(edge, !!de.inferred) // keeps id/source/target/data via spread
     edge.type = edgeTypeForRouter(router)

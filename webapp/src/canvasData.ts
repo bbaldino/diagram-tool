@@ -61,6 +61,8 @@ export type EdgeData = {
   color?: string
   points?: { x: number; y: number }[]
   labelPos?: number // fraction along the path in [0,1]; absent = 0.5 (midpoint)
+  labelOffset?: { x: number; y: number }
+  labelPinned?: boolean
   // Transient view state while a flow plays; never persisted to the model.
   // Holds the CSS CLASS NAME from flowClassOf ('flow-active' / 'flow-lit'),
   // not a FlowElemState — the edge label renders in a portal outside the edge

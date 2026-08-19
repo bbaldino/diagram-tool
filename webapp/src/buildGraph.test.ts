@@ -255,3 +255,25 @@ describe('buildDiagramGraph edge router', () => {
     expect(buildDiagramGraph(twoNodeDiagram(), [], 'pathfinding').edges[0].type).toBe('smart')
   })
 })
+
+describe('buildDiagramGraph label placement passthrough', () => {
+  it('carries labelOffset and labelPinned into edge data', () => {
+    const d = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'topology',
+      nodes: [
+        { id: 'n1', label: 'A', position: { x: 0, y: 0 }, fields: [] },
+        { id: 'n2', label: 'B', position: { x: 200, y: 0 }, fields: [] },
+      ],
+      groups: [],
+      notes: [],
+      edges: [{ id: 'e1', from: 'n1', to: 'n2', labelOffset: { x: 3, y: -7 }, labelPinned: true }],
+      flows: [],
+    } as unknown as import('../shared/model').Diagram
+    const edge = buildDiagramGraph(d, [], 'pathfinding').edges[0]
+    expect(edge.data?.labelOffset).toEqual({ x: 3, y: -7 })
+    expect(edge.data?.labelPinned).toBe(true)
+  })
+})
