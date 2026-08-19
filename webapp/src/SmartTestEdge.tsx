@@ -11,6 +11,7 @@ import { getSmartEdge, isDirectPathBlocked } from '@tisoap/react-flow-smart-edge
 import { useActiveRouting } from './routingKnobs'
 import { useLabelPlacement } from './labelPlacement'
 import { PATHFINDERS, drawFor } from './smartRouting'
+import { useEdgeRoute } from './edgeRoutes'
 
 // Pathfinding edge: routes with A* around a configurable obstacle set on the
 // current node positions (no re-placement). Reads its knobs from the
@@ -38,6 +39,7 @@ export function SmartTestEdge(props: EdgeProps) {
   const k = useActiveRouting().pathfinding
   const nodes = useNodes()
   const auto = useLabelPlacement(id)
+  const routed = useEdgeRoute(id)
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
   // Absolute top-left of a node (child coords are parent-relative).
@@ -114,6 +116,7 @@ export function SmartTestEdge(props: EdgeProps) {
       // fall back to the straight line
     }
   }
+  const finalPath = routed && routed.length > 0 ? routed : path
   const pinned = data?.labelPinned === true
   const labelPos = Math.max(
     0,
@@ -135,7 +138,7 @@ export function SmartTestEdge(props: EdgeProps) {
     }
     const p = el.getPointAtLength(labelPos * total)
     setLabelPt({ x: p.x, y: p.y })
-  }, [path, labelPos])
+  }, [finalPath, labelPos])
 
   const setPlacement = (pos: number, off: { x: number; y: number }) =>
     setEdges((es) =>
@@ -201,12 +204,18 @@ export function SmartTestEdge(props: EdgeProps) {
   const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
   return (
     <>
-      <BaseEdge id={id} path={path} style={style} markerStart={markerStart} markerEnd={markerEnd} />
+      <BaseEdge
+        id={id}
+        path={finalPath}
+        style={style}
+        markerStart={markerStart}
+        markerEnd={markerEnd}
+      />
       {label ? (
         <>
           <path
             ref={measureRef}
-            d={path}
+            d={finalPath}
             fill="none"
             stroke="none"
             style={{ pointerEvents: 'none' }}
