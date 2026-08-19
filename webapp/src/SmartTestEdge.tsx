@@ -231,15 +231,18 @@ export function SmartTestEdge(props: EdgeProps) {
     ev.stopPropagation()
     setEdges((es) =>
       es.map((e) =>
-        e.id === id ? { ...e, data: { ...e.data, labelPinned: false, labelOffset: undefined } } : e,
+        e.id === id
+          ? {
+              ...e,
+              data: { ...e.data, labelPinned: false, labelOffset: undefined, labelPos: undefined },
+            }
+          : e,
       ),
     )
   }
 
-  const dragging = useRef(false)
   const startLabelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
     e.stopPropagation()
-    dragging.current = true
     const el = e.currentTarget
     try {
       el.setPointerCapture(e.pointerId)
@@ -272,9 +275,6 @@ export function SmartTestEdge(props: EdgeProps) {
     const up = () => {
       el.removeEventListener('pointermove', move)
       el.removeEventListener('pointerup', up)
-      setTimeout(() => {
-        dragging.current = false
-      }, 60)
     }
     el.addEventListener('pointermove', move)
     el.addEventListener('pointerup', up)

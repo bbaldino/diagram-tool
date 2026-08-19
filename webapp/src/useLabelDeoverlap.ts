@@ -30,6 +30,9 @@ export function useLabelDeoverlap(active: boolean): void {
       return
     }
     const raf = requestAnimationFrame(() => {
+      // Queries the whole document and assumes a single mounted React Flow canvas
+      // (true for this app's one-canvas-at-a-time architecture); would need
+      // scoping to an RF root if two canvases were ever mounted at once.
       const edgeEls = document.querySelectorAll<SVGGElement>('.react-flow__edge-smart')
       const labels: LabelInput[] = []
       const zoom = (() => {
