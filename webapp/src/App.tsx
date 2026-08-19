@@ -52,6 +52,7 @@ import { ImportDialog } from './ImportDialog'
 import { DiagramSettingsDialog } from './DiagramSettingsDialog'
 import { setActiveRouting, useActiveRouting } from './routingKnobs'
 import { useLabelDeoverlap } from './useLabelDeoverlap'
+import { useEdgeRouting } from './useEdgeRouting'
 
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -183,6 +184,16 @@ function Flow({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
   useLabelDeoverlap(activeRouting.router === 'pathfinding')
+  const pf = activeRouting.pathfinding
+  useEdgeRouting(activeRouting.router === 'pathfinding', pf.separation ?? 0, {
+    algo: pf.algo,
+    draw: pf.draw,
+    gridRatio: pf.gridRatio,
+    nodePadding: pf.nodePadding,
+    eps: pf.eps,
+    obstacleGroups: pf.obstacleGroups,
+    obstacleNotes: pf.obstacleNotes,
+  })
   // Tab strip contents: every open id that still resolves to a real diagram
   // (a stale id — e.g. one deleted from another client — just drops silently
   // rather than rendering a broken tab).
