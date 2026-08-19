@@ -5,6 +5,43 @@ export type Status = 'up' | 'down' | 'idle'
 export type DiagramType = 'canvas' | 'topology' | 'call-flow'
 export type EdgeOrientation = 'auto' | 'horizontal' | 'vertical'
 
+export type EdgeRouter = 'waypoint' | 'pathfinding'
+export type PathAlgo = 'no-diagonal' | 'diagonal' | 'jump-point'
+export type DrawStyle = 'stepped' | 'straight' | 'smoothstep' | 'spline'
+
+export interface PathfindingConfig {
+  algo: PathAlgo
+  draw: DrawStyle
+  gridRatio: number
+  nodePadding: number
+  eps: number
+  obstacleGroups: boolean
+  obstacleNotes: boolean
+  directSkip: boolean
+}
+
+export interface DiagramRouting {
+  router: EdgeRouter
+  pathfinding: PathfindingConfig
+}
+
+// Fixed baseline used when a diagram carries no routing override. Router defaults
+// to 'waypoint' (current behavior); the pathfinding block is the combo that
+// tested best, applied only when a diagram opts into the pathfinding router.
+export const DEFAULT_ROUTING: DiagramRouting = {
+  router: 'waypoint',
+  pathfinding: {
+    algo: 'jump-point',
+    draw: 'smoothstep',
+    gridRatio: 12,
+    nodePadding: 17,
+    eps: 8,
+    obstacleGroups: false,
+    obstacleNotes: false,
+    directSkip: false,
+  },
+}
+
 export interface Field {
   key: string
   value: string
@@ -88,6 +125,7 @@ export interface Diagram {
   notes: Note[]
   edges: Edge[]
   flows: Flow[]
+  routing?: DiagramRouting
 }
 
 // The undoable slice of a diagram (see undo/redo). Everything else on a
@@ -366,6 +404,14 @@ export function addDiagram(
 
 export function renameDiagram(model: Model, id: string, name: string): Model {
   return mapDiagram(model, id, (d) => ({ ...d, name, title: name }))
+}
+
+export function effectiveRouting(d: Diagram): DiagramRouting {
+  return d.routing ?? DEFAULT_ROUTING
+}
+
+export function setDiagramRouting(model: Model, id: string, routing: DiagramRouting): Model {
+  return mapDiagram(model, id, (d) => ({ ...d, routing }))
 }
 
 // Nodes are diagram-local now, so deleting a diagram is a plain filter — no
