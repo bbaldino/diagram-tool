@@ -55,3 +55,9 @@ describe('setDiagramRouting', () => {
     expect(next.diagrams.find((d) => d.id === 'b')?.routing).toBeUndefined()
   })
 })
+
+describe('separation knob', () => {
+  it('defaults to 0', () => {
+    expect(DEFAULT_ROUTING.pathfinding.separation).toBe(0)
+  })
+})

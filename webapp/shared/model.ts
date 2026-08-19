@@ -18,6 +18,7 @@ export interface PathfindingConfig {
   obstacleGroups: boolean
   obstacleNotes: boolean
   directSkip: boolean
+  separation?: number // edge-aware routing strength (flow units); absent/0 = independent routing
 }
 
 export interface DiagramRouting {
@@ -39,6 +40,7 @@ export const DEFAULT_ROUTING: DiagramRouting = {
     obstacleGroups: false,
     obstacleNotes: false,
     directSkip: false,
+    separation: 0,
   },
 }
 

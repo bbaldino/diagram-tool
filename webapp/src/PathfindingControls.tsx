@@ -109,6 +109,13 @@ export function PathfindingControls(): JSX.Element {
         disabled={!epsUsed}
         onChange={(v) => patchPathfinding({ eps: v })}
       />
+      <Slider
+        label="separation"
+        value={k.separation ?? 0}
+        min={0}
+        max={30}
+        onChange={(v) => patchPathfinding({ separation: v })}
+      />
 
       <Check
         label="groups are obstacles"
