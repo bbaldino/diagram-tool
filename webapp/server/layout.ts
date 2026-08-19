@@ -1,4 +1,5 @@
 import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../shared/model'
+import ELK from 'elkjs/lib/elk.bundled.js'
 import { runElk } from './layout-elk'
 import { runGraphviz } from './layout-graphviz'
 import { contractEdges } from './layout-tree'
@@ -116,10 +117,17 @@ export function absoluteCenter(
   return { x: x + W / 2, y: y + height / 2 }
 }
 
-// Choose which side of each node an edge attaches to. `orientation` fixes the
-// axis (horizontal → left/right, vertical → top/bottom); `auto` picks the
-// dominant axis from the centers (tie → horizontal). The specific side is
-// always derived from geometry, so it tracks the nodes on every layout.
+// Choose which side of each node an edge attaches to.
+//
+// Geometry-first: the axis follows the actual laid-out positions, so a handle
+// always faces the other box. `orientation` is a modeling hint fixed at
+// authoring time (horizontal = I/O, vertical = peer/side-channel); after a
+// re-layout it is often stale, and honouring it against the geometry forces the
+// handle onto the side facing AWAY from the other box — the edge then has to
+// loop back through the box to reach it. So the hint only decides the axis when
+// the two boxes are near-diagonal, where geometry itself is ambiguous. The
+// specific side is always derived from the centers, so it tracks the nodes on
+// every layout.
 export function handlesFor(
   orientation: EdgeOrientation | undefined,
   s: { x: number; y: number },
@@ -127,12 +135,17 @@ export function handlesFor(
 ): { sourceHandle: HandleId; targetHandle: HandleId } {
   const dx = t.x - s.x
   const dy = t.y - s.y
+  const ax = Math.abs(dx)
+  const ay = Math.abs(dy)
+  // Ambiguous only when neither axis dominates: the longer delta is within 1.3x
+  // of the shorter. Outside that band, geometry is clear and the hint yields.
+  const nearDiagonal = Math.min(ax, ay) > 0 && Math.max(ax, ay) <= 1.3 * Math.min(ax, ay)
   const axis =
-    orientation === 'horizontal'
+    nearDiagonal && orientation === 'horizontal'
       ? 'h'
-      : orientation === 'vertical'
+      : nearDiagonal && orientation === 'vertical'
         ? 'v'
-        : Math.abs(dx) >= Math.abs(dy)
+        : ax >= ay
           ? 'h'
           : 'v'
   if (axis === 'h') {
@@ -167,6 +180,203 @@ export function assignEdgeHandles(
     if (!s || !t) return e
     return { ...e, ...handlesFor(e.orientation, s, t) }
   })
+}
+
+// One-pass hierarchical ELK layout with edge routing. Builds the whole nested
+// group/node tree as one ELK graph with every real edge and edgeRouting=
+// ORTHOGONAL, so ELK (a) places nodes edge-aware, (b) can un-cross edges that
+// span group boundaries, and (c) hands back a routed path (bend points) for
+// each edge that goes AROUND boxes instead of through them. Fills the caller's
+// position maps and the `routes` map (routed handles + waypoints, in absolute
+// canvas coordinates — which line up with the node positions because both come
+// from this same ELK run and nothing is shifted afterward).
+// Rough width of a rendered edge label. The server can't measure text; this
+// only needs to be close enough for ELK to reserve believable space.
+function labelWidth(text: string): number {
+  return Math.min(240, Math.max(24, text.length * 6.2 + 10))
+}
+
+// Fraction along a polyline (by arc length) nearest to point p. Used to turn
+// ELK's absolute label position into the app's labelPos (0..1 along the edge).
+function fractionAlong(path: { x: number; y: number }[], p: { x: number; y: number }): number {
+  let best = 0.5
+  let bestD = Infinity
+  let acc = 0
+  const total =
+    path.slice(1).reduce((s, q, i) => s + Math.hypot(q.x - path[i].x, q.y - path[i].y), 0) || 1
+  for (let i = 0; i < path.length - 1; i++) {
+    const a = path[i]
+    const b = path[i + 1]
+    const L = Math.hypot(b.x - a.x, b.y - a.y)
+    const t =
+      L === 0
+        ? 0
+        : Math.max(
+            0,
+            Math.min(1, ((p.x - a.x) * (b.x - a.x) + (p.y - a.y) * (b.y - a.y)) / (L * L)),
+          )
+    const cx = a.x + (b.x - a.x) * t
+    const cy = a.y + (b.y - a.y) * t
+    const d = Math.hypot(p.x - cx, p.y - cy)
+    if (d < bestD) {
+      bestD = d
+      best = (acc + t * L) / total
+    }
+    acc += L
+  }
+  return best
+}
+
+const hierElk = new ELK()
+async function layoutHierarchical(
+  diagram: Diagram,
+  heightById: Record<string, number>,
+  nodePos: Map<string, { x: number; y: number }>,
+  groupPos: Map<string, { x: number; y: number }>,
+  groupSize: Map<string, { width: number; height: number }>,
+  routes: Map<
+    string,
+    {
+      sourceHandle: HandleId
+      targetHandle: HandleId
+      points: { x: number; y: number }[]
+      labelPos?: number
+    }
+  >,
+): Promise<void> {
+  const groupById = Object.fromEntries(diagram.groups.map((g) => [g.id, g]))
+  const cg = (cid: string | null) => diagram.groups.filter((g) => (g.parentId ?? null) === cid)
+  const cn = (cid: string | null) => diagram.nodes.filter((n) => (n.parentId ?? null) === cid)
+  const buildGroup = (id: string): Record<string, unknown> => ({
+    id,
+    layoutOptions: {
+      'elk.padding': `[top=${GROUP_NEST_TOP_PAD},left=${GROUP_PAD},bottom=${GROUP_PAD},right=${GROUP_PAD}]`,
+    },
+    children: [
+      ...cg(id).map((g) => buildGroup(g.id)),
+      ...cn(id).map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? H })),
+    ],
+  })
+  const root = {
+    id: 'root',
+    layoutOptions: {
+      'elk.algorithm': 'layered',
+      'elk.direction': 'RIGHT',
+      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+      'elk.edgeRouting': 'ORTHOGONAL',
+      'elk.layered.spacing.nodeNodeBetweenLayers': '70',
+      'elk.spacing.nodeNode': '40',
+      'elk.spacing.edgeNode': '20',
+      'elk.spacing.edgeEdge': '12',
+      // Edge labels are real boxes the renderer draws mid-edge. Feeding them so
+      // ELK reserves routing space is the point of this pass — otherwise it
+      // routes bare lines and the labels land on top of nodes and each other.
+      'elk.edgeLabels.placement': 'CENTER',
+      'elk.spacing.edgeLabel': '6',
+    },
+    children: [
+      ...cg(null).map((g) => buildGroup(g.id)),
+      ...cn(null).map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? H })),
+    ],
+    edges: diagram.edges.map((e, i) => ({
+      id: `he${i}`,
+      sources: [e.from],
+      targets: [e.to],
+      ...(e.label && e.label.trim()
+        ? { labels: [{ text: e.label, width: labelWidth(e.label), height: 18 }] }
+        : {}),
+    })),
+  }
+  const res = await hierElk.layout(root as never)
+
+  // Record parent-relative positions (what elkjs returns) and accumulate an
+  // absolute-position map for deriving handle sides from the routed endpoints.
+  const abs = new Map<string, { x: number; y: number; w: number; h: number }>()
+  const walk = (
+    node: {
+      children?: {
+        id: string
+        x?: number
+        y?: number
+        width?: number
+        height?: number
+        children?: unknown[]
+      }[]
+    },
+    ox: number,
+    oy: number,
+  ) => {
+    for (const c of node.children ?? []) {
+      const rel = { x: Math.round(c.x ?? 0), y: Math.round(c.y ?? 0) }
+      const ax = ox + (c.x ?? 0)
+      const ay = oy + (c.y ?? 0)
+      abs.set(c.id, { x: ax, y: ay, w: c.width ?? W, h: c.height ?? H })
+      if (groupById[c.id]) {
+        groupPos.set(c.id, rel)
+        groupSize.set(c.id, { width: Math.round(c.width ?? 0), height: Math.round(c.height ?? 0) })
+      } else {
+        nodePos.set(c.id, rel)
+      }
+      walk(c as never, ax, ay)
+    }
+  }
+  walk(res as never, 0, 0)
+
+  // Which side of a box a routed endpoint sits on.
+  const sideOf = (
+    p: { x: number; y: number },
+    b: { x: number; y: number; w: number; h: number },
+  ): HandleId => {
+    const d = {
+      left: Math.abs(p.x - b.x),
+      right: Math.abs(p.x - (b.x + b.w)),
+      top: Math.abs(p.y - b.y),
+      bottom: Math.abs(p.y - (b.y + b.h)),
+    }
+    return (Object.keys(d) as HandleId[]).reduce((a, k) => (d[k] < d[a] ? k : a), 'right')
+  }
+
+  // Capture each edge's routed handles + interior waypoints (all edges declared
+  // at root, so section coords are already absolute).
+  type ElkEdge = {
+    id: string
+    sections?: {
+      startPoint: { x: number; y: number }
+      endPoint: { x: number; y: number }
+      bendPoints?: { x: number; y: number }[]
+    }[]
+    labels?: { x?: number; y?: number; width?: number; height?: number }[]
+  }
+  const collectEdges = (node: { edges?: ElkEdge[]; children?: unknown[] }, out: ElkEdge[]) => {
+    for (const e of node.edges ?? []) out.push(e)
+    for (const c of (node.children ?? []) as (typeof node)[]) collectEdges(c, out)
+  }
+  const elkEdges: ElkEdge[] = []
+  collectEdges(res as never, elkEdges)
+  for (const ee of elkEdges) {
+    const i = Number(ee.id.slice(2))
+    const de = diagram.edges[i]
+    const sec = ee.sections?.[0]
+    if (!de || !sec) continue
+    const sb = abs.get(de.from)
+    const tb = abs.get(de.to)
+    if (!sb || !tb) continue
+    const points = (sec.bendPoints ?? []).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }))
+    // Where ELK ended up placing the label → labelPos along the routed path, so
+    // the app draws the label in the gap ELK reserved for it.
+    const lab = ee.labels?.[0]
+    let labelPos: number | undefined
+    if (lab && typeof lab.x === 'number' && typeof lab.y === 'number') {
+      const center = { x: lab.x + (lab.width ?? 0) / 2, y: lab.y + (lab.height ?? 0) / 2 }
+      labelPos = fractionAlong([sec.startPoint, ...points, sec.endPoint], center)
+    }
+    routes.set(de.id, {
+      sourceHandle: sideOf(sec.startPoint, sb),
+      targetHandle: sideOf(sec.endPoint, tb),
+      points,
+      labelPos,
+    })
+  }
 }
 
 // Leaf-first recursive layout orchestrator: lays out each container (group,
@@ -309,7 +519,24 @@ export async function layoutDiagram(
     return size
   }
 
-  await layoutContainer(null)
+  // Topology: one-pass hierarchical layout so ELK sees every cross-group edge
+  // (the per-group path above contracts them away) — which lets it route each
+  // edge AROUND the boxes and hand back the bend points. Everything else keeps
+  // the directional recursion. `routes` collects the routed handles+waypoints.
+  const routes = new Map<
+    string,
+    {
+      sourceHandle: HandleId
+      targetHandle: HandleId
+      points: { x: number; y: number }[]
+      labelPos?: number
+    }
+  >()
+  if (diagram.type === 'topology') {
+    await layoutHierarchical(diagram, heightById, nodePos, groupPos, groupSize, routes)
+  } else {
+    await layoutContainer(null)
+  }
 
   const groups: Group[] = diagram.groups.map((g) => ({
     ...g,
@@ -328,6 +555,22 @@ export async function layoutDiagram(
   // Backstop: enforce padding/slack/grow-to-fit invariants (grow-only).
   const reflowed = reflowContainment({ ...diagram, nodes, groups, notes })
 
-  const edges = assignEdgeHandles(reflowed.nodes, reflowed.groups, diagram.edges, heightById)
+  // The handle SIDE always comes from geometry (assignEdgeHandles), so an edge
+  // exits the face pointing toward the other box. ELK's route only contributes
+  // the waypoints and label position — never the handle side. ELK draws a
+  // back-edge (target behind the source in layer order) by exiting the source's
+  // FAR face and looping around; adopting that side would pin the edge to the
+  // wrong face and make it wrap back through/behind its own box to reach the
+  // target. Geometry-first keeps the attach point on the near face.
+  const geomEdges = assignEdgeHandles(reflowed.nodes, reflowed.groups, diagram.edges, heightById)
+  const edges = geomEdges.map((e) => {
+    const r = routes.get(e.id)
+    if (!r) return e
+    return {
+      ...e,
+      points: r.points,
+      ...(r.labelPos !== undefined ? { labelPos: r.labelPos } : {}),
+    }
+  })
   return { nodes: reflowed.nodes, groups: reflowed.groups, notes: reflowed.notes, edges }
 }

@@ -97,14 +97,30 @@ describe('handlesFor', () => {
       targetHandle: 'left',
     })
   })
-  it('horizontal forces left/right even when nodes are stacked vertically', () => {
+  // Geometry wins when the stored orientation contradicts it. Otherwise a
+  // stale hint from authoring time forces the handle onto the side facing away
+  // from the other box, and the edge loops through the box to reach it.
+  it('horizontal is overridden when the nodes ended up stacked vertically', () => {
     expect(handlesFor('horizontal', S, { x: 20, y: 300 })).toEqual({
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    })
+  })
+  it('vertical is overridden when the nodes ended up side by side', () => {
+    expect(handlesFor('vertical', S, { x: 300, y: 20 })).toEqual({
       sourceHandle: 'right',
       targetHandle: 'left',
     })
   })
-  it('vertical forces top/bottom even when nodes are side by side', () => {
-    expect(handlesFor('vertical', S, { x: 300, y: 20 })).toEqual({
+  // Near-diagonal is where geometry is ambiguous, so the hint still decides.
+  it('orientation breaks a near-diagonal tie: horizontal → left/right', () => {
+    expect(handlesFor('horizontal', S, { x: 200, y: 230 })).toEqual({
+      sourceHandle: 'right',
+      targetHandle: 'left',
+    })
+  })
+  it('orientation breaks a near-diagonal tie: vertical → top/bottom', () => {
+    expect(handlesFor('vertical', S, { x: 200, y: 230 })).toEqual({
       sourceHandle: 'bottom',
       targetHandle: 'top',
     })
