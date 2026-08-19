@@ -1,5 +1,12 @@
 import { useLayoutEffect, useRef, useState } from 'react'
-import { BaseEdge, EdgeLabelRenderer, useNodes, type EdgeProps, type Node } from '@xyflow/react'
+import {
+  BaseEdge,
+  EdgeLabelRenderer,
+  useNodes,
+  useReactFlow,
+  type EdgeProps,
+  type Node,
+} from '@xyflow/react'
 import {
   getSmartEdge,
   isDirectPathBlocked,
@@ -11,6 +18,7 @@ import {
   type SVGDrawFunction,
 } from '@tisoap/react-flow-smart-edge'
 import { useActiveRouting } from './routingKnobs'
+import { useLabelPlacement } from './labelPlacement'
 import type { DrawStyle, PathAlgo } from '../shared/model'
 
 type Pt = { x: number; y: number }
@@ -106,9 +114,12 @@ export function SmartTestEdge(props: EdgeProps) {
     markerStart,
     label,
     data,
+    selected,
   } = props
+  const { setEdges, screenToFlowPosition } = useReactFlow()
   const k = useActiveRouting().pathfinding
   const nodes = useNodes()
+  const auto = useLabelPlacement(id)
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
   // Absolute top-left of a node (child coords are parent-relative).
@@ -185,8 +196,16 @@ export function SmartTestEdge(props: EdgeProps) {
       // fall back to the straight line
     }
   }
+  const pinned = data?.labelPinned === true
+  const labelPos = Math.max(
+    0,
+    Math.min(1, pinned ? ((data?.labelPos as number) ?? 0.5) : (auto?.labelPos ?? 0.5)),
+  )
+  const offset = pinned
+    ? ((data?.labelOffset as { x: number; y: number }) ?? { x: 0, y: 0 })
+    : (auto?.offset ?? { x: 0, y: 0 })
+
   const measureRef = useRef<SVGPathElement>(null)
-  const labelPos = Math.max(0, Math.min(1, (data?.labelPos as number) ?? 0.5))
   const [labelPt, setLabelPt] = useState<{ x: number; y: number } | null>(null)
   useLayoutEffect(() => {
     const el = measureRef.current
@@ -199,6 +218,67 @@ export function SmartTestEdge(props: EdgeProps) {
     const p = el.getPointAtLength(labelPos * total)
     setLabelPt({ x: p.x, y: p.y })
   }, [path, labelPos])
+
+  const setPlacement = (pos: number, off: { x: number; y: number }) =>
+    setEdges((es) =>
+      es.map((e) =>
+        e.id === id
+          ? { ...e, data: { ...e.data, labelPos: pos, labelOffset: off, labelPinned: true } }
+          : e,
+      ),
+    )
+  const unpin = (ev: React.MouseEvent) => {
+    ev.stopPropagation()
+    setEdges((es) =>
+      es.map((e) =>
+        e.id === id ? { ...e, data: { ...e.data, labelPinned: false, labelOffset: undefined } } : e,
+      ),
+    )
+  }
+
+  const dragging = useRef(false)
+  const startLabelDrag = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    dragging.current = true
+    const el = e.currentTarget
+    try {
+      el.setPointerCapture(e.pointerId)
+    } catch {
+      /* synthetic event with no active pointer */
+    }
+    const move = (ev: PointerEvent) => {
+      const measure = measureRef.current
+      if (!measure) return
+      const total = measure.getTotalLength()
+      if (!total) return
+      const cursor = screenToFlowPosition({ x: ev.clientX, y: ev.clientY })
+      // nearest point on the path (flow coords) by sampling
+      const N = 100
+      let bestT = 0
+      let bestD = Infinity
+      let bestPt = { x: 0, y: 0 }
+      for (let i = 0; i <= N; i++) {
+        const t = i / N
+        const p = measure.getPointAtLength(t * total)
+        const d = (p.x - cursor.x) ** 2 + (p.y - cursor.y) ** 2
+        if (d < bestD) {
+          bestD = d
+          bestT = t
+          bestPt = { x: p.x, y: p.y }
+        }
+      }
+      setPlacement(bestT, { x: cursor.x - bestPt.x, y: cursor.y - bestPt.y })
+    }
+    const up = () => {
+      el.removeEventListener('pointermove', move)
+      el.removeEventListener('pointerup', up)
+      setTimeout(() => {
+        dragging.current = false
+      }, 60)
+    }
+    el.addEventListener('pointermove', move)
+    el.addEventListener('pointerup', up)
+  }
 
   const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
   return (
@@ -216,12 +296,21 @@ export function SmartTestEdge(props: EdgeProps) {
           {labelPt ? (
             <EdgeLabelRenderer>
               <div
-                className="wp-label"
+                className={['wp-label', selected ? 'nopan nodrag' : ''].filter(Boolean).join(' ')}
+                data-edge-id={id}
+                data-pinned={pinned ? 'true' : 'false'}
+                data-label-pos={labelPos}
+                data-offx={offset.x}
+                data-offy={offset.y}
                 style={{
-                  transform: `translate(-50%,-50%) translate(${labelPt.x}px,${labelPt.y}px)`,
+                  transform: `translate(-50%,-50%) translate(${labelPt.x + offset.x}px,${labelPt.y + offset.y}px)`,
                   color: relColor,
-                  pointerEvents: 'none',
+                  pointerEvents: selected ? 'all' : 'none',
+                  cursor: selected ? 'grab' : 'default',
                 }}
+                onPointerDown={selected ? startLabelDrag : undefined}
+                onDoubleClick={selected ? unpin : undefined}
+                title={selected ? 'drag to place · double-click to auto-place' : undefined}
               >
                 {label}
               </div>
