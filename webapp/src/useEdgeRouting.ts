@@ -63,32 +63,32 @@ export function useEdgeRouting(active: boolean, separation: number, knobs: EdgeR
     }
     const timer = setTimeout(() => {
       const drawEdge: SVGDrawFunction | undefined = drawFor(knobs.draw, knobs.eps)
-      // 1. endpoints from DOM path ends (flow coords — RF authors edge path `d`
-      //    attributes in flow units, so getPointAtLength needs no CTM remapping).
-      type EdgeInput = { id: string; sx: number; sy: number; tx: number; ty: number }
-      const inputs: EdgeInput[] = []
+      // 1. handle sides per edge — both the RF `Position` (for getSmartEdge's
+      //    sourcePosition/targetPosition) and the raw side string (to pick which
+      //    face of the live node box to route from/to).
       const handleById = new Map<string, { s: Position; t: Position }>()
+      const sideById = new Map<string, { sSide: string; tSide: string }>()
       for (const pair of handleKey.split('|')) {
         if (!pair) continue
         const [id, sides] = pair.split(':')
         const [s, t] = sides.split('>')
         handleById.set(id, { s: POS[s] ?? Position.Right, t: POS[t] ?? Position.Left })
+        sideById.set(id, { sSide: s, tSide: t })
       }
-      for (const g of document.querySelectorAll<SVGGElement>('.react-flow__edge-smart')) {
-        const id = g.getAttribute('data-id')
-        const path = g.querySelector<SVGPathElement>('path.react-flow__edge-path')
-        if (!id || !path) continue
-        const len = path.getTotalLength()
-        if (!len) continue
-        const a = path.getPointAtLength(0)
-        const b = path.getPointAtLength(len)
-        inputs.push({ id, sx: a.x, sy: a.y, tx: b.x, ty: b.y })
+      // Endpoint node ids per edge (also used below to drop an edge's own
+      // source/target from its obstacle set — an edge must not treat its own
+      // endpoints as walls).
+      const endpointsById = new Map<string, [string, string]>()
+      for (const pair of srcTgtKey.split('|')) {
+        if (!pair) continue
+        const [id, st] = pair.split(':')
+        const [s, t] = st.split('>')
+        endpointsById.set(id, [s, t])
       }
-      // 2. obstacle boxes (flow units) from node DOM, per type toggle. Endpoint
-      //    exclusion is by id below (groups are only obstacles when toggled on;
-      //    for the probe we exclude only each edge's own source/target ids —
-      //    ancestor-group exclusion matters only with obstacleGroups on and can
-      //    be refined later).
+      // 2. node boxes (flow units) from DOM. `nodeBoxById` covers ALL node types
+      //    — endpoints can land on a service, group, or note regardless of the
+      //    obstacle toggles. `obstacles` stays toggle-filtered (service nodes are
+      //    always obstacles; groups/notes only when their knob is on).
       const nodeBox = (sel: string): { id: string; box: Rect }[] => {
         const out: { id: string; box: Rect }[] = []
         for (const n of document.querySelectorAll<HTMLElement>(sel)) {
@@ -101,10 +101,15 @@ export function useEdgeRouting(active: boolean, separation: number, knobs: EdgeR
         }
         return out
       }
+      const serviceBoxes = nodeBox('.react-flow__node-service')
+      const groupBoxes = nodeBox('.react-flow__node-group')
+      const noteBoxes = nodeBox('.react-flow__node-note')
+      const nodeBoxById = new Map<string, Rect>()
+      for (const o of [...serviceBoxes, ...groupBoxes, ...noteBoxes]) nodeBoxById.set(o.id, o.box)
       const obstacles = [
-        ...nodeBox('.react-flow__node-service'),
-        ...(knobs.obstacleGroups ? nodeBox('.react-flow__node-group') : []),
-        ...(knobs.obstacleNotes ? nodeBox('.react-flow__node-note') : []),
+        ...serviceBoxes,
+        ...(knobs.obstacleGroups ? groupBoxes : []),
+        ...(knobs.obstacleNotes ? noteBoxes : []),
       ]
       // getSmartEdge wants Node-like obstacles: { id, position: {x,y}, width,
       // height, measured, data }. Synthesized from DOM boxes, so the shape is
@@ -117,14 +122,40 @@ export function useEdgeRouting(active: boolean, separation: number, knobs: EdgeR
         measured: { width: o.box.width, height: o.box.height },
         data: {},
       })
-      // Endpoint node ids per edge, to drop from that edge's obstacle set (an
-      // edge must not treat its own source/target as walls).
-      const endpointsById = new Map<string, [string, string]>()
-      for (const pair of srcTgtKey.split('|')) {
-        if (!pair) continue
-        const [id, st] = pair.split(':')
-        const [s, t] = st.split('>')
-        endpointsById.set(id, [s, t])
+      // Face point of a live node box on a given handle side (flow coords).
+      const facePoint = (box: Rect, side: string): { x: number; y: number } => {
+        switch (side) {
+          case 'left':
+            return { x: box.x, y: box.y + box.height / 2 }
+          case 'top':
+            return { x: box.x + box.width / 2, y: box.y }
+          case 'bottom':
+            return { x: box.x + box.width / 2, y: box.y + box.height }
+          case 'right':
+          default:
+            return { x: box.x + box.width, y: box.y + box.height / 2 }
+        }
+      }
+      // 3. edge endpoints from the LIVE node boxes + handle side — NOT from the
+      //    rendered path. The rendered path is this coordinator's own previous
+      //    route, so reading endpoints off it (getPointAtLength) chases a stale
+      //    position after a node moves and the line never re-attaches. We still
+      //    walk `.react-flow__edge-smart` to know which edges exist / their ids.
+      type EdgeInput = { id: string; sx: number; sy: number; tx: number; ty: number }
+      const inputs: EdgeInput[] = []
+      for (const g of document.querySelectorAll<SVGGElement>('.react-flow__edge-smart')) {
+        const id = g.getAttribute('data-id')
+        if (!id) continue
+        const ends = endpointsById.get(id)
+        if (!ends) continue
+        const [srcId, tgtId] = ends
+        const srcBox = nodeBoxById.get(srcId)
+        const tgtBox = nodeBoxById.get(tgtId)
+        if (!srcBox || !tgtBox) continue // shouldn't happen; edge self-routes
+        const sides = sideById.get(id) ?? { sSide: 'right', tSide: 'left' }
+        const s = facePoint(srcBox, sides.sSide)
+        const t = facePoint(tgtBox, sides.tSide)
+        inputs.push({ id, sx: s.x, sy: s.y, tx: t.x, ty: t.y })
       }
       // Route shortest source→target distance first, ties by id — matches the
       // task-4 brief's ordering so shorter edges claim corridors before longer
