@@ -17,7 +17,9 @@ export function DiagramSettingsDialog(props: {
   }
 
   const apply = () => {
-    void sendOps([{ t: 'diagram.setRouting', diagramId: props.diagramId, routing }])
+    if (JSON.stringify(routing) !== JSON.stringify(props.committed)) {
+      void sendOps([{ t: 'diagram.setRouting', diagramId: props.diagramId, routing }])
+    }
     props.onClose()
   }
 

@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from 'react'
 import { DEFAULT_ROUTING, type DiagramRouting, type PathfindingConfig } from '../shared/model'
 
-// DEMO/experimental: the ACTIVE diagram's previewed routing config. App seeds it
-// from the active diagram; the settings dialog edits it so edges re-route live;
-// Apply commits it to the model. SmartTestEdge reads the pathfinding knobs here.
+// The active diagram's previewed routing config. App seeds it from the active
+// diagram; the Diagram Settings dialog previews edits against it so edges
+// re-route live; Apply commits it to the model. SmartTestEdge reads the
+// pathfinding knobs here.
 
 let state: DiagramRouting = DEFAULT_ROUTING
 const listeners = new Set<() => void>()

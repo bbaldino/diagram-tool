@@ -86,9 +86,10 @@ function drawFor(style: DrawStyle, eps: number): SVGDrawFunction | undefined {
   }
 }
 
-// DEMO: pathfinding edge. Routes with A* around a configurable obstacle set on
-// the current node positions (no re-placement). Every knob comes from the shared
-// routingKnobs store, so the RoutingKnobsPanel re-routes all edges live.
+// Pathfinding edge: routes with A* around a configurable obstacle set on the
+// current node positions (no re-placement). Reads its knobs from the
+// active-diagram routing store, so the Diagram Settings dialog re-routes
+// edges live.
 export function SmartTestEdge(props: EdgeProps) {
   const {
     id,
