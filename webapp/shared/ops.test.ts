@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { applyOp, applyOps, type Op } from './ops'
-import { addDiagram, addTemplate, getDiagram, normalizeModel, type Model } from './model'
+import {
+  addDiagram,
+  addTemplate,
+  getDiagram,
+  normalizeModel,
+  DEFAULT_ROUTING,
+  type Model,
+} from './model'
 
 const empty: Model = normalizeModel({ version: 2, diagrams: [], templates: [] })
 
@@ -164,6 +171,31 @@ describe('edge ops', () => {
     expect(getDiagram(m, d.id)!.edges[0].dir).toBe('both')
     m = applyOp(m, { t: 'edge.remove', diagramId: d.id, id: 'x' })
     expect(getDiagram(m, d.id)!.edges).toHaveLength(0)
+  })
+})
+
+describe('diagram.setRouting op', () => {
+  it('sets routing on the addressed diagram', () => {
+    const model: Model = {
+      version: 1,
+      diagrams: [
+        {
+          id: 'a',
+          name: 'A',
+          title: 'A',
+          type: 'topology',
+          nodes: [],
+          groups: [],
+          notes: [],
+          edges: [],
+          flows: [],
+        },
+      ],
+      templates: [],
+    }
+    const routing = { ...DEFAULT_ROUTING, router: 'pathfinding' as const }
+    const next = applyOp(model, { t: 'diagram.setRouting', diagramId: 'a', routing })
+    expect(next.diagrams[0].routing).toEqual(routing)
   })
 })
 

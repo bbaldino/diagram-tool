@@ -12,6 +12,7 @@ export type Op =
   | { t: 'template.delete'; id: string }
   | { t: 'diagram.add'; name: string; kind: DiagramType }
   | { t: 'diagram.rename'; id: string; name: string }
+  | { t: 'diagram.setRouting'; diagramId: string; routing: import('./model').DiagramRouting }
   | { t: 'diagram.delete'; id: string }
   | { t: 'group.add'; diagramId: string; group: Group }
   | { t: 'group.update'; diagramId: string; id: string; patch: Partial<Omit<Group, 'id'>> }
@@ -54,6 +55,8 @@ export function applyOp(model: Model, op: Op): Model {
       return M.addDiagram(model, op.name, op.kind).model
     case 'diagram.rename':
       return M.renameDiagram(model, op.id, op.name)
+    case 'diagram.setRouting':
+      return M.setDiagramRouting(model, op.diagramId, op.routing)
     case 'diagram.delete':
       return M.deleteDiagram(model, op.id)
     case 'group.add':
