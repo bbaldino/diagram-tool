@@ -2,7 +2,7 @@ import { type Node } from '@xyflow/react'
 import type { AppEdge } from './canvasData'
 import { LAYER } from './layers'
 import { makeEdge, restyleEdge, topoOrderByParent, paddedExtent } from './graph'
-import type { Diagram, Field, Node as DNode, Template } from '../shared/model'
+import type { Diagram, Field, Node as DNode, Template, EdgeRouter } from '../shared/model'
 
 // A field shows on the card if it says so itself, or — absent that — if its
 // template default says so and the node's own field didn't opt out.
@@ -19,6 +19,7 @@ function shownFields(node: DNode, tmpl: Template | undefined): { key: string; va
 export function buildDiagramGraph(
   diagram: Diagram,
   templates: Template[] = [],
+  router: EdgeRouter = 'waypoint',
 ): { nodes: Node[]; edges: AppEdge[] } {
   const templatesById = new Map(templates.map((t) => [t.id, t]))
   const groupsById = new Map(diagram.groups.map((g) => [g.id, g]))
@@ -100,7 +101,7 @@ export function buildDiagramGraph(
       labelPos: de.labelPos,
     }
     edge = restyleEdge(edge, !!de.inferred) // keeps id/source/target/data via spread
-    edge.type = 'smart' // DEMO: pathfinding routing (revert to 'waypoint' after)
+    edge.type = router === 'pathfinding' ? 'smart' : 'waypoint'
     return edge
   })
 

@@ -229,3 +229,29 @@ describe('scheme passthrough', () => {
     ).toBeUndefined()
   })
 })
+
+function twoNodeDiagram(): Diagram {
+  return {
+    id: 'd',
+    name: 'D',
+    title: 'D',
+    type: 'topology',
+    nodes: [
+      { id: 'n1', label: 'A', position: { x: 0, y: 0 }, fields: [] },
+      { id: 'n2', label: 'B', position: { x: 200, y: 0 }, fields: [] },
+    ] as Diagram['nodes'],
+    groups: [],
+    notes: [],
+    edges: [{ id: 'e1', from: 'n1', to: 'n2' }] as Diagram['edges'],
+    flows: [],
+  }
+}
+
+describe('buildDiagramGraph edge router', () => {
+  it('uses waypoint edges by default', () => {
+    expect(buildDiagramGraph(twoNodeDiagram()).edges[0].type).toBe('waypoint')
+  })
+  it('uses smart edges when router is pathfinding', () => {
+    expect(buildDiagramGraph(twoNodeDiagram(), [], 'pathfinding').edges[0].type).toBe('smart')
+  })
+})
