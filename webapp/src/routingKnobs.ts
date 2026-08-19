@@ -1,48 +1,24 @@
 import { useSyncExternalStore } from 'react'
+import { DEFAULT_ROUTING, type DiagramRouting, type PathfindingConfig } from '../shared/model'
 
-// DEMO scaffolding: a tiny external store of the pathfinding-edge routing knobs,
-// so the RoutingKnobsPanel can tweak them and every SmartTestEdge re-routes live
-// (no server round-trip). Throwaway — lives only on the edge-routing branch.
+// DEMO/experimental: the ACTIVE diagram's previewed routing config. App seeds it
+// from the active diagram; the settings dialog edits it so edges re-route live;
+// Apply commits it to the model. SmartTestEdge reads the pathfinding knobs here.
 
-export type PathAlgo = 'no-diagonal' | 'diagonal' | 'jump-point'
-export type DrawStyle = 'stepped' | 'straight' | 'smoothstep' | 'spline'
-
-export interface RoutingKnobs {
-  algo: PathAlgo
-  gridRatio: number
-  nodePadding: number
-  draw: DrawStyle
-  eps: number // Douglas-Peucker tolerance (straight/spline only)
-  obstacleGroups: boolean
-  obstacleNotes: boolean
-  directSkip: boolean // straight line when the direct path is already clear
-}
-
-export const DEFAULT_KNOBS: RoutingKnobs = {
-  algo: 'no-diagonal',
-  gridRatio: 12,
-  nodePadding: 14,
-  draw: 'straight',
-  eps: 8,
-  obstacleGroups: false,
-  obstacleNotes: false,
-  directSkip: false,
-}
-
-let state: RoutingKnobs = { ...DEFAULT_KNOBS }
+let state: DiagramRouting = DEFAULT_ROUTING
 const listeners = new Set<() => void>()
 
-export function getRoutingKnobs(): RoutingKnobs {
+export function getActiveRouting(): DiagramRouting {
   return state
 }
 
-export function setRoutingKnobs(patch: Partial<RoutingKnobs>): void {
-  state = { ...state, ...patch }
+export function setActiveRouting(routing: DiagramRouting): void {
+  state = routing
   listeners.forEach((l) => l())
 }
 
-export function resetRoutingKnobs(): void {
-  setRoutingKnobs(DEFAULT_KNOBS)
+export function patchPathfinding(patch: Partial<PathfindingConfig>): void {
+  setActiveRouting({ ...state, pathfinding: { ...state.pathfinding, ...patch } })
 }
 
 function subscribe(l: () => void): () => void {
@@ -50,6 +26,6 @@ function subscribe(l: () => void): () => void {
   return () => listeners.delete(l)
 }
 
-export function useRoutingKnobs(): RoutingKnobs {
-  return useSyncExternalStore(subscribe, getRoutingKnobs, getRoutingKnobs)
+export function useActiveRouting(): DiagramRouting {
+  return useSyncExternalStore(subscribe, getActiveRouting, getActiveRouting)
 }
