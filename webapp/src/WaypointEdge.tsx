@@ -347,4 +347,5 @@ export function WaypointEdge(props: EdgeProps) {
   )
 }
 
-export const edgeTypes = { waypoint: WaypointEdge }
+import { SmartTestEdge } from './SmartTestEdge'
+export const edgeTypes = { waypoint: WaypointEdge, smart: SmartTestEdge }

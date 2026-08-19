@@ -100,6 +100,7 @@ export function buildDiagramGraph(
       labelPos: de.labelPos,
     }
     edge = restyleEdge(edge, !!de.inferred) // keeps id/source/target/data via spread
+    edge.type = 'smart' // DEMO: pathfinding routing (revert to 'waypoint' after)
     return edge
   })
 
