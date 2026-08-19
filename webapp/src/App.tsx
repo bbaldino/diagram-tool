@@ -51,6 +51,7 @@ import { DestructiveDialog } from './DestructiveDialog'
 import { ImportDialog } from './ImportDialog'
 import { DiagramSettingsDialog } from './DiagramSettingsDialog'
 import { setActiveRouting, useActiveRouting } from './routingKnobs'
+import { useLabelDeoverlap } from './useLabelDeoverlap'
 
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -181,6 +182,7 @@ function Flow({
     if (d) setActiveRouting(effectiveRouting(d))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId])
+  useLabelDeoverlap(activeRouting.router === 'pathfinding')
   // Tab strip contents: every open id that still resolves to a real diagram
   // (a stale id — e.g. one deleted from another client — just drops silently
   // rather than rendering a broken tab).
