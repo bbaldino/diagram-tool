@@ -16,6 +16,14 @@ function shownFields(node: DNode, tmpl: Template | undefined): { key: string; va
     .map((f) => ({ key: f.key, value: f.value }))
 }
 
+// The React Flow edge `type` a given diagram router renders as. Shared by
+// buildDiagramGraph and by App's router-toggle effect (which remaps existing
+// edges' types in place, without rebuilding them from the model) so the two
+// never disagree about what 'pathfinding' vs 'waypoint' means.
+export function edgeTypeForRouter(router: EdgeRouter): 'smart' | 'waypoint' {
+  return router === 'pathfinding' ? 'smart' : 'waypoint'
+}
+
 export function buildDiagramGraph(
   diagram: Diagram,
   templates: Template[] = [],
@@ -101,7 +109,7 @@ export function buildDiagramGraph(
       labelPos: de.labelPos,
     }
     edge = restyleEdge(edge, !!de.inferred) // keeps id/source/target/data via spread
-    edge.type = router === 'pathfinding' ? 'smart' : 'waypoint'
+    edge.type = edgeTypeForRouter(router)
     return edge
   })
 

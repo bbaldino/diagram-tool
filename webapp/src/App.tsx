@@ -27,7 +27,7 @@ import {
   GROUP_COLOR,
   parentGroup,
 } from './graph'
-import { buildDiagramGraph } from './buildGraph'
+import { buildDiagramGraph, edgeTypeForRouter } from './buildGraph'
 import { descendantsOf, groupsFirst } from './canvasNodes'
 import { LAYER } from './layers'
 import { applyEdgePatch, reparentNodes, resizeGroup, type EdgePatch } from './canvasEdits'
@@ -302,11 +302,27 @@ function Flow({
       if (p)
         setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
-    // flowClassOf (and its flowMode/currentFlow/currentStep deps) is
-    // excluded: a re-seed must stay keyed on [model, activeId, activeRouting.router]
-    // only, and the closure already reads current values.
+    // flowClassOf and activeRouting.router are excluded: a re-seed must stay
+    // keyed on [model, activeId] only, and the closure already reads current
+    // values. activeRouting.router deliberately does NOT retrigger this
+    // effect — a router toggle must not rebuild `nodes` from `model`, which
+    // could discard an in-flight drag still sitting in the 400ms write-back
+    // debounce window (see the dedicated router-toggle effect below, which
+    // remaps edge types off live `edges` state instead).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, activeId, activeRouting.router])
+  }, [model, activeId])
+
+  // Router toggle (waypoint <-> pathfinding): remap existing edges' TYPES in
+  // place, off the current `edges` state — not a re-seed from `model`, and
+  // does not touch `nodes`. Deliberately separate from the re-seed effect
+  // above so switching routers mid-drag can't clobber an unflushed node
+  // position. The `e.type === type ? e : ...` guard makes this a no-op when
+  // nothing changed (e.g. on mount, where the seed already set the right
+  // type).
+  useEffect(() => {
+    const type = edgeTypeForRouter(activeRouting.router)
+    setEdges((es) => es.map((e) => (e.type === type ? e : { ...e, type })))
+  }, [activeRouting.router, setEdges])
 
   // Persist the chosen active diagram across reloads.
   useEffect(() => {
@@ -1440,10 +1456,10 @@ function Flow({
           }}
         />
       )}
-      {routingOpen && activeId && (
+      {routingOpen && active && (
         <DiagramSettingsDialog
-          diagramId={activeId}
-          committed={effectiveRouting(model.diagrams.find((d) => d.id === activeId)!)}
+          diagramId={active.id}
+          committed={effectiveRouting(active)}
           onClose={() => setRoutingOpen(false)}
         />
       )}
