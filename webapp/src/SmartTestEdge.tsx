@@ -1,4 +1,5 @@
-import { BaseEdge, useNodes, type EdgeProps, type Node } from '@xyflow/react'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { BaseEdge, EdgeLabelRenderer, useNodes, type EdgeProps, type Node } from '@xyflow/react'
 import {
   getSmartEdge,
   isDirectPathBlocked,
@@ -9,7 +10,8 @@ import {
   type PathFindingFunction,
   type SVGDrawFunction,
 } from '@tisoap/react-flow-smart-edge'
-import { useRoutingKnobs, type DrawStyle, type PathAlgo } from './routingKnobs'
+import { useActiveRouting } from './routingKnobs'
+import type { DrawStyle, PathAlgo } from '../shared/model'
 
 type Pt = { x: number; y: number }
 
@@ -100,8 +102,11 @@ export function SmartTestEdge(props: EdgeProps) {
     targetPosition,
     style,
     markerEnd,
+    markerStart,
+    label,
+    data,
   } = props
-  const k = useRoutingKnobs()
+  const k = useActiveRouting().pathfinding
   const nodes = useNodes()
   const byId = new Map(nodes.map((n) => [n.id, n]))
 
@@ -179,5 +184,50 @@ export function SmartTestEdge(props: EdgeProps) {
       // fall back to the straight line
     }
   }
-  return <BaseEdge id={id} path={path} style={style} markerEnd={markerEnd} />
+  const measureRef = useRef<SVGPathElement>(null)
+  const labelPos = Math.max(0, Math.min(1, (data?.labelPos as number) ?? 0.5))
+  const [labelPt, setLabelPt] = useState<{ x: number; y: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = measureRef.current
+    if (!el) return
+    const total = el.getTotalLength()
+    if (!total) {
+      setLabelPt(null)
+      return
+    }
+    const p = el.getPointAtLength(labelPos * total)
+    setLabelPt({ x: p.x, y: p.y })
+  }, [path, labelPos])
+
+  const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
+  return (
+    <>
+      <BaseEdge id={id} path={path} style={style} markerStart={markerStart} markerEnd={markerEnd} />
+      {label ? (
+        <>
+          <path
+            ref={measureRef}
+            d={path}
+            fill="none"
+            stroke="none"
+            style={{ pointerEvents: 'none' }}
+          />
+          {labelPt ? (
+            <EdgeLabelRenderer>
+              <div
+                className="wp-label"
+                style={{
+                  transform: `translate(-50%,-50%) translate(${labelPt.x}px,${labelPt.y}px)`,
+                  color: relColor,
+                  pointerEvents: 'none',
+                }}
+              >
+                {label}
+              </div>
+            </EdgeLabelRenderer>
+          ) : null}
+        </>
+      ) : null}
+    </>
+  )
 }
