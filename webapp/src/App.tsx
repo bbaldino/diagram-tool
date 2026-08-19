@@ -18,6 +18,7 @@ import {
 } from '@xyflow/react'
 import { NoteSpellcheckContext, nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
+import { RoutingKnobsPanel } from './RoutingKnobsPanel'
 import {
   makeEdge,
   applyReconnect,
@@ -1244,6 +1245,11 @@ function Flow({
                       </div>
                     </div>
                   )}
+                </Panel>
+
+                {/* DEMO: live pathfinding-edge tuning (edge-routing branch only) */}
+                <Panel position="top-right" style={{ marginTop: 60 }}>
+                  <RoutingKnobsPanel />
                 </Panel>
               </ReactFlow>
             </NoteSpellcheckContext.Provider>
