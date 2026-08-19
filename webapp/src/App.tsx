@@ -18,7 +18,6 @@ import {
 } from '@xyflow/react'
 import { NoteSpellcheckContext, nodeTypes } from './nodes'
 import { edgeTypes } from './WaypointEdge'
-import { RoutingKnobsPanel } from './RoutingKnobsPanel'
 import {
   makeEdge,
   applyReconnect,
@@ -50,6 +49,8 @@ import { MenuBar } from './MenuBar'
 import { OpenDiagramDialog } from './OpenDiagramDialog'
 import { DestructiveDialog } from './DestructiveDialog'
 import { ImportDialog } from './ImportDialog'
+import { DiagramSettingsDialog } from './DiagramSettingsDialog'
+import { setActiveRouting, useActiveRouting } from './routingKnobs'
 
 import { useDialogs } from './Dialog'
 import { sanitizeOpenTabs, addTab, closeTab } from './tabsState'
@@ -65,7 +66,7 @@ import { diffToOps } from '../shared/diff'
 import { newId } from '../shared/ids'
 import { groupNodes, ungroupNodes } from './grouping'
 import * as M from '../shared/model'
-import type { Model } from '../shared/model'
+import { effectiveRouting, type Model } from '../shared/model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 const OPEN_TABS_KEY = 'homelab-open-tabs'
@@ -167,6 +168,19 @@ function Flow({
     () => (model && activeId ? M.getDiagram(model, activeId) : undefined),
     [model, activeId],
   )
+  // Per-diagram edge routing (waypoint vs pathfinding): a global "active
+  // routing" store the settings dialog previews against live. Seed it from
+  // the active diagram whenever the diagram switches — but ONLY on activeId,
+  // not on model: depending on model here would reseed on every model change
+  // and clobber a live preview in progress (the dialog edits the store, not
+  // the model, until Apply). Reading the latest model inside is fine — we
+  // only need the initial seed for this diagram.
+  const activeRouting = useActiveRouting()
+  useEffect(() => {
+    const d = model.diagrams.find((x) => x.id === activeId)
+    if (d) setActiveRouting(effectiveRouting(d))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeId])
   // Tab strip contents: every open id that still resolves to a real diagram
   // (a stale id — e.g. one deleted from another client — just drops silently
   // rather than rendering a broken tab).
@@ -248,7 +262,7 @@ function Flow({
     }
     const d = M.getDiagram(model, activeId)
     if (!d) return
-    const built = buildDiagramGraph(d, model.templates)
+    const built = buildDiagramGraph(d, model.templates, activeRouting.router)
     const changed = lastSeededId.current !== activeId
     const sel = pendingSelect.current
     pendingSelect.current = null
@@ -289,10 +303,10 @@ function Flow({
         setTimeout(() => rf.setCenter(p.x, p.y, { zoom: rf.getViewport().zoom, duration: 300 }), 80)
     }
     // flowClassOf (and its flowMode/currentFlow/currentStep deps) is
-    // excluded: a re-seed must stay keyed on [model, activeId] only, and the
-    // closure already reads current values.
+    // excluded: a re-seed must stay keyed on [model, activeId, activeRouting.router]
+    // only, and the closure already reads current values.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, activeId])
+  }, [model, activeId, activeRouting.router])
 
   // Persist the chosen active diagram across reloads.
   useEffect(() => {
@@ -367,6 +381,8 @@ function Flow({
   const [openDialog, setOpenDialog] = useState(false)
   // Reset/Delete/Import destructive-confirm dialog (chrome redesign phase 9).
   const [dialog, setDialog] = useState<'reset' | 'delete' | 'import' | null>(null)
+  // Diagram settings dialog (per-diagram edge routing).
+  const [routingOpen, setRoutingOpen] = useState(false)
 
   // Opening a not-yet-open diagram: add it to the tab strip, then switch to it
   // (selectDiagram already flushes the outgoing canvas + sets the active id).
@@ -858,6 +874,7 @@ function Flow({
         if (itemId === 'undo') doUndo()
         else if (itemId === 'redo') doRedo()
         else if (itemId === 'delete') deleteSelected()
+        else if (itemId === 'diagram-settings') setRoutingOpen(true)
         // cut/copy/paste/duplicate/select-all/deselect are disabled — never dispatched
         return
       }
@@ -1246,11 +1263,6 @@ function Flow({
                     </div>
                   )}
                 </Panel>
-
-                {/* DEMO: live pathfinding-edge tuning (edge-routing branch only) */}
-                <Panel position="top-right" style={{ marginTop: 60 }}>
-                  <RoutingKnobsPanel />
-                </Panel>
               </ReactFlow>
             </NoteSpellcheckContext.Provider>
 
@@ -1426,6 +1438,13 @@ function Flow({
             }
             setDialog(null)
           }}
+        />
+      )}
+      {routingOpen && activeId && (
+        <DiagramSettingsDialog
+          diagramId={activeId}
+          committed={effectiveRouting(model.diagrams.find((d) => d.id === activeId)!)}
+          onClose={() => setRoutingOpen(false)}
         />
       )}
     </div>

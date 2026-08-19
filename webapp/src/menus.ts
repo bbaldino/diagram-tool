@@ -73,6 +73,7 @@ export function editMenu(f: MenuFlags): MenuItem[] {
       separatorBefore: true,
     },
     { id: 'deselect', label: 'Deselect', shortcut: 'Esc', disabled: true },
+    { id: 'diagram-settings', label: 'Diagram settings…', separatorBefore: true },
   ]
 }
 

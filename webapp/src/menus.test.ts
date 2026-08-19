@@ -115,3 +115,9 @@ describe('checkmarks', () => {
     )
   })
 })
+
+describe('editMenu', () => {
+  it('includes a Diagram settings item', () => {
+    expect(find(flags(), 'edit', 'diagram-settings')).toBeTruthy()
+  })
+})
