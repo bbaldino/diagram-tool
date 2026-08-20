@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.9.0](https://github.com/bbaldino/diagram-tool/compare/v0.8.2...v0.9.0) (2026-08-20)
+
+
+### Features
+
+* **canvas:** active-diagram routing store ([b0ed842](https://github.com/bbaldino/diagram-tool/commit/b0ed8422d9dc1f3ec76808479b26fd66243d6d30))
+* **canvas:** DiagramSettingsDialog (router + pathfinding knobs) ([63d376e](https://github.com/bbaldino/diagram-tool/commit/63d376ee1c6e1617870a3f5b50f4946d3663c518))
+* **canvas:** edge-aware routing coordinator (sequential + avoidAreas) ([39fdc97](https://github.com/bbaldino/diagram-tool/commit/39fdc97d043eab6844a5b2e46154cd3f3bb201e4))
+* **canvas:** ELK controls + Apply & Tidy in settings dialog ([e63e4ca](https://github.com/bbaldino/diagram-tool/commit/e63e4ca0bb66571b13bf5b9ea676d803369fdc00))
+* **canvas:** ElkControls knob component ([b189db1](https://github.com/bbaldino/diagram-tool/commit/b189db10e2199d0f5472009a12f75de78b85f522))
+* **canvas:** ephemeral edge-route store ([760511c](https://github.com/bbaldino/diagram-tool/commit/760511c7af9761a1ec574cc3dac3a099355ae61d))
+* **canvas:** ephemeral label-placement store ([6df974d](https://github.com/bbaldino/diagram-tool/commit/6df974d9d47bdda863f1e3bdc2736b81d1aa0532))
+* **canvas:** extract PathfindingControls knob component ([7e4529d](https://github.com/bbaldino/diagram-tool/commit/7e4529da69edd3e02e4391ad745a4c2bce822c8c))
+* **canvas:** label de-collision coordinator hook ([803ffe5](https://github.com/bbaldino/diagram-tool/commit/803ffe5d447b2824cc59b8d6fd0aaba88d3783cc))
+* **canvas:** live tuning panel for pathfinding-edge knobs ([ef44939](https://github.com/bbaldino/diagram-tool/commit/ef449397b93f504242a646a55b602aa194c0fd3b))
+* **canvas:** patchElk on routing store ([e34d203](https://github.com/bbaldino/diagram-tool/commit/e34d203cc015cbcf60f31be8e7efa5cc56fa8491))
+* **canvas:** pathfinding (smart) edge demo ([3b72814](https://github.com/bbaldino/diagram-tool/commit/3b728144c1f9ce1b83a5b404e393cb2e82407b7a))
+* **canvas:** per-diagram routing settings dialog + menu wiring ([bb30246](https://github.com/bbaldino/diagram-tool/commit/bb30246c93b4f0627b641fe3e884bd7ff8a8e69c))
+* **canvas:** pick edge type from diagram router ([5edae72](https://github.com/bbaldino/diagram-tool/commit/5edae722004056380af29477e13aff1c1bc4e92a))
+* **canvas:** pure label de-collision resolver ([8b94c10](https://github.com/bbaldino/diagram-tool/commit/8b94c100c320b6da40a6d2e3b537d313f8e0a732))
+* **canvas:** run edge-aware routing on pathfinding diagrams ([4d4f2f2](https://github.com/bbaldino/diagram-tool/commit/4d4f2f2d49dca4249734259daba4684483704671))
+* **canvas:** run label de-collision on pathfinding diagrams ([b6cb586](https://github.com/bbaldino/diagram-tool/commit/b6cb586f0bf32f0d775b91e94262dff8a3efba64))
+* **canvas:** seed edge labels from their solo stretch ([8ef6f9d](https://github.com/bbaldino/diagram-tool/commit/8ef6f9d7521250599c7cefb11af3520885b117a2))
+* **canvas:** smart edge renders coordinator route when present ([f84507d](https://github.com/bbaldino/diagram-tool/commit/f84507d58dead0ca1aac92ab3eab9c244bc3ac6a))
+* **canvas:** smart-edge label + start marker parity ([5d3637a](https://github.com/bbaldino/diagram-tool/commit/5d3637a308342722012064d163c8bfa92c091936))
+* **canvas:** smart-edge label placement (auto + drag-to-pin) ([db41bc2](https://github.com/bbaldino/diagram-tool/commit/db41bc27e9eaf368e47c93a958bdc27e48bbbad7))
+* **canvas:** soloLabelPos — label anchor on an edge's solo stretch ([526a5e9](https://github.com/bbaldino/diagram-tool/commit/526a5e96b529ccaecfc93e4217d04f8bafe2c222))
+* **canvas:** wire Apply & Tidy onTidy to layout ([371ce4c](https://github.com/bbaldino/diagram-tool/commit/371ce4c2d0e9e92af5421a6884536f0c2f773d08))
+* **layout:** drive ELK options from per-diagram ElkConfig ([a286bce](https://github.com/bbaldino/diagram-tool/commit/a286bcee16ba2fbc38ac8adb4b899f2006d88275))
+* **layout:** hierarchical ELK edge routing with geometry-first handles ([a2df790](https://github.com/bbaldino/diagram-tool/commit/a2df790e0b6af9da1ea247362980ad5fb42c8154))
+* **model:** DiagramRouting type, DEFAULT_ROUTING, and helpers ([427a78c](https://github.com/bbaldino/diagram-tool/commit/427a78cd074a0a8eeb22d5aad699dad307ea533a))
+* **model:** edge separation knob (default 0) ([4fecbb7](https://github.com/bbaldino/diagram-tool/commit/4fecbb7b8995a4192d3166f454c8d2d653ff763c))
+* **model:** ElkConfig + DEFAULT_ELK on DiagramRouting ([24294c5](https://github.com/bbaldino/diagram-tool/commit/24294c50f034d91c59b359143bbb5506c06e20b9))
+* **model:** persist edge labelOffset + labelPinned ([56115d1](https://github.com/bbaldino/diagram-tool/commit/56115d1be10860d7a5230d1bdcdf9cbecefeab29))
+* **ops:** diagram.setRouting op ([a3eb133](https://github.com/bbaldino/diagram-tool/commit/a3eb1333bc8818d2ee0ec5814e3464b08e557ade))
+
+
+### Bug Fixes
+
+* **canvas:** decouple router switch from model re-seed ([27212f2](https://github.com/bbaldino/diagram-tool/commit/27212f2fe00e6f060bb082a942c4f3510f37c611))
+* **canvas:** route edge-aware endpoints from live node handles, not stale path ([df8e9e5](https://github.com/bbaldino/diagram-tool/commit/df8e9e5d8abf7b564aaf4274226f66ea78027bc9))
+* **layout:** carry grouped notes and satellites through hierarchical topology layout ([f99babe](https://github.com/bbaldino/diagram-tool/commit/f99babe0515269d7a603f1326c7ff3c5094b6967))
+
 ## [0.8.2](https://github.com/bbaldino/diagram-tool/compare/v0.8.1...v0.8.2) (2026-08-05)
 
 
