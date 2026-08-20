@@ -249,7 +249,9 @@ const hierElk = new ELK()
 async function layoutHierarchical(
   diagram: Diagram,
   heightById: Record<string, number>,
+  satelliteOf: Map<string, Satellite>,
   nodePos: Map<string, { x: number; y: number }>,
+  notePos: Map<string, { x: number; y: number }>,
   groupPos: Map<string, { x: number; y: number }>,
   groupSize: Map<string, { width: number; height: number }>,
   routes: Map<
@@ -263,8 +265,41 @@ async function layoutHierarchical(
   >,
 ): Promise<void> {
   const groupById = Object.fromEntries(diagram.groups.map((g) => [g.id, g]))
+  const nodeById = Object.fromEntries(diagram.nodes.map((n) => [n.id, n]))
+  const noteIds = new Set(diagram.notes.map((n) => n.id))
+  const parentOf = (id: string): string | null => nodeById[id]?.parentId ?? null
+
+  // Satellites ride with their subject (same technique as layoutContainer): drop
+  // them from ELK's children, inflate the subject's box to reserve the stack
+  // height so nothing else takes that room, then unpack them into the subject's
+  // column afterwards. Only merge when both sit in the same container.
+  const riders = new Map<string, Satellite>()
+  for (const [satId, s] of satelliteOf) {
+    if (nodeById[satId] && nodeById[s.subjectId] && parentOf(satId) === parentOf(s.subjectId))
+      riders.set(satId, s)
+  }
+  const ridersBySubject = new Map<string, { above: Node[]; below: Node[] }>()
+  for (const [satId, s] of riders) {
+    const entry = ridersBySubject.get(s.subjectId) ?? { above: [], below: [] }
+    entry[s.side].push(nodeById[satId])
+    ridersBySubject.set(s.subjectId, entry)
+  }
+  const blockHeight = (id: string): number => {
+    const own = heightById[id] ?? H
+    const r = ridersBySubject.get(id)
+    if (!r) return own
+    return (
+      own +
+      [...r.above, ...r.below].reduce((sum, s) => sum + (heightById[s.id] ?? H) + SATELLITE_GAP, 0)
+    )
+  }
+
   const cg = (cid: string | null) => diagram.groups.filter((g) => (g.parentId ?? null) === cid)
-  const cn = (cid: string | null) => diagram.nodes.filter((n) => (n.parentId ?? null) === cid)
+  const cn = (cid: string | null) =>
+    diagram.nodes.filter((n) => (n.parentId ?? null) === cid && !riders.has(n.id))
+  // Only grouped notes are arranged; top-level notes are left where they are.
+  const cnote = (cid: string | null) =>
+    cid === null ? [] : diagram.notes.filter((n) => n.parentId === cid)
   const buildGroup = (id: string): Record<string, unknown> => ({
     id,
     layoutOptions: {
@@ -272,7 +307,8 @@ async function layoutHierarchical(
     },
     children: [
       ...cg(id).map((g) => buildGroup(g.id)),
-      ...cn(id).map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? H })),
+      ...cn(id).map((n) => ({ id: n.id, width: W, height: blockHeight(n.id) })),
+      ...cnote(id).map((n) => ({ id: n.id, width: n.size.width, height: n.size.height })),
     ],
   })
   const root = {
@@ -283,16 +319,25 @@ async function layoutHierarchical(
     layoutOptions: elkLayoutOptions(diagram.routing?.elk ?? DEFAULT_ELK),
     children: [
       ...cg(null).map((g) => buildGroup(g.id)),
-      ...cn(null).map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? H })),
+      ...cn(null).map((n) => ({ id: n.id, width: W, height: blockHeight(n.id) })),
     ],
-    edges: diagram.edges.map((e, i) => ({
-      id: `he${i}`,
-      sources: [e.from],
-      targets: [e.to],
-      ...(e.label && e.label.trim()
-        ? { labels: [{ text: e.label, width: labelWidth(e.label), height: 18 }] }
-        : {}),
-    })),
+    // A satellite edge is internal to its merged box — feeding it to ELK would
+    // reintroduce the rank it exists to avoid. `he${i}` keeps the ORIGINAL edge
+    // index so the routed sections map back to diagram.edges[i] below.
+    edges: diagram.edges
+      .map((e, i) =>
+        riders.has(e.from) || riders.has(e.to)
+          ? null
+          : {
+              id: `he${i}`,
+              sources: [e.from],
+              targets: [e.to],
+              ...(e.label && e.label.trim()
+                ? { labels: [{ text: e.label, width: labelWidth(e.label), height: 18 }] }
+                : {}),
+            },
+      )
+      .filter((e): e is NonNullable<typeof e> => e !== null),
   }
   const res = await hierElk.layout(root as never)
 
@@ -321,6 +366,8 @@ async function layoutHierarchical(
       if (groupById[c.id]) {
         groupPos.set(c.id, rel)
         groupSize.set(c.id, { width: Math.round(c.width ?? 0), height: Math.round(c.height ?? 0) })
+      } else if (noteIds.has(c.id)) {
+        notePos.set(c.id, rel)
       } else {
         nodePos.set(c.id, rel)
       }
@@ -328,6 +375,26 @@ async function layoutHierarchical(
     }
   }
   walk(res as never, 0, 0)
+
+  // Unpack each merged block top-down: above-satellites, then the subject, then
+  // below-satellites — all sharing the subject's column. ELK reserved the full
+  // block height at the subject's box, so this only redistributes within it.
+  for (const [subjectId, r] of ridersBySubject) {
+    const box = nodePos.get(subjectId)
+    if (!box) continue
+    let cursor = box.y
+    for (const s of r.above) {
+      nodePos.set(s.id, { x: box.x, y: cursor })
+      cursor += (heightById[s.id] ?? H) + SATELLITE_GAP
+    }
+    nodePos.set(subjectId, { x: box.x, y: cursor })
+    cursor += heightById[subjectId] ?? H
+    for (const s of r.below) {
+      cursor += SATELLITE_GAP
+      nodePos.set(s.id, { x: box.x, y: cursor })
+      cursor += heightById[s.id] ?? H
+    }
+  }
 
   // Which side of a box a routed endpoint sits on.
   const sideOf = (
@@ -540,7 +607,16 @@ export async function layoutDiagram(
     }
   >()
   if (diagram.type === 'topology') {
-    await layoutHierarchical(diagram, heightById, nodePos, groupPos, groupSize, routes)
+    await layoutHierarchical(
+      diagram,
+      heightById,
+      satelliteOf,
+      nodePos,
+      notePos,
+      groupPos,
+      groupSize,
+      routes,
+    )
   } else {
     await layoutContainer(null)
   }

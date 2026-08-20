@@ -364,6 +364,78 @@ describe('layoutDiagram (nested + notes)', () => {
   })
 })
 
+describe('layoutHierarchical topology: grouped notes + satellites', () => {
+  const NODE_W = 180
+
+  it('lays out a grouped note so it does not overlap its sibling node', async () => {
+    // type:'topology' routes through layoutHierarchical, which (pre-fix) never
+    // fed grouped notes to ELK — the note kept its stale position and overlapped.
+    const d: Diagram = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'topology',
+      groups: [
+        {
+          id: 'C',
+          label: 'C',
+          color: '#000',
+          position: { x: 0, y: 0 },
+          size: { width: 0, height: 0 },
+        },
+      ],
+      nodes: [{ id: 'c1', label: 'c1', fields: [], position: { x: 0, y: 0 }, parentId: 'C' }],
+      notes: [
+        {
+          id: 'n1',
+          text: 'note',
+          position: { x: 0, y: 0 },
+          size: { width: 160, height: 90 },
+          parentId: 'C',
+        },
+      ],
+      edges: [],
+      flows: [],
+    }
+    const { nodes, notes } = await layoutDiagram(d, 'elk')
+    const c1 = nodes.find((n) => n.id === 'c1')!
+    const n1 = notes.find((n) => n.id === 'n1')!
+    const nr = { x: c1.position.x, y: c1.position.y, w: NODE_W, h: 64 }
+    const or = { x: n1.position.x, y: n1.position.y, w: 160, h: 90 }
+    const overlap =
+      nr.x < or.x + or.w && or.x < nr.x + nr.w && nr.y < or.y + or.h && or.y < nr.y + nr.h
+    expect(overlap).toBe(false)
+  })
+
+  it('stacks a vertical satellite in its subject’s column below it', async () => {
+    // Pre-fix, layoutHierarchical ranked the satellite into its own ELK layer
+    // (a different column) instead of merging it onto the subject.
+    const d: Diagram = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'topology',
+      groups: [],
+      nodes: [
+        { id: 'sub', label: 'Sub', fields: [], position: { x: 0, y: 0 } },
+        { id: 'sat', label: 'Sat', fields: [], position: { x: 0, y: 0 } },
+        { id: 'other', label: 'Other', fields: [], position: { x: 0, y: 0 } },
+      ],
+      notes: [],
+      edges: [
+        { id: 'v', from: 'sub', to: 'sat', orientation: 'vertical' },
+        { id: 'e', from: 'sub', to: 'other' },
+      ],
+      flows: [],
+    }
+    const { nodes } = await layoutDiagram(d, 'elk')
+    const sub = nodes.find((n) => n.id === 'sub')!
+    const sat = nodes.find((n) => n.id === 'sat')!
+    expect(sat.position.x).toBe(sub.position.x)
+    expect(sat.position.y).toBeGreaterThan(sub.position.y)
+  })
+})
+
 import { elkLayoutOptions } from './layout'
 import { DEFAULT_ELK } from '../shared/model'
 
