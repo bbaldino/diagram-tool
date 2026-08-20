@@ -1,5 +1,6 @@
 import { DialogShell } from './DialogShell'
 import { PathfindingControls } from './PathfindingControls'
+import { ElkControls } from './ElkControls'
 import { useActiveRouting, setActiveRouting } from './routingKnobs'
 import { DEFAULT_ROUTING, type DiagramRouting, type EdgeRouter } from '../shared/model'
 import { sendOps } from './modelClient'
@@ -8,6 +9,7 @@ export function DiagramSettingsDialog(props: {
   diagramId: string
   committed: DiagramRouting
   onClose: () => void
+  onTidy: () => void
 }) {
   const routing = useActiveRouting()
 
@@ -20,6 +22,12 @@ export function DiagramSettingsDialog(props: {
     if (JSON.stringify(routing) !== JSON.stringify(props.committed)) {
       void sendOps([{ t: 'diagram.setRouting', diagramId: props.diagramId, routing }])
     }
+    props.onClose()
+  }
+
+  const applyAndTidy = async () => {
+    await sendOps([{ t: 'diagram.setRouting', diagramId: props.diagramId, routing }])
+    props.onTidy()
     props.onClose()
   }
 
@@ -37,6 +45,11 @@ export function DiagramSettingsDialog(props: {
             <button type="button" onClick={cancel}>
               Cancel
             </button>
+            {routing.router === 'waypoint' ? (
+              <button type="button" onClick={() => void applyAndTidy()}>
+                Apply &amp; Tidy
+              </button>
+            ) : null}
             <button type="button" onClick={apply}>
               Apply
             </button>
@@ -59,6 +72,7 @@ export function DiagramSettingsDialog(props: {
         ))}
       </div>
       {routing.router === 'pathfinding' ? <PathfindingControls /> : null}
+      {routing.router === 'waypoint' ? <ElkControls /> : null}
     </DialogShell>
   )
 }
