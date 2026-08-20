@@ -1474,6 +1474,7 @@ function Flow({
           diagramId={active.id}
           committed={effectiveRouting(active)}
           onClose={() => setRoutingOpen(false)}
+          onTidy={tidy}
         />
       )}
     </div>
