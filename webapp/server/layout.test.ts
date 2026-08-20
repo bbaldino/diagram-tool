@@ -363,3 +363,22 @@ describe('layoutDiagram (nested + notes)', () => {
     expect(notes.find((n) => n.id === 'top')!.position).toEqual({ x: 777, y: 555 })
   })
 })
+
+import { elkLayoutOptions } from './layout'
+import { DEFAULT_ELK } from '../shared/model'
+
+describe('elkLayoutOptions', () => {
+  it('maps the default config to the expected ELK keys', () => {
+    const o = elkLayoutOptions(DEFAULT_ELK)
+    expect(o['elk.direction']).toBe('RIGHT')
+    expect(o['elk.edgeRouting']).toBe('ORTHOGONAL')
+    expect(o['elk.spacing.edgeEdge']).toBe('12')
+    expect(o['elk.layered.spacing.nodeNodeBetweenLayers']).toBe('70')
+    expect(o['elk.algorithm']).toBe('layered')
+  })
+  it('reflects a non-default config', () => {
+    const o = elkLayoutOptions({ ...DEFAULT_ELK, edgeRouting: 'POLYLINE', edgeEdge: 30 })
+    expect(o['elk.edgeRouting']).toBe('POLYLINE')
+    expect(o['elk.spacing.edgeEdge']).toBe('30')
+  })
+})

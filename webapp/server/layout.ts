@@ -1,4 +1,5 @@
-import type { Diagram, Node, Group, Note, Edge, EdgeOrientation } from '../shared/model'
+import type { Diagram, Node, Group, Note, Edge, EdgeOrientation, ElkConfig } from '../shared/model'
+import { DEFAULT_ELK } from '../shared/model'
 import ELK from 'elkjs/lib/elk.bundled.js'
 import { runElk } from './layout-elk'
 import { runGraphviz } from './layout-graphviz'
@@ -9,6 +10,23 @@ import {
   GROUP_PAD,
   GROUP_NEST_TOP_PAD,
 } from '../shared/containment'
+
+export function elkLayoutOptions(elk: ElkConfig): Record<string, string> {
+  return {
+    'elk.algorithm': 'layered',
+    'elk.direction': elk.direction,
+    'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
+    'elk.edgeRouting': elk.edgeRouting,
+    'elk.layered.nodePlacement.strategy': elk.nodePlacement,
+    'elk.layered.crossingMinimization.strategy': elk.crossingMin,
+    'elk.layered.spacing.nodeNodeBetweenLayers': String(elk.nodeNodeBetweenLayers),
+    'elk.spacing.nodeNode': String(elk.nodeNode),
+    'elk.spacing.edgeNode': String(elk.edgeNode),
+    'elk.spacing.edgeEdge': String(elk.edgeEdge),
+    'elk.edgeLabels.placement': 'CENTER',
+    'elk.spacing.edgeLabel': '6',
+  }
+}
 
 type HandleId = 'top' | 'right' | 'bottom' | 'left'
 
@@ -259,21 +277,10 @@ async function layoutHierarchical(
   })
   const root = {
     id: 'root',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
-      'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
-      'elk.edgeRouting': 'ORTHOGONAL',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '70',
-      'elk.spacing.nodeNode': '40',
-      'elk.spacing.edgeNode': '20',
-      'elk.spacing.edgeEdge': '12',
-      // Edge labels are real boxes the renderer draws mid-edge. Feeding them so
-      // ELK reserves routing space is the point of this pass — otherwise it
-      // routes bare lines and the labels land on top of nodes and each other.
-      'elk.edgeLabels.placement': 'CENTER',
-      'elk.spacing.edgeLabel': '6',
-    },
+    // Edge labels are real boxes the renderer draws mid-edge. Feeding them so
+    // ELK reserves routing space is the point of this pass — otherwise it
+    // routes bare lines and the labels land on top of nodes and each other.
+    layoutOptions: elkLayoutOptions(diagram.routing?.elk ?? DEFAULT_ELK),
     children: [
       ...cg(null).map((g) => buildGroup(g.id)),
       ...cn(null).map((n) => ({ id: n.id, width: W, height: heightById[n.id] ?? H })),
