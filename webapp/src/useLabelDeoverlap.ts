@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { useReactFlow, useStore } from '@xyflow/react'
-import { resolveLabelPlacements, type LabelInput, type Rect } from './labelDeoverlap'
+import { resolveLabelPlacements, soloLabelPos, type LabelInput, type Rect } from './labelDeoverlap'
 import { setLabelPlacements } from './labelPlacement'
 
 // Canvas-level: after pathfinding edges render, measure every unpinned smart-edge
@@ -41,6 +41,24 @@ export function useLabelDeoverlap(active: boolean): void {
         const b = flowToScreenPosition({ x: 1, y: 0 })
         return Math.hypot(b.x - a.x, b.y - a.y) || 1
       })()
+      // Pass 1: sample every smart edge's rendered path into flow-coord points,
+      // keyed by edge id — feeds soloLabelPos below (same coordinate basis as
+      // anchorAt, no remapping needed).
+      const pathPts = new Map<string, { x: number; y: number }[]>()
+      for (const g of edgeEls) {
+        const id = g.getAttribute('data-id')
+        const path = g.querySelector<SVGPathElement>('path.react-flow__edge-path')
+        if (!id || !path) continue
+        const len = path.getTotalLength()
+        if (!len) continue
+        const N = Math.max(2, Math.floor(len / 6))
+        const pts = []
+        for (let i = 0; i <= N; i++) {
+          const p = path.getPointAtLength((i / N) * len)
+          pts.push({ x: p.x, y: p.y })
+        }
+        pathPts.set(id, pts)
+      }
       for (const g of edgeEls) {
         const id = g.getAttribute('data-id')
         if (!id) continue
@@ -50,7 +68,12 @@ export function useLabelDeoverlap(active: boolean): void {
         const len = path.getTotalLength()
         if (!len) continue
         const pinned = labelEl.dataset.pinned === 'true'
-        const seedPos = Number(labelEl.dataset.labelPos ?? '0.5')
+        const seedPos = pinned
+          ? Number(labelEl.dataset.labelPos ?? '0.5')
+          : soloLabelPos(
+              pathPts.get(id) ?? [],
+              [...pathPts].filter(([oid]) => oid !== id).map(([, pts]) => pts),
+            )
         const seedOff = {
           x: Number(labelEl.dataset.offx ?? '0'),
           y: Number(labelEl.dataset.offy ?? '0'),
