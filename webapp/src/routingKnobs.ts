@@ -1,5 +1,11 @@
 import { useSyncExternalStore } from 'react'
-import { DEFAULT_ROUTING, type DiagramRouting, type PathfindingConfig } from '../shared/model'
+import {
+  DEFAULT_ROUTING,
+  DEFAULT_ELK,
+  type DiagramRouting,
+  type ElkConfig,
+  type PathfindingConfig,
+} from '../shared/model'
 
 // The active diagram's previewed routing config. App seeds it from the active
 // diagram; the Diagram Settings dialog previews edits against it so edges
@@ -20,6 +26,10 @@ export function setActiveRouting(routing: DiagramRouting): void {
 
 export function patchPathfinding(patch: Partial<PathfindingConfig>): void {
   setActiveRouting({ ...state, pathfinding: { ...state.pathfinding, ...patch } })
+}
+
+export function patchElk(patch: Partial<ElkConfig>): void {
+  setActiveRouting({ ...state, elk: { ...(state.elk ?? DEFAULT_ELK), ...patch } })
 }
 
 function subscribe(l: () => void): () => void {
