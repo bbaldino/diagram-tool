@@ -85,3 +85,37 @@ describe('resolveLabelPlacements', () => {
     expect(overlaps(boxAt(a, out.get('a')!), node)).toBe(false)
   })
 })
+
+import { soloLabelPos } from './labelDeoverlap'
+
+// horizontal polyline y=0 from x=x0 to x=x1, sampled at n points
+function hSeg(x0: number, x1: number, n = 21): { x: number; y: number }[] {
+  return Array.from({ length: n }, (_, i) => ({ x: x0 + ((x1 - x0) * i) / (n - 1), y: 0 }))
+}
+
+describe('soloLabelPos', () => {
+  it('returns 0.5 for an edge with no other edges', () => {
+    expect(soloLabelPos(hSeg(0, 100), [])).toBeCloseTo(0.5, 5)
+  })
+
+  it('anchors in the LEFT region when the edge is coincident on its right half', () => {
+    // path spans x 0..100; other overlaps x 40..140 → path is solo only on the left
+    const pos = soloLabelPos(hSeg(0, 100), [hSeg(40, 140)])
+    expect(pos).toBeLessThan(0.4)
+  })
+
+  it('anchors in the RIGHT region when the edge is coincident on its left half', () => {
+    const pos = soloLabelPos(hSeg(0, 100), [hSeg(-40, 60)])
+    expect(pos).toBeGreaterThan(0.6)
+  })
+
+  it('falls back to 0.5 when fully coincident with another edge', () => {
+    expect(soloLabelPos(hSeg(0, 100), [hSeg(0, 100)])).toBeCloseTo(0.5, 5)
+  })
+
+  it('respects the threshold (a parallel edge just beyond it leaves this edge solo)', () => {
+    // other is a parallel line 12px away everywhere; threshold 8 → path is solo throughout → 0.5
+    const other = hSeg(0, 100).map((p) => ({ x: p.x, y: p.y + 12 }))
+    expect(soloLabelPos(hSeg(0, 100), [other], 8)).toBeCloseTo(0.5, 5)
+  })
+})

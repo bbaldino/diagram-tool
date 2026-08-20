@@ -1,3 +1,7 @@
+export interface Pt {
+  x: number
+  y: number
+}
 export interface LabelPlacement {
   labelPos: number
   offset: { x: number; y: number }
@@ -22,6 +26,18 @@ export interface DeoverlapOpts {
   maxPos?: number
   maxOffset?: number
   iterations?: number
+}
+
+// Min distance from a point to a line segment.
+function distToSeg(p: Pt, a: Pt, b: Pt): number {
+  const dx = b.x - a.x
+  const dy = b.y - a.y
+  const lenSq = dx * dx + dy * dy
+  let t = lenSq > 0 ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / lenSq : 0
+  t = Math.max(0, Math.min(1, t))
+  const cx = a.x + t * dx
+  const cy = a.y + t * dy
+  return Math.hypot(p.x - cx, p.y - cy)
 }
 
 function interArea(a: Rect, b: Rect): number {
@@ -129,4 +145,40 @@ export function resolveLabelPlacements(
   const out = new Map<string, LabelPlacement>()
   for (const l of labels) if (!l.pinned) out.set(l.id, place.get(l.id)!)
   return out
+}
+
+// Min distance from a point to a polyline (Infinity for a degenerate polyline).
+function pointToPolyline(p: Pt, poly: Pt[]): number {
+  if (poly.length < 2) return Infinity
+  let m = Infinity
+  for (let i = 0; i < poly.length - 1; i++) m = Math.min(m, distToSeg(p, poly[i], poly[i + 1]))
+  return m
+}
+
+// The label anchor fraction (0..1) at the center of the longest run of points where
+// `path` is farther than `threshold` from every polyline in `others` — i.e. where
+// this edge runs alone. 0.5 when there is no such run (coincident end-to-end) or the
+// path is degenerate.
+export function soloLabelPos(path: Pt[], others: Pt[][], threshold = 8): number {
+  if (path.length < 2) return 0.5
+  let bestStart = -1
+  let bestLen = 0
+  let curStart = -1
+  let curLen = 0
+  for (let i = 0; i < path.length; i++) {
+    const solo = others.every((o) => pointToPolyline(path[i], o) > threshold)
+    if (solo) {
+      if (curStart < 0) curStart = i
+      curLen++
+      if (curLen > bestLen) {
+        bestLen = curLen
+        bestStart = curStart
+      }
+    } else {
+      curStart = -1
+      curLen = 0
+    }
+  }
+  if (bestLen === 0) return 0.5
+  return (bestStart + (bestLen - 1) / 2) / (path.length - 1)
 }
