@@ -61,3 +61,18 @@ describe('separation knob', () => {
     expect(DEFAULT_ROUTING.pathfinding.separation).toBe(0)
   })
 })
+
+import { DEFAULT_ELK as DELK } from './model'
+describe('ElkConfig default', () => {
+  it('DEFAULT_ELK reproduces the current hardcoded ELK values', () => {
+    expect(DELK.direction).toBe('RIGHT')
+    expect(DELK.edgeRouting).toBe('ORTHOGONAL')
+    expect(DELK.nodeNodeBetweenLayers).toBe(70)
+    expect(DELK.nodeNode).toBe(40)
+    expect(DELK.edgeEdge).toBe(12)
+    expect(DELK.edgeNode).toBe(20)
+  })
+  it('DEFAULT_ROUTING.elk deep-equals DEFAULT_ELK', () => {
+    expect(DEFAULT_ROUTING.elk).toEqual(DELK)
+  })
+})

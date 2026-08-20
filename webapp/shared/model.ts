@@ -21,9 +21,37 @@ export interface PathfindingConfig {
   separation?: number // edge-aware routing strength (flow units); absent/0 = independent routing
 }
 
+export type ElkDirection = 'RIGHT' | 'DOWN' | 'LEFT' | 'UP'
+export type ElkEdgeRouting = 'ORTHOGONAL' | 'POLYLINE' | 'SPLINE'
+export type ElkNodePlacement = 'BRANDES_KOEPF' | 'NETWORK_SIMPLEX' | 'SIMPLE' | 'LINEAR_SEGMENTS'
+export type ElkCrossingMin = 'LAYER_SWEEP' | 'INTERACTIVE'
+
+export interface ElkConfig {
+  direction: ElkDirection
+  edgeRouting: ElkEdgeRouting
+  nodePlacement: ElkNodePlacement
+  crossingMin: ElkCrossingMin
+  nodeNodeBetweenLayers: number
+  nodeNode: number
+  edgeEdge: number
+  edgeNode: number
+}
+
+export const DEFAULT_ELK: ElkConfig = {
+  direction: 'RIGHT',
+  edgeRouting: 'ORTHOGONAL',
+  nodePlacement: 'BRANDES_KOEPF',
+  crossingMin: 'LAYER_SWEEP',
+  nodeNodeBetweenLayers: 70,
+  nodeNode: 40,
+  edgeEdge: 12,
+  edgeNode: 20,
+}
+
 export interface DiagramRouting {
   router: EdgeRouter
   pathfinding: PathfindingConfig
+  elk?: ElkConfig
 }
 
 // Fixed baseline used when a diagram carries no routing override. Router defaults
@@ -42,6 +70,7 @@ export const DEFAULT_ROUTING: DiagramRouting = {
     directSkip: false,
     separation: 0,
   },
+  elk: DEFAULT_ELK,
 }
 
 export interface Field {
