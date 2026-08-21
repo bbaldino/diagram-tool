@@ -118,6 +118,8 @@ function edgePath(
 export function WaypointEdge(props: EdgeProps) {
   const {
     id,
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -131,10 +133,33 @@ export function WaypointEdge(props: EdgeProps) {
     label,
     selected,
   } = props
-  const { setEdges, screenToFlowPosition, getZoom } = useReactFlow()
+  const { setEdges, screenToFlowPosition, getZoom, getInternalNode } = useReactFlow()
   const shape = (data?.shape as string) || 'default'
   const points = (data?.points as Pt[]) || []
-  const route = (data?.route as Pt[]) || []
+  const rawRoute = (data?.route as Pt[]) || []
+  // Re-pin the engine route's endpoints to the LIVE node borders every render, so
+  // dragging a node keeps its edges attached (the interior bendpoints stay where
+  // ELK routed them until the next Tidy). No-op while nothing moves.
+  const liveBox = (nodeId: string) => {
+    const n = getInternalNode?.(nodeId)
+    if (!n) return null
+    const p = n.internals?.positionAbsolute ?? n.position
+    const w = n.measured?.width ?? 180
+    const h = n.measured?.height ?? 64
+    return { x: p.x, y: p.y, w, h }
+  }
+  const clampPt = (
+    p: Pt,
+    b: { x: number; y: number; w: number; h: number } | null,
+  ): Pt => (b ? { x: Math.max(b.x, Math.min(b.x + b.w, p.x)), y: Math.max(b.y, Math.min(b.y + b.h, p.y)) } : p)
+  const route =
+    rawRoute.length >= 2
+      ? [
+          clampPt(rawRoute[0], liveBox(source)),
+          ...rawRoute.slice(1, -1),
+          clampPt(rawRoute[rawRoute.length - 1], liveBox(target)),
+        ]
+      : rawRoute
   const hasRoute = route.length >= 2
   const [d, labelX, labelY] = edgePath(
     shape,
