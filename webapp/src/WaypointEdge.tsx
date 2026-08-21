@@ -67,7 +67,18 @@ function edgePath(
   ty: number,
   tPos: Position,
   points: Pt[],
+  route?: Pt[],
 ): [string, number, number] {
+  // Engine-routed polyline (incl. true endpoints): draw it exactly, ignoring the
+  // handle centers RF would otherwise anchor to.
+  if (route && route.length >= 2) {
+    const d =
+      shape === 'default' ? catmull(route) : 'M ' + route.map((p) => `${p.x} ${p.y}`).join(' L ')
+    const m = Math.floor((route.length - 1) / 2)
+    const a = route[m]
+    const b = route[m + 1] || a
+    return [d, (a.x + b.x) / 2, (a.y + b.y) / 2]
+  }
   if (points.length) {
     const chain: Pt[] = [{ x: sx, y: sy }, ...points, { x: tx, y: ty }]
     const d =
@@ -122,6 +133,8 @@ export function WaypointEdge(props: EdgeProps) {
   const { setEdges, screenToFlowPosition, getZoom } = useReactFlow()
   const shape = (data?.shape as string) || 'default'
   const points = (data?.points as Pt[]) || []
+  const route = (data?.route as Pt[]) || []
+  const hasRoute = route.length >= 2
   const [d, labelX, labelY] = edgePath(
     shape,
     sourceX,
@@ -131,6 +144,7 @@ export function WaypointEdge(props: EdgeProps) {
     targetY,
     targetPosition,
     points,
+    route,
   )
   const relColor = ((style as React.CSSProperties)?.stroke as string) || '#64748b'
 
@@ -306,7 +320,7 @@ export function WaypointEdge(props: EdgeProps) {
           </EdgeLabelRenderer>
         </>
       ) : null}
-      {selected ? (
+      {selected && !hasRoute ? (
         <>
           {/* wide invisible path (painted UNDER the dots): click the line to add a waypoint */}
           <path

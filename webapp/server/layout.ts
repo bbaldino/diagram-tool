@@ -261,6 +261,7 @@ async function layoutHierarchical(
       targetHandle: HandleId
       points: { x: number; y: number }[]
       labelPos?: number
+      route?: { x: number; y: number }[]
     }
   >,
 ): Promise<void> {
@@ -449,6 +450,13 @@ async function layoutHierarchical(
       targetHandle: sideOf(sec.endPoint, tb),
       points,
       labelPos,
+      // Full routed polyline incl. ELK's true endpoints, so the app can draw the
+      // edge exactly where ELK routed it instead of snapping to a center handle.
+      route: [
+        { x: Math.round(sec.startPoint.x), y: Math.round(sec.startPoint.y) },
+        ...points,
+        { x: Math.round(sec.endPoint.x), y: Math.round(sec.endPoint.y) },
+      ],
     })
   }
 }
@@ -604,6 +612,7 @@ export async function layoutDiagram(
       targetHandle: HandleId
       points: { x: number; y: number }[]
       labelPos?: number
+      route?: { x: number; y: number }[]
     }
   >()
   if (diagram.type === 'topology') {
@@ -653,6 +662,7 @@ export async function layoutDiagram(
       ...e,
       points: r.points,
       ...(r.labelPos !== undefined ? { labelPos: r.labelPos } : {}),
+      ...(r.route ? { route: r.route } : {}),
     }
   })
   return { nodes: reflowed.nodes, groups: reflowed.groups, notes: reflowed.notes, edges }

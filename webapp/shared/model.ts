@@ -129,6 +129,7 @@ export interface Edge extends Entity {
   inferred?: boolean
   shape?: 'default' | 'smoothstep' | 'straight'
   points?: { x: number; y: number }[]
+  route?: { x: number; y: number }[] // full engine-routed polyline incl. true endpoints (flow coords); when present the edge is drawn along it directly instead of handle→points→handle
   sourceHandle?: string // which side of the source node ('top'|'right'|'bottom'|'left')
   targetHandle?: string // which side of the target node
   dir?: EdgeDir // arrowhead direction — forward (default) | backward | both

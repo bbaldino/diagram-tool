@@ -60,6 +60,7 @@ export type EdgeData = {
   dir?: EdgeDir
   color?: string
   points?: { x: number; y: number }[]
+  route?: { x: number; y: number }[] // full engine route incl. endpoints; drawn directly when present
   labelPos?: number // fraction along the path in [0,1]; absent = 0.5 (midpoint)
   labelOffset?: { x: number; y: number }
   labelPinned?: boolean
