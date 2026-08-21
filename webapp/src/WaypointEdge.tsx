@@ -70,10 +70,11 @@ function edgePath(
   route?: Pt[],
 ): [string, number, number] {
   // Engine-routed polyline (incl. true endpoints): draw it exactly, ignoring the
-  // handle centers RF would otherwise anchor to.
+  // handle centers RF would otherwise anchor to. ELK routes are ORTHOGONAL, so
+  // draw straight segments — a Catmull spline would round the right angles into
+  // the wavy look this mode exists to avoid.
   if (route && route.length >= 2) {
-    const d =
-      shape === 'default' ? catmull(route) : 'M ' + route.map((p) => `${p.x} ${p.y}`).join(' L ')
+    const d = 'M ' + route.map((p) => `${p.x} ${p.y}`).join(' L ')
     const m = Math.floor((route.length - 1) / 2)
     const a = route[m]
     const b = route[m + 1] || a

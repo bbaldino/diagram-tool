@@ -411,8 +411,26 @@ async function layoutHierarchical(
     return (Object.keys(d) as HandleId[]).reduce((a, k) => (d[k] < d[a] ? k : a), 'right')
   }
 
-  // Capture each edge's routed handles + interior waypoints (all edges declared
-  // at root, so section coords are already absolute).
+  // Capture each edge's routed handles + interior waypoints. ELK returns every
+  // root-declared edge's sections relative to the deepest group that contains
+  // BOTH endpoints (a black-box hierarchy quirk): group-local coords for an
+  // intra-group edge, absolute for a cross-group/root one. Add that LCA group's
+  // absolute origin back so every route lands in absolute (flow) coords, matching
+  // the node positions.
+  const groupChain = (nodeId: string): string[] => {
+    const chain: string[] = []
+    let p = nodeById[nodeId]?.parentId ?? null
+    while (p) {
+      chain.push(p)
+      p = groupById[p]?.parentId ?? null
+    }
+    return chain // deepest-first
+  }
+  const lcaOffset = (from: string, to: string): { x: number; y: number } => {
+    const fa = new Set(groupChain(from))
+    for (const g of groupChain(to)) if (fa.has(g)) return abs.get(g) ?? { x: 0, y: 0 }
+    return { x: 0, y: 0 }
+  }
   type ElkEdge = {
     id: string
     sections?: {
@@ -422,7 +440,10 @@ async function layoutHierarchical(
     }[]
     labels?: { x?: number; y?: number; width?: number; height?: number }[]
   }
-  const collectEdges = (node: { edges?: ElkEdge[]; children?: unknown[] }, out: ElkEdge[]) => {
+  const collectEdges = (
+    node: { edges?: ElkEdge[]; children?: unknown[] },
+    out: ElkEdge[],
+  ) => {
     for (const e of node.edges ?? []) out.push(e)
     for (const c of (node.children ?? []) as (typeof node)[]) collectEdges(c, out)
   }
@@ -436,27 +457,27 @@ async function layoutHierarchical(
     const sb = abs.get(de.from)
     const tb = abs.get(de.to)
     if (!sb || !tb) continue
-    const points = (sec.bendPoints ?? []).map((p) => ({ x: Math.round(p.x), y: Math.round(p.y) }))
+    const { x: ox, y: oy } = lcaOffset(de.from, de.to)
+    const at = (p: { x: number; y: number }) => ({ x: Math.round(p.x + ox), y: Math.round(p.y + oy) })
+    const start = at(sec.startPoint)
+    const end = at(sec.endPoint)
+    const points = (sec.bendPoints ?? []).map(at)
     // Where ELK ended up placing the label → labelPos along the routed path, so
     // the app draws the label in the gap ELK reserved for it.
     const lab = ee.labels?.[0]
     let labelPos: number | undefined
     if (lab && typeof lab.x === 'number' && typeof lab.y === 'number') {
-      const center = { x: lab.x + (lab.width ?? 0) / 2, y: lab.y + (lab.height ?? 0) / 2 }
-      labelPos = fractionAlong([sec.startPoint, ...points, sec.endPoint], center)
+      const center = { x: lab.x + ox + (lab.width ?? 0) / 2, y: lab.y + oy + (lab.height ?? 0) / 2 }
+      labelPos = fractionAlong([start, ...points, end], center)
     }
     routes.set(de.id, {
-      sourceHandle: sideOf(sec.startPoint, sb),
-      targetHandle: sideOf(sec.endPoint, tb),
+      sourceHandle: sideOf(start, sb),
+      targetHandle: sideOf(end, tb),
       points,
       labelPos,
       // Full routed polyline incl. ELK's true endpoints, so the app can draw the
       // edge exactly where ELK routed it instead of snapping to a center handle.
-      route: [
-        { x: Math.round(sec.startPoint.x), y: Math.round(sec.startPoint.y) },
-        ...points,
-        { x: Math.round(sec.endPoint.x), y: Math.round(sec.endPoint.y) },
-      ],
+      route: [start, ...points, end],
     })
   }
 }
@@ -655,6 +676,39 @@ export async function layoutDiagram(
   // wrong face and make it wrap back through/behind its own box to reach the
   // target. Geometry-first keeps the attach point on the near face.
   const geomEdges = assignEdgeHandles(reflowed.nodes, reflowed.groups, diagram.edges, heightById)
+
+  // Pin each route's endpoints to the FINAL (post-reflow) node borders. ELK's
+  // routes are computed pre-reflow and against a satellite subject's inflated
+  // block, so without this the endpoints float free of the boxes; the interior
+  // bendpoints stay exactly as ELK routed them.
+  const rGroupById = Object.fromEntries(reflowed.groups.map((g) => [g.id, g]))
+  const nodeById2 = Object.fromEntries(reflowed.nodes.map((n) => [n.id, n]))
+  const gAbs = (id: string): { x: number; y: number } => {
+    const g = rGroupById[id]
+    if (!g) return { x: 0, y: 0 }
+    const p = g.parentId ? gAbs(g.parentId) : { x: 0, y: 0 }
+    return { x: p.x + g.position.x, y: p.y + g.position.y }
+  }
+  const nodeBox = (id: string) => {
+    const n = nodeById2[id]
+    if (!n) return null
+    const p = n.parentId ? gAbs(n.parentId) : { x: 0, y: 0 }
+    return { x: p.x + n.position.x, y: p.y + n.position.y, w: W, h: heightById[id] ?? H }
+  }
+  const clampToBox = (
+    p: { x: number; y: number },
+    b: { x: number; y: number; w: number; h: number },
+  ) => ({
+    x: Math.round(Math.max(b.x, Math.min(b.x + b.w, p.x))),
+    y: Math.round(Math.max(b.y, Math.min(b.y + b.h, p.y))),
+  })
+  const pinRoute = (route: { x: number; y: number }[], from: string, to: string) => {
+    const sb = nodeBox(from)
+    const tb = nodeBox(to)
+    if (!sb || !tb || route.length < 2) return route
+    return [clampToBox(route[0], sb), ...route.slice(1, -1), clampToBox(route[route.length - 1], tb)]
+  }
+
   const edges = geomEdges.map((e) => {
     const r = routes.get(e.id)
     if (!r) return e
@@ -662,7 +716,7 @@ export async function layoutDiagram(
       ...e,
       points: r.points,
       ...(r.labelPos !== undefined ? { labelPos: r.labelPos } : {}),
-      ...(r.route ? { route: r.route } : {}),
+      ...(r.route ? { route: pinRoute(r.route, e.from, e.to) } : {}),
     }
   })
   return { nodes: reflowed.nodes, groups: reflowed.groups, notes: reflowed.notes, edges }
