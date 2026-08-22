@@ -440,10 +440,7 @@ async function layoutHierarchical(
     }[]
     labels?: { x?: number; y?: number; width?: number; height?: number }[]
   }
-  const collectEdges = (
-    node: { edges?: ElkEdge[]; children?: unknown[] },
-    out: ElkEdge[],
-  ) => {
+  const collectEdges = (node: { edges?: ElkEdge[]; children?: unknown[] }, out: ElkEdge[]) => {
     for (const e of node.edges ?? []) out.push(e)
     for (const c of (node.children ?? []) as (typeof node)[]) collectEdges(c, out)
   }
@@ -458,7 +455,10 @@ async function layoutHierarchical(
     const tb = abs.get(de.to)
     if (!sb || !tb) continue
     const { x: ox, y: oy } = lcaOffset(de.from, de.to)
-    const at = (p: { x: number; y: number }) => ({ x: Math.round(p.x + ox), y: Math.round(p.y + oy) })
+    const at = (p: { x: number; y: number }) => ({
+      x: Math.round(p.x + ox),
+      y: Math.round(p.y + oy),
+    })
     const start = at(sec.startPoint)
     const end = at(sec.endPoint)
     const points = (sec.bendPoints ?? []).map(at)
@@ -706,7 +706,11 @@ export async function layoutDiagram(
     const sb = nodeBox(from)
     const tb = nodeBox(to)
     if (!sb || !tb || route.length < 2) return route
-    return [clampToBox(route[0], sb), ...route.slice(1, -1), clampToBox(route[route.length - 1], tb)]
+    return [
+      clampToBox(route[0], sb),
+      ...route.slice(1, -1),
+      clampToBox(route[route.length - 1], tb),
+    ]
   }
 
   const edges = geomEdges.map((e) => {

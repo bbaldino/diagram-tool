@@ -148,10 +148,10 @@ export function WaypointEdge(props: EdgeProps) {
     const h = n.measured?.height ?? 64
     return { x: p.x, y: p.y, w, h }
   }
-  const clampPt = (
-    p: Pt,
-    b: { x: number; y: number; w: number; h: number } | null,
-  ): Pt => (b ? { x: Math.max(b.x, Math.min(b.x + b.w, p.x)), y: Math.max(b.y, Math.min(b.y + b.h, p.y)) } : p)
+  const clampPt = (p: Pt, b: { x: number; y: number; w: number; h: number } | null): Pt =>
+    b
+      ? { x: Math.max(b.x, Math.min(b.x + b.w, p.x)), y: Math.max(b.y, Math.min(b.y + b.h, p.y)) }
+      : p
   const route =
     rawRoute.length >= 2
       ? [
