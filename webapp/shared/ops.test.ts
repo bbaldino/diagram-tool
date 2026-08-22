@@ -121,6 +121,14 @@ describe('diagram ops', () => {
     const m = applyOp(d.model, { t: 'diagram.delete', id: d.id })
     expect(getDiagram(m, d.id)).toBeUndefined()
   })
+
+  it('diagram.setType changes the type and leaves other diagrams untouched', () => {
+    const a = addDiagram(empty, 'A', 'canvas')
+    const b = addDiagram(a.model, 'B', 'canvas')
+    const m = applyOp(b.model, { t: 'diagram.setType', diagramId: a.id, type: 'topology' })
+    expect(getDiagram(m, a.id)!.type).toBe('topology')
+    expect(getDiagram(m, b.id)!.type).toBe('canvas')
+  })
 })
 
 describe('group ops', () => {
