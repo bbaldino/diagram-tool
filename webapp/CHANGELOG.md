@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.10.1](https://github.com/bbaldino/diagram-tool/compare/v0.10.0...v0.10.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **diagram:** refresh the view when changing type in settings ([e0f6050](https://github.com/bbaldino/diagram-tool/commit/e0f6050c6031a2025ab1cadaa757af9b87b7c73c))
+* **layout:** don't feed edges to non-ELK shapes into hierarchical layout ([df01df5](https://github.com/bbaldino/diagram-tool/commit/df01df5ed7bae9eaf1b7cd6aeaa19ede20772b30))
+
 ## [0.10.0](https://github.com/bbaldino/diagram-tool/compare/v0.9.1...v0.10.0) (2026-08-22)
 
 
