@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.9.1](https://github.com/bbaldino/diagram-tool/compare/v0.9.0...v0.9.1) (2026-08-22)
+
+
+### Bug Fixes
+
+* **routing:** correct route coordinate frame + endpoint attachment + crisp segments ([85f9288](https://github.com/bbaldino/diagram-tool/commit/85f9288c4ffb694a429b2f5e6e89490204b3dd6f))
+* **routing:** keep engine-route endpoints attached while dragging a node ([73c5ed8](https://github.com/bbaldino/diagram-tool/commit/73c5ed871cf59c6b8cf7070df72f02c4a0261099))
+
 ## [0.9.0](https://github.com/bbaldino/diagram-tool/compare/v0.8.2...v0.9.0) (2026-08-20)
 
 
