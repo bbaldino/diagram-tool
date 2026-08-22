@@ -22,6 +22,7 @@ export function DiagramSettingsDialog(props: {
   diagramId: string
   committed: DiagramRouting
   type: DiagramType
+  onSetType: (type: DiagramType) => void
   onClose: () => void
   onTidy: () => void
 }) {
@@ -45,6 +46,10 @@ export function DiagramSettingsDialog(props: {
       ops.push({ t: 'diagram.setType', diagramId: props.diagramId, type: selType })
     }
     if (ops.length) await sendOps(ops)
+    // Apply the type change to the local model too — the app skips its own SSE
+    // echoes and diffToOps doesn't track type, so without this the tab keeps
+    // showing the old type until a manual reload.
+    if (typeChanged) props.onSetType(selType)
     if (tidy || typeChanged) props.onTidy()
     props.onClose()
   }

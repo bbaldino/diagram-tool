@@ -1486,6 +1486,7 @@ function Flow({
           diagramId={active.id}
           committed={effectiveRouting(active)}
           type={active.type}
+          onSetType={(type) => setModel((m) => (m ? M.setDiagramType(m, active.id, type) : m))}
           onClose={() => setRoutingOpen(false)}
           onTidy={tidy}
         />
