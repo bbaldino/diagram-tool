@@ -106,6 +106,7 @@ export function buildDiagramGraph(
       ...edge.data,
       shape: de.shape ?? 'default',
       points: de.points,
+      route: de.route,
       labelPos: de.labelPos,
       labelOffset: de.labelOffset,
       labelPinned: de.labelPinned,
