@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/bbaldino/diagram-tool/compare/v0.9.1...v0.10.0) (2026-08-22)
+
+
+### Features
+
+* **diagram:** pick diagram type on create + change it in settings ([91305b2](https://github.com/bbaldino/diagram-tool/commit/91305b2a9f20bf02c594f75e1c619ce3dcabfa4a))
+
 ## [0.9.1](https://github.com/bbaldino/diagram-tool/compare/v0.9.0...v0.9.1) (2026-08-22)
 
 
