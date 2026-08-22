@@ -448,6 +448,10 @@ export function setDiagramRouting(model: Model, id: string, routing: DiagramRout
   return mapDiagram(model, id, (d) => ({ ...d, routing }))
 }
 
+export function setDiagramType(model: Model, id: string, type: DiagramType): Model {
+  return mapDiagram(model, id, (d) => ({ ...d, type }))
+}
+
 // Nodes are diagram-local now, so deleting a diagram is a plain filter — no
 // cross-diagram sweep needed (that was only relevant to the old shared catalog).
 export function deleteDiagram(model: Model, id: string): Model {

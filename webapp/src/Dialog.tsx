@@ -6,6 +6,11 @@ import { DialogShell } from './DialogShell'
 //   const name = await showPrompt({ title: 'New diagram', label: 'Name' })
 //   if (await showConfirm({ title: 'Delete?', danger: true })) …
 
+interface PromptSelect {
+  label: string
+  options: { value: string; label: string }[]
+  defaultValue: string
+}
 interface PromptOpts {
   title: string
   message?: string
@@ -15,6 +20,7 @@ interface PromptOpts {
   confirmText?: string
   cancelText?: string
   helperText?: string
+  select?: PromptSelect // optional extra dropdown shown under the text field
 }
 interface ConfirmOpts {
   title: string
@@ -24,12 +30,16 @@ interface ConfirmOpts {
   danger?: boolean
 }
 
+type PromptResult = { value: string; select?: string }
 type State =
-  | { kind: 'prompt'; opts: PromptOpts; resolve: (v: string | null) => void }
+  | { kind: 'prompt'; opts: PromptOpts; resolve: (v: PromptResult | null) => void }
   | { kind: 'confirm'; opts: ConfirmOpts; resolve: (v: boolean) => void }
 
 interface DialogApi {
   showPrompt: (opts: PromptOpts) => Promise<string | null>
+  showPromptWithSelect: (
+    opts: PromptOpts & { select: PromptSelect },
+  ) => Promise<{ value: string; select: string } | null>
   showConfirm: (opts: ConfirmOpts) => Promise<boolean>
 }
 
@@ -46,7 +56,21 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
 
   const showPrompt = useCallback(
     (opts: PromptOpts) =>
-      new Promise<string | null>((resolve) => setState({ kind: 'prompt', opts, resolve })),
+      new Promise<string | null>((resolve) =>
+        setState({ kind: 'prompt', opts, resolve: (r) => resolve(r ? r.value : null) }),
+      ),
+    [],
+  )
+  const showPromptWithSelect = useCallback(
+    (opts: PromptOpts & { select: PromptSelect }) =>
+      new Promise<{ value: string; select: string } | null>((resolve) =>
+        setState({
+          kind: 'prompt',
+          opts,
+          resolve: (r) =>
+            resolve(r ? { value: r.value, select: r.select ?? opts.select.defaultValue } : null),
+        }),
+      ),
     [],
   )
   const showConfirm = useCallback(
@@ -58,7 +82,7 @@ export function DialogProvider({ children }: { children: React.ReactNode }) {
   const close = useCallback(() => setState(null), [])
 
   return (
-    <DialogContext.Provider value={{ showPrompt, showConfirm }}>
+    <DialogContext.Provider value={{ showPrompt, showPromptWithSelect, showConfirm }}>
       {children}
       {state && <DialogModal state={state} close={close} />}
     </DialogContext.Provider>
@@ -69,6 +93,9 @@ function DialogModal({ state, close }: { state: State; close: () => void }) {
   const isPrompt = state.kind === 'prompt'
   const [value, setValue] = useState(
     isPrompt ? ((state.opts as PromptOpts).defaultValue ?? '') : '',
+  )
+  const [selectValue, setSelectValue] = useState(
+    isPrompt ? ((state.opts as PromptOpts).select?.defaultValue ?? '') : '',
   )
   const inputRef = useRef<HTMLInputElement>(null)
   const okRef = useRef<HTMLButtonElement>(null)
@@ -93,10 +120,10 @@ function DialogModal({ state, close }: { state: State; close: () => void }) {
   }, [state, close])
 
   const confirm = useCallback(() => {
-    if (state.kind === 'prompt') state.resolve(value)
+    if (state.kind === 'prompt') state.resolve({ value, select: selectValue })
     else state.resolve(true)
     close()
-  }, [state, value, close])
+  }, [state, value, selectValue, close])
 
   const opts = state.opts
   const danger = state.kind === 'confirm' && (state.opts as ConfirmOpts).danger
@@ -136,6 +163,18 @@ function DialogModal({ state, close }: { state: State; close: () => void }) {
           {(opts as PromptOpts).helperText && (
             <span className="dlgshell__helper">{(opts as PromptOpts).helperText}</span>
           )}
+        </label>
+      )}
+      {isPrompt && (opts as PromptOpts).select && (
+        <label className="dlgshell__field">
+          <span>{(opts as PromptOpts).select!.label}</span>
+          <select value={selectValue} onChange={(e) => setSelectValue(e.target.value)}>
+            {(opts as PromptOpts).select!.options.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
         </label>
       )}
     </DialogShell>

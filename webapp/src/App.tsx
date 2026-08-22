@@ -68,7 +68,7 @@ import { diffToOps } from '../shared/diff'
 import { newId } from '../shared/ids'
 import { groupNodes, ungroupNodes } from './grouping'
 import * as M from '../shared/model'
-import { effectiveRouting, type Model } from '../shared/model'
+import { effectiveRouting, type DiagramType, type Model } from '../shared/model'
 
 const ACTIVE_KEY = 'homelab-active-diagram'
 const OPEN_TABS_KEY = 'homelab-open-tabs'
@@ -103,7 +103,7 @@ function Flow({
   saveState: BarSaveState
   onRetrySave: () => void
 }) {
-  const { showPrompt } = useDialogs()
+  const { showPrompt, showPromptWithSelect } = useDialogs()
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<AppEdge>([])
   const [selNode, setSelNode] = useState<string | null>(null)
@@ -394,10 +394,10 @@ function Flow({
   )
 
   const newDiagram = useCallback(
-    (name: string) => {
+    (name: string, type: DiagramType = 'canvas') => {
       if (!model) return
       const base = activeId ? flushCanvasInto(model, activeId, nodes, edges) : model
-      const { model: m2, id } = M.addDiagram(base, name, 'canvas')
+      const { model: m2, id } = M.addDiagram(base, name, type)
       setModel(m2)
       setActiveId(id)
       setOpenTabs((t) => addTab(t, id))
@@ -775,11 +775,23 @@ function Flow({
   // buttons used to do inline (showPrompt/showConfirm around the same
   // newDiagram/renameDiagramById/deleteActiveDiagram handlers).
   const promptNewDiagram = useCallback(async () => {
-    const name = (
-      await showPrompt({ title: 'New diagram', label: 'Name', placeholder: 'e.g. Call flow' })
-    )?.trim()
-    if (name) newDiagram(name)
-  }, [showPrompt, newDiagram])
+    const res = await showPromptWithSelect({
+      title: 'New diagram',
+      label: 'Name',
+      placeholder: 'e.g. Call flow',
+      select: {
+        label: 'Type',
+        defaultValue: 'canvas',
+        options: [
+          { value: 'canvas', label: 'Canvas' },
+          { value: 'topology', label: 'Topology' },
+          { value: 'call-flow', label: 'Call-flow' },
+        ],
+      },
+    })
+    const name = res?.value.trim()
+    if (name) newDiagram(name, res!.select as DiagramType)
+  }, [showPromptWithSelect, newDiagram])
 
   // "+" in the tab strip / "New diagram" in the empty state: same prompt-then-
   // create flow as the File menu's "New diagram" (newDiagram already opens the
@@ -1473,6 +1485,7 @@ function Flow({
         <DiagramSettingsDialog
           diagramId={active.id}
           committed={effectiveRouting(active)}
+          type={active.type}
           onClose={() => setRoutingOpen(false)}
           onTidy={tidy}
         />
