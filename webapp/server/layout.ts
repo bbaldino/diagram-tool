@@ -312,6 +312,15 @@ async function layoutHierarchical(
       ...cnote(id).map((n) => ({ id: n.id, width: n.size.width, height: n.size.height })),
     ],
   })
+  // Every id ELK knows about: groups, non-rider nodes, and grouped notes. An edge
+  // touching anything else (a top-level note, which we leave in place) must NOT be
+  // fed to ELK — a dangling reference makes the whole JSON import throw. Such edges
+  // fall through to geometry-handle rendering (no route), same as before.
+  const elkShapeIds = new Set<string>([
+    ...diagram.groups.map((g) => g.id),
+    ...diagram.nodes.filter((n) => !riders.has(n.id)).map((n) => n.id),
+    ...diagram.notes.filter((n) => n.parentId != null && groupById[n.parentId]).map((n) => n.id),
+  ])
   const root = {
     id: 'root',
     // Edge labels are real boxes the renderer draws mid-edge. Feeding them so
@@ -327,7 +336,7 @@ async function layoutHierarchical(
     // index so the routed sections map back to diagram.edges[i] below.
     edges: diagram.edges
       .map((e, i) =>
-        riders.has(e.from) || riders.has(e.to)
+        riders.has(e.from) || riders.has(e.to) || !elkShapeIds.has(e.from) || !elkShapeIds.has(e.to)
           ? null
           : {
               id: `he${i}`,

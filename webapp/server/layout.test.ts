@@ -434,6 +434,44 @@ describe('layoutHierarchical topology: grouped notes + satellites', () => {
     expect(sat.position.x).toBe(sub.position.x)
     expect(sat.position.y).toBeGreaterThan(sub.position.y)
   })
+
+  it('lays out a topology diagram with an edge to a top-level note without crashing', async () => {
+    // ELK only knows about groups, nodes, and grouped notes; a top-level note is
+    // left in place and not fed to it. An edge to that note used to make ELK throw
+    // "Referenced shape does not exist" and fail the whole Tidy.
+    const d: Diagram = {
+      id: 'd',
+      name: 'D',
+      title: 'D',
+      type: 'topology',
+      groups: [
+        {
+          id: 'G',
+          label: 'G',
+          color: '#000',
+          position: { x: 0, y: 0 },
+          size: { width: 0, height: 0 },
+        },
+      ],
+      nodes: [{ id: 'n1', label: 'n1', fields: [], position: { x: 0, y: 0 }, parentId: 'G' }],
+      notes: [
+        {
+          id: 'note1',
+          text: 'annotation',
+          position: { x: 400, y: 400 },
+          size: { width: 160, height: 90 },
+        },
+      ],
+      edges: [
+        { id: 'e-note', from: 'note1', to: 'G', label: 'annotates' },
+        { id: 'e-real', from: 'n1', to: 'G' },
+      ],
+      flows: [],
+    }
+    const { edges } = await layoutDiagram(d, 'elk') // must not throw
+    // the note edge is skipped from ELK → no route; the layout still succeeds
+    expect(edges.find((e) => e.id === 'e-note')!.route).toBeUndefined()
+  })
 })
 
 import { elkLayoutOptions } from './layout'
